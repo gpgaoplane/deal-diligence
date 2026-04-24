@@ -1,0 +1,75 @@
+{
+  "name": "deal-diligence",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Deal Diligence Submission",
+        "formDescription": "Upload 2–4 PDFs and a company name to evaluate a deal.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Company Name",
+              "fieldType": "text",
+              "requiredField": true,
+              "placeholder": "e.g. CoreWeave, Inc."
+            },
+            {
+              "fieldLabel": "Documents",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf",
+              "multipleFiles": true,
+              "requiredField": true
+            }
+          ]
+        },
+        "webhookPath": "deal-diligence",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-form-trigger-000000000001",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [160, 300],
+      "webhookId": "deal-diligence-form-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Coordinator — Phase 3 task 3.2\n// Per design plan §2.2:\n//  - Generate run_id (uuid v4)\n//  - Derive deal_id from company_name (slug; collision OK)\n//  - Emit source_manifest from uploaded PDFs with per-file:\n//      file_id, filename, source_name (canonical), source_type\n//      (deterministic filename-regex classifier per §2.3)\n//  - Pass binary data through for downstream Extract from File.\n\nconst crypto = require('crypto');\n\n// ---- filename-regex source_type classifier (design plan §2.3) ----\nconst CLASSIFIER = [\n  { rx: /\\b(s-?1|10-?k|10-?q|8-?k|20-?f|prospectus)\\b/i, source_type: 'regulatory_filing',  human: 'S-1 Filing' },\n  { rx: /\\b(press[\\s\\-_]release|announce(?:ment)?|newswire)\\b/i, source_type: 'press_release',     human: 'Press Release' },\n  { rx: /\\b(teardown|analysis|report|breakdown|case[\\s\\-_]study)\\b/i, source_type: 'analyst_report',    human: 'Analyst Report' },\n  { rx: /\\b(transcript|call|interview)\\b/i,                source_type: 'expert_transcript', human: 'Expert Transcript' },\n  { rx: /\\b(deck|presentation|pitch|slide)\\b/i,            source_type: 'management_deck',   human: 'Management Deck' },\n];\nfunction classifyFilename(filename) {\n  for (const c of CLASSIFIER) {\n    if (c.rx.test(filename)) return { source_type: c.source_type, human: c.human };\n  }\n  // Fallback (safest default: assume regulatory)\n  return { source_type: 'regulatory_filing', human: 'S-1 Filing' };\n}\n\nconst item = $input.item.json;\nconst binary = $input.item.binary || {};\n\nconst companyName = item['Company Name'] || item.company_name || 'Unknown Company';\nconst dealId = companyName.toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-|-$/g, '');\nconst runId = crypto.randomUUID();\nconst timestampStarted = new Date().toISOString();\n\n// ---- Build source_manifest from uploaded files ----\nconst fileKeys = Object.keys(binary).sort(); // deterministic order\nconst humanCounts = {}; // track duplicates of a given source_type_human for '(#2)' suffix\nconst documents = fileKeys.map((fileKey, idx) => {\n  const b = binary[fileKey] || {};\n  const filename = b.fileName || `file-${idx}.pdf`;\n  const { source_type, human } = classifyFilename(filename);\n  humanCounts[human] = (humanCounts[human] || 0) + 1;\n  const suffix = humanCounts[human] > 1 ? ` (#${humanCounts[human]})` : '';\n  const source_name = `${companyName} ${human}${suffix}`;\n  return {\n    file_id: crypto.randomUUID(),\n    filename,\n    source_name,\n    source_type,\n    mime: b.mimeType || 'application/pdf',\n    bytes: b.fileSize || 0,\n    binary_ref: fileKey,\n  };\n});\n\nconst source_manifest = documents.map(d => d.source_name);\n\nif (documents.length < 2) {\n  throw new Error(`Need at least 2 documents; received ${documents.length}. Form Trigger config issue?`);\n}\nif (documents.length > 4) {\n  throw new Error(`Maximum 4 documents supported; received ${documents.length}.`);\n}\n\nreturn {\n  json: {\n    run_id: runId,\n    deal_id: dealId,\n    company_name: companyName,\n    timestamp_started: timestampStarted,\n    documents,\n    source_manifest,\n  },\n  binary, // pass through for downstream Extract from File\n};\n"
+      },
+      "id": "b2c3d4e5-coordinator-00000000002",
+      "name": "Coordinator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    }
+  ],
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Coordinator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "timezone": "America/Toronto"
+  },
+  "versionId": "phase3-session1-v1",
+  "meta": {
+    "description": "Phase 3 initial workflow. Two nodes: Form Trigger (accepts Company Name + 2–4 PDF uploads) → Coordinator Code node (emits run_id, deal_id, source_manifest with classified source_types, passes binary through).\n\nNext iteration adds: Extract from File, Text Splitter, Embeddings HTTP Request (Alicloud), Simple Vector Store."
+  },
+  "id": "deal-diligence-workflow",
+  "tags": []
+}

@@ -4,10 +4,7 @@
 // No time-dependent logic. See invariant I-2 in .claude/memory/context.md.
 //
 // Design plan §2.7 is the authoritative spec.
-//
-// This file is the Phase 2 SKELETON — constants + exported signature +
-// empty helpers. Phase 3 task 3.P7 fills in the ten detectors.
-// Phase 3 task 3.P7t adds ~35 unit tests (Node 22 --test runner).
+// Output shape matches schemas/agent-output-schemas.json#/$defs/RedFlagDetectorOutput.
 // ---------------------------------------------------------------------
 'use strict';
 
@@ -18,10 +15,10 @@ const CUSTOMER_CONCENTRATION_TOP2_EXTREME = 70;   // top 2 combined % of revenue
 const RELATED_PARTY_THRESHOLD_PCT         = 5;    // of revenue
 const REVENUE_GROWTH_ANOMALOUS_PCT        = 500;  // YoY growth flag
 const RUNWAY_SHORT_MONTHS                 = 12;   // cash / monthly burn
-const AUDITOR_CHANGE_WINDOW_YEARS         = 2;
+const AUDITOR_CHANGE_WINDOW_YEARS         = 2;    // (reserved; not used by current detector)
 
 // ----- Regex patterns (with negation guards; per design plan §2.7) -----
-// Rule: positive match AND no negation within same sentence (±80 chars).
+// Rule: positive match AND no negation within the SAME sentence.
 // All flags are case-insensitive; no /g — single match is sufficient.
 
 const MATERIAL_WEAKNESS_POS = /(?:identified|disclose[ds]?|found|reported|existence of|presence of)[^.!?]{0,60}material weakness(?:es)?/i;
@@ -33,13 +30,13 @@ const GOING_CONCERN_NEG = /(?:no substantial doubt|without substantial doubt|no 
 const RELATED_PARTY_CONTEXT = /related part(?:y|ies) transaction/i;
 
 const AUDITOR_CHANGE_POS = /(?:chang(?:e|ed|ing) of auditor|appoint(?:ed|ment of) new auditor|dismiss(?:ed|al of) (?:our|the) auditor)/i;
-const AUDITOR_CHANGE_NEG = /(?:no (?:chang(?:e|es) of)? auditor|auditor (?:has )?not chang(?:e|ed))/i;
+const AUDITOR_CHANGE_NEG = /(?:no (?:chang(?:e|es) of )?auditor|auditor (?:has )?not chang(?:e|ed))/i;
 
 const DUAL_CLASS_POS = /(?:class [AB] common stock|super[- ]?voting|triple[- ]?class|dual[- ]?class share structure)/i;
 
 const S1_WITHDRAWN_POS = /(?:previously (?:filed and )?withdrew|withdrawal of (?:prior |previous )?registration|previous S-?1 (?:was )?withdrawn)/i;
 
-// ----- Helpers (skeleton) -----
+// ----- Helpers -----
 
 /**
  * Split raw text into sentences for negation-context checking.
@@ -80,18 +77,276 @@ function regulatoryTextOnly(documentsRaw) {
     .join('\n\n');
 }
 
-// ----- Individual detectors (Phase 3 task 3.P7 fills in) -----
+/**
+ * Iterate over regulatory_filing documents and return the first
+ * {source_name, sentence} where POS matches without NEG in the same sentence.
+ * Preserves per-document source attribution (lost by regulatoryTextOnly).
+ * @returns {{source_name: string, sentence: string}|null}
+ */
+function firstRegulatoryMatch(documentsRaw, pos, neg) {
+  for (const d of documentsRaw || []) {
+    if (!d || d.source_type !== 'regulatory_filing') continue;
+    const r = matchWithNegationGuard(d.text || '', pos, neg);
+    if (r.matched) return { source_name: d.source_name || 'Regulatory filing', sentence: r.sentence };
+  }
+  return null;
+}
 
-function _detectCustomerConcentrationHigh(extracted)     { /* TODO 3.P7 */ return null; }
-function _detectCustomerConcentrationExtreme(extracted)  { /* TODO 3.P7 */ return null; }
-function _detectMaterialWeakness(regText)                { /* TODO 3.P7 */ return null; }
-function _detectGoingConcern(regText)                    { /* TODO 3.P7 */ return null; }
-function _detectRelatedPartyAboveThreshold(e, regText)   { /* TODO 3.P7 */ return null; }
-function _detectRevenueGrowthAnomalous(extracted)        { /* TODO 3.P7 */ return null; }
-function _detectBurnRateRunwayShort(extracted)           { /* TODO 3.P7 */ return null; }
-function _detectAuditorChangeRecent(regText)             { /* TODO 3.P7 */ return null; }
-function _detectDualClassStructure(regText)              { /* TODO 3.P7 */ return null; }
-function _detectS1PreviouslyWithdrawn(regText)           { /* TODO 3.P7 */ return null; }
+/**
+ * Safely read a nested numeric value from an ExtractionOutput-shaped object.
+ * Returns null if any level is missing or the terminal value isn't a number.
+ */
+function readNum(obj, path) {
+  let node = obj;
+  for (const k of path) {
+    if (node == null || typeof node !== 'object') return null;
+    node = node[k];
+  }
+  return typeof node === 'number' && !Number.isNaN(node) ? node : null;
+}
+
+// ----- Individual detectors -----
+
+/**
+ * customer_concentration_high — MEDIUM. Single customer >=30% but <50% of revenue.
+ * (Suppressed when the EXTREME threshold is also met — EXTREME supersedes.)
+ */
+function _detectCustomerConcentrationHigh(extractedPerDoc) {
+  for (const doc of extractedPerDoc || []) {
+    const top1 = readNum(doc, ['extracted_facts', 'customer_profile', 'concentration_top_1']);
+    const top2 = readNum(doc, ['extracted_facts', 'customer_profile', 'concentration_top_2']);
+    // EXTREME condition: don't double-flag
+    const isExtreme =
+      (top1 != null && top1 >= CUSTOMER_CONCENTRATION_EXTREME_PCT) ||
+      (top2 != null && top2 >= CUSTOMER_CONCENTRATION_TOP2_EXTREME);
+    if (isExtreme) continue;
+    if (top1 != null && top1 >= CUSTOMER_CONCENTRATION_HIGH_PCT) {
+      return {
+        flag_type: 'customer_concentration_high',
+        severity: 'MEDIUM',
+        evidence: {
+          actual_value: top1,
+          threshold: CUSTOMER_CONCENTRATION_HIGH_PCT,
+          source: doc.source_name || 'Extraction',
+          raw_text: null,
+        },
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * customer_concentration_extreme — HIGH. Single customer >=50% OR top-2 combined >=70%.
+ */
+function _detectCustomerConcentrationExtreme(extractedPerDoc) {
+  for (const doc of extractedPerDoc || []) {
+    const top1 = readNum(doc, ['extracted_facts', 'customer_profile', 'concentration_top_1']);
+    const top2 = readNum(doc, ['extracted_facts', 'customer_profile', 'concentration_top_2']);
+    if (top1 != null && top1 >= CUSTOMER_CONCENTRATION_EXTREME_PCT) {
+      return {
+        flag_type: 'customer_concentration_extreme',
+        severity: 'HIGH',
+        evidence: {
+          actual_value: top1,
+          threshold: CUSTOMER_CONCENTRATION_EXTREME_PCT,
+          source: doc.source_name || 'Extraction',
+          raw_text: null,
+        },
+      };
+    }
+    if (top2 != null && top2 >= CUSTOMER_CONCENTRATION_TOP2_EXTREME) {
+      return {
+        flag_type: 'customer_concentration_extreme',
+        severity: 'HIGH',
+        evidence: {
+          actual_value: top2,
+          threshold: CUSTOMER_CONCENTRATION_TOP2_EXTREME,
+          source: doc.source_name || 'Extraction',
+          raw_text: null,
+        },
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * material_weakness — HIGH. Positive regex match in regulatory filing, no negation.
+ */
+function _detectMaterialWeakness(documentsRaw) {
+  const m = firstRegulatoryMatch(documentsRaw, MATERIAL_WEAKNESS_POS, MATERIAL_WEAKNESS_NEG);
+  if (!m) return null;
+  return {
+    flag_type: 'material_weakness',
+    severity: 'HIGH',
+    evidence: {
+      actual_value: 'disclosed',
+      threshold: null,
+      source: m.source_name,
+      raw_text: m.sentence,
+    },
+  };
+}
+
+/**
+ * going_concern — HIGH. Positive regex match, no negation.
+ */
+function _detectGoingConcern(documentsRaw) {
+  const m = firstRegulatoryMatch(documentsRaw, GOING_CONCERN_POS, GOING_CONCERN_NEG);
+  if (!m) return null;
+  return {
+    flag_type: 'going_concern',
+    severity: 'HIGH',
+    evidence: {
+      actual_value: 'disclosed',
+      threshold: null,
+      source: m.source_name,
+      raw_text: m.sentence,
+    },
+  };
+}
+
+/**
+ * related_party_above_threshold — MEDIUM. Regex match for related-party context
+ * in a regulatory filing (our ExtractionOutput schema doesn't yet carry a
+ * `related_party_pct_of_revenue` number, so we detect presence-in-text only).
+ */
+function _detectRelatedPartyAboveThreshold(extractedPerDoc, documentsRaw) {
+  for (const d of documentsRaw || []) {
+    if (!d || d.source_type !== 'regulatory_filing') continue;
+    for (const s of splitSentences(d.text || '')) {
+      if (RELATED_PARTY_CONTEXT.test(s)) {
+        return {
+          flag_type: 'related_party_above_threshold',
+          severity: 'MEDIUM',
+          evidence: {
+            actual_value: 'disclosed',
+            threshold: RELATED_PARTY_THRESHOLD_PCT,
+            source: d.source_name || 'Regulatory filing',
+            raw_text: s,
+          },
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * revenue_growth_anomalous — LOW. YoY revenue growth >=500%.
+ */
+function _detectRevenueGrowthAnomalous(extractedPerDoc) {
+  for (const doc of extractedPerDoc || []) {
+    const g = readNum(doc, ['extracted_facts', 'financial_performance', 'revenue_growth_yoy', 'value']);
+    if (g != null && g >= REVENUE_GROWTH_ANOMALOUS_PCT) {
+      return {
+        flag_type: 'revenue_growth_anomalous',
+        severity: 'LOW',
+        evidence: {
+          actual_value: g,
+          threshold: REVENUE_GROWTH_ANOMALOUS_PCT,
+          source: doc.source_name || 'Extraction',
+          raw_text: null,
+        },
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * burn_rate_runway_short — MEDIUM. cash / monthly_burn < 12 months.
+ * Requires both cash_balance and monthly_burn to be extracted.
+ */
+function _detectBurnRateRunwayShort(extractedPerDoc) {
+  for (const doc of extractedPerDoc || []) {
+    const cash = readNum(doc, ['extracted_facts', 'financial_performance', 'cash_balance', 'value']);
+    const burn = readNum(doc, ['extracted_facts', 'financial_performance', 'monthly_burn', 'value']);
+    if (cash == null || burn == null || burn <= 0) continue;
+    const runway = cash / burn;
+    if (runway < RUNWAY_SHORT_MONTHS) {
+      return {
+        flag_type: 'burn_rate_runway_short',
+        severity: 'MEDIUM',
+        evidence: {
+          actual_value: Math.round(runway * 10) / 10, // months, 1 dp
+          threshold: RUNWAY_SHORT_MONTHS,
+          source: doc.source_name || 'Extraction',
+          raw_text: null,
+        },
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * auditor_change_recent — MEDIUM. Regex match with negation guard.
+ */
+function _detectAuditorChangeRecent(documentsRaw) {
+  const m = firstRegulatoryMatch(documentsRaw, AUDITOR_CHANGE_POS, AUDITOR_CHANGE_NEG);
+  if (!m) return null;
+  return {
+    flag_type: 'auditor_change_recent',
+    severity: 'MEDIUM',
+    evidence: {
+      actual_value: 'disclosed',
+      threshold: null,
+      source: m.source_name,
+      raw_text: m.sentence,
+    },
+  };
+}
+
+/**
+ * dual_class_structure — LOW. Positive regex match (no negation guard needed —
+ * mentions of dual/triple-class structure are rarely negated in regulatory prose).
+ */
+function _detectDualClassStructure(documentsRaw) {
+  for (const d of documentsRaw || []) {
+    if (!d || d.source_type !== 'regulatory_filing') continue;
+    for (const s of splitSentences(d.text || '')) {
+      if (DUAL_CLASS_POS.test(s)) {
+        return {
+          flag_type: 'dual_class_structure',
+          severity: 'LOW',
+          evidence: {
+            actual_value: 'disclosed',
+            threshold: null,
+            source: d.source_name || 'Regulatory filing',
+            raw_text: s,
+          },
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * s1_previously_withdrawn — MEDIUM. Positive regex match.
+ */
+function _detectS1PreviouslyWithdrawn(documentsRaw) {
+  for (const d of documentsRaw || []) {
+    if (!d || d.source_type !== 'regulatory_filing') continue;
+    for (const s of splitSentences(d.text || '')) {
+      if (S1_WITHDRAWN_POS.test(s)) {
+        return {
+          flag_type: 's1_previously_withdrawn',
+          severity: 'MEDIUM',
+          evidence: {
+            actual_value: 'disclosed',
+            threshold: null,
+            source: d.source_name || 'Regulatory filing',
+            raw_text: s,
+          },
+        };
+      }
+    }
+  }
+  return null;
+}
 
 // ----- Public entrypoint -----
 
@@ -110,18 +365,17 @@ function _detectS1PreviouslyWithdrawn(regText)           { /* TODO 3.P7 */ retur
  *   distinguishes rule-based flags from LLM analysis in downstream consumers.
  */
 function detectFlags(extractedFactsPerDocument, documentsRaw) {
-  const regText = regulatoryTextOnly(documentsRaw);
   const detectors = [
     () => _detectCustomerConcentrationHigh(extractedFactsPerDocument),
     () => _detectCustomerConcentrationExtreme(extractedFactsPerDocument),
-    () => _detectMaterialWeakness(regText),
-    () => _detectGoingConcern(regText),
-    () => _detectRelatedPartyAboveThreshold(extractedFactsPerDocument, regText),
+    () => _detectMaterialWeakness(documentsRaw),
+    () => _detectGoingConcern(documentsRaw),
+    () => _detectRelatedPartyAboveThreshold(extractedFactsPerDocument, documentsRaw),
     () => _detectRevenueGrowthAnomalous(extractedFactsPerDocument),
     () => _detectBurnRateRunwayShort(extractedFactsPerDocument),
-    () => _detectAuditorChangeRecent(regText),
-    () => _detectDualClassStructure(regText),
-    () => _detectS1PreviouslyWithdrawn(regText),
+    () => _detectAuditorChangeRecent(documentsRaw),
+    () => _detectDualClassStructure(documentsRaw),
+    () => _detectS1PreviouslyWithdrawn(documentsRaw),
   ];
   const red_flags = [];
   for (const d of detectors) {
@@ -138,6 +392,19 @@ module.exports = {
     splitSentences,
     matchWithNegationGuard,
     regulatoryTextOnly,
+    firstRegulatoryMatch,
+    readNum,
+    // detectors exported for targeted tests
+    _detectCustomerConcentrationHigh,
+    _detectCustomerConcentrationExtreme,
+    _detectMaterialWeakness,
+    _detectGoingConcern,
+    _detectRelatedPartyAboveThreshold,
+    _detectRevenueGrowthAnomalous,
+    _detectBurnRateRunwayShort,
+    _detectAuditorChangeRecent,
+    _detectDualClassStructure,
+    _detectS1PreviouslyWithdrawn,
     constants: {
       CUSTOMER_CONCENTRATION_HIGH_PCT,
       CUSTOMER_CONCENTRATION_EXTREME_PCT,
