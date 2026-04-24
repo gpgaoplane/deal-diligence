@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-24T17:15:00-04:00
+last-updated: 2026-04-24T17:30:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -97,27 +97,46 @@ n8n 2.17.7's Code node sandbox blocks `require()` for stdlib modules too, not on
 Related to P-1 (ajv compile blocked) — same sandbox, different failure surface.
 
 **Workaround:**
-Use the **Web Crypto API global** `crypto` (Node 18+, globally available without require):
-- `crypto.randomUUID()` — generates a UUID v4 string
-- `crypto.getRandomValues(new Uint8Array(n))` — n random bytes
-- `crypto.subtle.*` — SubtleCrypto interface for hashing/signing
+⚠ **Corrected 2026-04-24T17:30:** the Web Crypto global `crypto` is ALSO blocked — neither `require('crypto')` nor global `crypto.*` (including `crypto.randomUUID()` and `crypto.getRandomValues()`) work in n8n 2.17.7's Code-node sandbox. The sandbox's locked-down globals list excludes `crypto` entirely.
 
-Both work inside the sandbox because they're globals, not require'd modules.
+For UUID generation in a Code node, use pure-JS `Math.random`:
+```js
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+```
+Not crypto-secure, but run_ids don't need that — uniqueness is the requirement. Collision probability ~5×10⁻¹⁸ per pair at UUID v4 strength; negligible for a prototype generating ≤100 IDs.
 
-For Node-`crypto`-only APIs (pbkdf2, createCipheriv, etc.), the workaround is either:
-- Do the crypto outside the Code node (upstream script, or dedicated non-sandboxed container)
-- Hand-roll the algorithm using Web Crypto API equivalents (usually possible for common cases)
+**Invariant I-2 (no Math.random) is scoped to Red Flag Detector specifically** (where determinism matters for audit replay). Coordinator / other Code nodes are allowed to use Math.random — document the use in the code comment to avoid drift.
+
+For real crypto (hashing, signing): move the work outside the Code node. Options:
+- Upstream Node script that writes result to the item's JSON before it reaches the Code node
+- Dedicated service container (HTTP Request from the Code node to a local endpoint)
+- n8n's Crypto node (native node, not Code — may have different sandbox rules)
 
 **Regression test:**
 When authoring any n8n Code node: grep the jsCode string for `require(` → if present, either remove or verify the module is on the sandbox allowlist. Default assumption: require is not available. The `json-schema-validator.js` design path relies on this (paste-friendly, no require needed).
 
-**Related pitfall table (sandbox blocklist, empirically found on n8n 2.17.7):**
-- `new Function(...)` → blocked (P-1)
-- `eval(...)` → blocked (P-1)
-- `require('crypto')` → blocked (P-3)
-- `require('ajv')` with NODE_FUNCTION_ALLOW_EXTERNAL=ajv → loads but compile fails (P-1)
-- `crypto.randomUUID()` global → works ✓
-- `crypto.getRandomValues()` global → works ✓
-- `Array.from`, template literals, async/await, destructuring → all work ✓
+**Sandbox primitives table (empirically tested on n8n 2.17.7):**
+
+| Primitive | Status |
+|---|---|
+| `new Function(...)` | ❌ blocked |
+| `eval(...)` | ❌ blocked |
+| `require('crypto')` | ❌ blocked (stdlib not allowlisted) |
+| Web Crypto global `crypto.*` | ❌ blocked (ReferenceError: crypto is not defined) |
+| `require('ajv')` with NODE_FUNCTION_ALLOW_EXTERNAL=ajv | ⚠ loads but compile fails (uses new Function) |
+| `Math.random()` | ✅ works |
+| `Date.now()`, `new Date()` | ✅ works |
+| Template literals, destructuring, arrow functions, async/await | ✅ works |
+| `Array.from`, `Array.prototype.*`, `Object.*` | ✅ works |
+| `$input.item.json`, `$input.item.binary` | ✅ works (n8n helpers) |
+| `$execution.id` | ✅ works (n8n helper; alternative to UUID generation) |
+
+Rule of thumb: **assume Node APIs are NOT available in the Code node sandbox.** Only ECMAScript language primitives + n8n's `$`-prefixed helpers are reliably accessible. Anything else, verify empirically or move outside the sandbox.
 
 <!-- section:entries:end -->
