@@ -1,0 +1,46 @@
+---
+status: active
+type: context
+owner: claude
+last-updated: 2026-04-24T02:15:00-04:00
+read-if: "you need durable project truths as understood by Claude"
+skip-if: "status != active or last-updated <= your watermark"
+---
+
+# Claude — Durable Context
+
+Project invariants and non-obvious truths that hold across sessions. Cross-references to `CONTEXT.md` (scope, locked decisions) and `DESIGN.md` (component specs) — do not duplicate content from those; link to their sections.
+
+<!-- section:entries:start -->
+
+## I-1 — Human-in-the-loop boundary — 2026-04-24T02:15:00-04:00
+
+The advance-to-deep-diligence decision stays human. The AI produces a directional signal (`pass | pursue | advance_to_deep_diligence`), never a final recommendation. This boundary is immutable — changing it invalidates the submission's governance story. See `CONTEXT.md §5.2`.
+
+## I-2 — Red Flag Detector is deterministic — 2026-04-24T02:15:00-04:00
+
+The Red Flag Detector sub-workflow is implemented in JavaScript and must never call an LLM. No `Math.random`, no time-dependent logic, no model inference. Thresholds and patterns live as named constants. Pure, unit-testable functions. See `CONTEXT.md §5.5` and `DESIGN.md §1.2`.
+
+**Why it matters:** finance AI's primary objection is hallucination risk. Keeping high-stakes pattern matching out of the LLM is the project's architectural-judgment signal.
+
+## I-3 — Citation enforcement is schema-level — 2026-04-24T02:15:00-04:00
+
+Every `risk`, `strength`, and material claim in memo output carries a `sources: []` array. Enforcement lives in `schemas/agent-output-schemas.json`, not in prompt text. Uncitable claims are marked `UNSUPPORTED` and omitted from the memo. See `DESIGN.md §1.3`.
+
+## I-4 — Framework-per-agent specialist pattern — 2026-04-24T02:15:00-04:00
+
+Each LLM agent operates within a named analytical framework (IC Memo Taxonomy, Triangulation, Institutional LP Diligence Checklist, Sagard Thesis Alignment, Six-Criteria Quality Check). Frameworks are encoded in system prompts AND enforced via output schemas. This is the project's primary intellectual differentiator — not "we wired up an LLM," but "each specialist reasons like an institutional investor within a defined framework." See `CONTEXT.md §5.5`.
+
+## I-5 — Workflow JSON is the source of truth — 2026-04-24T02:15:00-04:00
+
+`n8n/workflow.json` is authoritative; the running n8n instance is not. After any UI change, run the export script and commit the diff. Loss of this discipline means the repo drifts from reality and Codex review becomes untrustworthy.
+
+## I-6 — Swappable components — 2026-04-24T02:15:00-04:00
+
+LLM provider, vector store, notification channel, and storage backend are all parameterized via a single `Set` node at workflow start. Swapping Qwen → Claude via Bedrock is a one-variable change. When adding features, do not hard-code provider-specific behavior — route through the `Set` node's variables. See `DESIGN.md §1.7`.
+
+## I-7 — Three-doc planning system is authoritative — 2026-04-24T02:15:00-04:00
+
+`CONTEXT.md` owns scope and locked decisions, `DESIGN.md` owns component behavior, `IMPLEMENTATION.md` owns sequencing. When they conflict, `CONTEXT.md` wins on decisions, `DESIGN.md` wins on behavior, `IMPLEMENTATION.md` wins on order. These are Claude-Chat-maintained; Claude Code reads them but does not modify §1–§10 of `CONTEXT.md` or the principles section of `DESIGN.md`.
+
+<!-- section:entries:end -->
