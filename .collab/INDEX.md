@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-24T02:15:00-04:00
+last-updated: 2026-04-24T03:30:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -16,8 +16,8 @@ skip-if: "never"
 | AI_AGENTS.md | shared | shared | active | 2026-04-24T02:15:00-04:00 |
 | README.md | readme | shared | active | 2026-04-24T02:15:00-04:00 |
 | CONTEXT.md | project-scope | shared | active | 2026-04-24T02:15:00-04:00 |
-| DESIGN.md | design | shared | active | 2026-04-24T02:15:00-04:00 |
-| IMPLEMENTATION.md | implementation-plan | shared | active | 2026-04-24T02:15:00-04:00 |
+| DESIGN.md | design | shared | reference-only | 2026-04-24T03:30:00-04:00 |
+| IMPLEMENTATION.md | implementation-plan | shared | reference-only | 2026-04-24T03:30:00-04:00 |
 | docs/STATUS.md | status | shared | active | 2026-04-24T02:15:00-04:00 |
 | docs/project-conventions.md | conventions | shared | active | 2026-04-24T02:15:00-04:00 |
 | .collab/ACTIVE.md | active-board | shared | active | 2026-04-24T02:07:00-04:00 |
@@ -36,4 +36,6 @@ skip-if: "never"
 | .codex/memory/context.md | context | codex | active | 2026-04-24T02:07:00-04:00 |
 | .codex/memory/decisions.md | decisions | codex | active | 2026-04-24T02:07:00-04:00 |
 | .codex/memory/pitfalls.md | pitfalls | codex | active | 2026-04-24T02:07:00-04:00 |
+| docs/plans/2026-04-24-deal-diligence-design.md | design-plan | shared | active | 2026-04-24T03:00:00-04:00 |
+| docs/plans/2026-04-24-deal-diligence-implementation.md | implementation-plan | shared | active | 2026-04-24T03:15:00-04:00 |
 <!-- collab:index:end -->

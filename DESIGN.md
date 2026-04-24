@@ -1,14 +1,16 @@
 ---
-status: active
+status: reference-only
 type: design
 owner: shared
-last-updated: 2026-04-24T02:15:00-04:00
-read-if: "you need component internals, data contracts, specialist frameworks, or error-handling policy"
-skip-if: "the task is only about project scope (use CONTEXT.md) or phase sequencing (use IMPLEMENTATION.md)"
-related: [CONTEXT.md, IMPLEMENTATION.md, schemas/agent-output-schemas.json]
+last-updated: 2026-04-24T03:30:00-04:00
+read-if: "you need the v1 (2026-04-23) baseline for design philosophy and architectural topology — but the authoritative design for build phases is at `docs/plans/2026-04-24-deal-diligence-design.md`"
+skip-if: "your question is about current build specifics — go to the docs/plans/ design plan instead"
+related: [CONTEXT.md, IMPLEMENTATION.md, docs/plans/2026-04-24-deal-diligence-design.md, schemas/agent-output-schemas.json]
 ---
 
 # Sagard AI Deal Diligence Workspace — Design Document
+
+> **Superseded for build phases on 2026-04-24.** The authoritative design specification is now `docs/plans/2026-04-24-deal-diligence-design.md`. This document remains a valid reference for original design philosophy, component purposes, and architectural rationale, but where the plan refines a section, the plan wins. See the diff table in §14 of the plan for a section-by-section map.
 
 **Purpose:** This document explains *how the system works* — component internals, data contracts, specialist frameworks, error handling, and design principles. It is the authoritative reference for all architectural and behavioral questions about the system.
 

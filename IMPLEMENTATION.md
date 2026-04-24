@@ -1,14 +1,16 @@
 ---
-status: active
+status: reference-only
 type: implementation-plan
 owner: shared
-last-updated: 2026-04-24T02:15:00-04:00
-read-if: "you need the phased build plan, task ownership, or acceptance criteria — especially before starting or closing a phase"
-skip-if: "the task is only about scope (use CONTEXT.md) or component behavior (use DESIGN.md)"
-related: [CONTEXT.md, DESIGN.md, docs/STATUS.md]
+last-updated: 2026-04-24T03:30:00-04:00
+read-if: "you need the v1 (2026-04-23) baseline phase structure — but the authoritative execution plan is at `docs/plans/2026-04-24-deal-diligence-implementation.md`"
+skip-if: "your question is about current task structure — go to the docs/plans/ implementation plan instead"
+related: [CONTEXT.md, DESIGN.md, docs/plans/2026-04-24-deal-diligence-implementation.md, docs/STATUS.md]
 ---
 
 # Sagard AI Deal Diligence Workspace — Implementation Plan
+
+> **Superseded on 2026-04-24.** The authoritative execution plan is now `docs/plans/2026-04-24-deal-diligence-implementation.md`. This document's 7-phase sequence, time estimates, and rollback options remain the baseline; the plan adds routing-matrix row mappings, verification commands, phase-closure Receipt gates, iteration caps, meta-evaluation exit criteria, spike tasks, and framework-agent-name ownership. See the diff table in §15 of the plan.
 
 **Purpose:** This document is the execution playbook. It tells any AI agent or human exactly what to do, in what order, with what acceptance criteria, and who owns each task.
 
