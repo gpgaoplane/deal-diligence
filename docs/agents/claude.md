@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-24T15:00:00-04:00
+last-updated: 2026-04-24T16:15:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -330,6 +330,38 @@ Updates fanned out this task:
 Missing / intentionally skipped:
 - `.collab/INDEX.md` last-updated bumps — no row adds/removes; existing rows' timestamps already reflect each file's last substantive edit. Since this is a correction to content that existed in last commit, the relevant INDEX rows could be bumped, but the mechanical rule is "bump when content changes reach git" — that happens at commit time. Bumping in this Receipt.
 - Advisor pass — not called; mechanical correction with empirical evidence from npm registry.
+
+## 2026-04-24T16:15:00-04:00 — Phase 1 closed + Phase 2 fully closed (Will's side)
+
+**Outcome.** Will completed the final outstanding task-1.6/1.7 step (6 article/teardown PDFs browser-printed to correct filenames). All 8 test-case PDFs now present and classify correctly per design plan §2.2 regex table. Phase 1 (Environment Setup) is now actually complete — my earlier "Phase 1 done" claim after credential checks was premature. Phase 2 (Scaffolding) is now fully complete too — Will's 2.13 (Supabase schema) and 2.Z (meta-eval fixtures) landed earlier this session.
+
+**Phase 1 acceptance criteria (implementation plan §3.2) — all met:**
+- [x] All credentials in `.env` and tested — verified in sanity-check output (all 4 services, both Supabase keys correct roles)
+- [x] `.env` not in git — `git check-ignore .env` returns `.env.gitignore:2:.env`
+- [x] Both test-case folders contain ≥ 3 docs each — CoreWeave: 4 PDFs; Cerebras: 4 PDFs
+- [x] Docker Desktop running — confirmed via n8n startup
+- [x] No credentials committed — `.env` gitignored since commit 5b51d1e
+
+**Phase 2 acceptance criteria — now all met (including 2 previously pending):**
+- [x] Supabase `deal_memos` table exists — Will confirmed 2.13 done
+- [x] Meta-eval fixtures exist and validate against memo schema — both fixtures committed in ace8ecb, 25/25 validator tests include fixture validation
+
+**Watch out:**
+- Some article PDFs are large (Futurum 16MB, Motley Fool 11MB, Mostly Metrics 9MB). These are browser-rendered with images/CSS preserved. n8n Extract from File will handle them fine (images stripped, text extracted), but total repo size now ~45MB across 8 PDFs. Acceptable; not approaching git LFS territory.
+- Sanity-check of fixture source-type classification: all 8 filenames hit the correct `source_type` on first-match via design plan §2.2 regex — verified via Python simulation of the classifier.
+
+### Task Receipt
+Updates fanned out this task:
+- `test-cases/coreweave/*.pdf` (3 new) ................ Fortune press release, Mostly Metrics, Level Headed Investing
+- `test-cases/cerebras/*.pdf` (3 new) ................. Cerebras press release, Futurum teardown, Motley Fool
+- `.collab/INDEX.md` .................................. 6 new test-case rows registered; timestamps refreshed
+- `docs/STATUS.md` .................................... Phase 1 + 2 marked fully complete; Phase 3 up-next block expanded
+- `.claude/memory/state.md` ........................... blockers cleared; awaiting Will's go-ahead for Phase 3
+- `docs/agents/claude.md` ............................. this entry
+
+Missing / intentionally skipped:
+- `.claude/memory/context.md` — no new invariants. Added a state.md open-question about PDF fidelity (text-only rendering loses tables) — may promote to invariant if Phase 4 retrieval quality degrades.
+- Community-node install by Will — not blocking Phase 3 start (only blocks task 3.24 Langfuse wiring). Can happen any time before then.
 
 ## Handoff blocks
 

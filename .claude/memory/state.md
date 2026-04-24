@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-24T15:00:00-04:00
+last-updated: 2026-04-24T16:15:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,25 +11,28 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** None — Phase 2 (claude side) closed; awaiting Will's pending Phase 2 tasks (2.13 apply Supabase schema, 2.Z author meta-eval fixtures) before Phase 3 can begin.
-**Pause point:** End of Phase 2 scaffolding + spike resolution. Hand-rolled JSON Schema validator written and tested (25/25). Community-node install added to docker-compose.yml.
-**Blockers:** None from claude's side. Will has: 2.13 + 2.Z + docker compose restart to pick up community-node install.
+**Active task:** None — Phase 1 + Phase 2 fully complete. Awaiting Will's go-ahead to begin Phase 3.
+**Pause point:** All scaffolding, spikes, schemas, prompts, validators, test-case PDFs (8 total), meta-eval fixtures done and committed. No blockers.
+**Blockers:** None.
 <!-- section:current-state:end -->
 
 <!-- section:next-steps:start -->
-1. **Will:** `docker compose down && docker compose up -d` to pick up the expanded docker-compose.yml (community node install happens on fresh container start).
-2. **Will:** task 2.13 — open Supabase SQL editor, paste `schemas/supabase-schema.sql`, execute. Verify with `SELECT count(*) FROM deal_memos;` returning 0.
-3. **Will:** task 2.Z — author `test-cases/meta-eval/intentionally-bad-memo.json` and `intentionally-good-memo.json` based on investment-professional judgment. **Critical procedural separation:** do NOT read `DESIGN.md §3.10` or design plan §4 six-criteria list before writing. Bad fixture must include at least one off-criteria defect (strategic incoherence — facts right, narrative wrong). ~45 min. Both files validate against `MemoGenerationOutput` schema.
-4. **Then Phase 3 begins.** Claude Code owns tasks 3.1 through 3.17w (workflow track) and 3.P1 through 3.P8 (prompt track). First substantive claude task: 3.1 Form Trigger node + 3.2 Coordinator (Set node emitting run_id, deal_id, source_manifest).
+1. **Will:** say "go" (or similar) to kick off Phase 3. Will can also install community nodes at any time via the n8n UI (not blocking Phase 3 start — only blocks task 3.24 Langfuse integration).
+2. **Claude Code — Phase 3 first tasks when greenlit:**
+   - Task 3.1 — Form Trigger node implementation (design plan §2.1)
+   - Task 3.2 — Coordinator Set node with run_id / deal_id / source_manifest / timestamps
+   - Task 3.3 — Document Ingestion pipeline (Extract → Splitter → Embeddings → Simple Vector Store)
+   - Task 3.4 — parameterized LLM HTTP Request node configured against Alicloud qwen3.5-plus
+3. **Phase 3 workflow-track and prompt-track can proceed in parallel** — prompts (3.P1–3.P7) have no dependency on workflow nodes until task 3.5 needs the Extraction prompt. Claude Chat refinement of Extraction / Contradiction / Memo-Gen prompts routes through Will.
 <!-- section:next-steps:end -->
 
 <!-- section:open-questions:start -->
-- D-2 confirmation deferred to Phase 3 task 3.6 (wire Contradiction Agent AI Agent node; confirm tool-use works in-n8n with qwen3.5-plus via DashScope).
+- D-2 confirmation deferred to Phase 3 task 3.6 (wire Contradiction Agent; confirm Qwen tool-use works in-n8n).
 - D-4 (Langfuse community node vs manual HTTP) — Phase 3 task 3.24.
-- Community node package names — RESOLVED 2026-04-24T15:00: correct names are `@langfuse/n8n-nodes-langfuse` (Prompt Management) and `n8n-nodes-openai-langfuse` (tracing, unscoped). Old design-plan name `rorubyy/n8n-nodes-openai-langfuse` was a github-slug mistake inherited from CONTEXT.md §5.4; corrected in CONTEXT and design plan.
 - I-9 latency implication: if Phase 4 demos stall due to reasoning-token overhead (~40s/run), may need to switch some specialists to non-reasoning `qwen-plus` or use `reasoning_effort: low` if DashScope exposes it.
+- Fidelity of S-1 PDFs — these are text-rendered from HTML (no layout/tables preserved). If retrieval quality suffers in Phase 4 due to missing tabular financials, plan to re-generate with better HTML-to-PDF tooling (weasyprint / playwright) or use the SEC's own full-document rendering.
 <!-- section:open-questions:end -->
 
 <!-- section:read-watermark:start -->
-Last read INDEX at: 2026-04-24T14:30:00-04:00
+Last read INDEX at: 2026-04-24T16:15:00-04:00
 <!-- section:read-watermark:end -->
