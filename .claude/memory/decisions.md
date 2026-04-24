@@ -2,7 +2,7 @@
 status: active
 type: decisions
 owner: claude
-last-updated: 2026-04-24T14:00:00-04:00
+last-updated: 2026-04-24T19:30:00-04:00
 read-if: "you need Claude's major design decisions"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -14,6 +14,27 @@ Major project-architecture decisions are locked in `CONTEXT.md §5` with rationa
 Claude Code's own decisions (implementation-level choices Claude made while building) go below the `<!-- section:entries:start -->` marker with the full D-n format.
 
 <!-- section:entries:start -->
+
+## D-5 — Embeddings provider: OpenRouter (nvidia/llama-nemotron-embed-vl-1b-v2:free) — 2026-04-24T19:30:00-04:00
+**Context:** Initial workflow used Alicloud DashScope `text-embedding-v4` (1024-dim). User requested switch to OpenRouter's `nvidia/llama-nemotron-embed-vl-1b-v2:free` for free-tier embeddings.
+**Alternatives:** (A) keep Alicloud text-embedding-v4 (1024-dim, ~$0.0005/1K tokens); (B) switch to OpenRouter model (2048-dim, free); (C) pick a different OpenRouter embedding model; (D) use Voyage/Cohere/OpenAI.
+**Risk verification (live curl test to OpenRouter /embeddings 2026-04-24T19:15):**
+- ✅ `/embeddings` endpoint exists and accepts OpenAI-format requests
+- ✅ Model `nvidia/llama-nemotron-embed-vl-1b-v2:free` returns valid embeddings (2048-dim)
+- ✅ Response is OpenAI-compatible: `{data: [{embedding: [...]}], usage: {prompt_tokens, total_tokens, cost}}`
+- ✅ Cost field = 0 on free tier
+- Response echoes model as `private/openrouter/nvidia/llama-nemotron-embed-vl-1b-v2` (prefix added by OpenRouter; harmless)
+**Choice:** (B). Wired up via generic `$env.EMBEDDING_API_KEY / BASE_URL / MODEL` naming (decoupled from ALICLOUD_* names so provider swaps are clean per invariant I-6).
+**Rationale:** 2048-dim is more expressive than 1024. Free tier eliminates embedding cost entirely. Swap mechanism (env vars only, no code change) honors I-6.
+**Tradeoffs:** (1) Free tier is rate-limited — a 346-chunk CoreWeave run may hit limits; if so, switch to paid tier or fall back to Alicloud text-embedding-v3. (2) Vision-language model used for text-only input; may waste some dimensions on unused vision capacity but embedding quality for text should be at least as good as the 1024-dim alternative. (3) Chunk-embedding-dim must match query-embedding-dim (both 2048 now) — retrieval unaffected since both use the same provider in-run.
+**Fallback:** If OpenRouter rate-limits, revert: `EMBEDDING_API_KEY=<alicloud>`, `EMBEDDING_BASE_URL=<alicloud>`, `EMBEDDING_MODEL=text-embedding-v3`. Single env-var change; no workflow.json edits.
+
+## D-4 — n8n env access opened for HTTP Request expressions — 2026-04-24T18:15:00-04:00
+**Context:** HTTP Request node needs to read `ALICLOUD_API_KEY` / `EMBEDDING_API_KEY` from container env via `{{ $env.* }}` expressions.
+**Alternatives:** (A) create n8n Credentials in UI for each provider (canonical n8n pattern); (B) inject secrets via a Set node referenced downstream (pollutes every item with keys); (C) set `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to allow $env in expressions.
+**Choice:** (C). Set the env var in docker-compose.yml.
+**Rationale:** Local-dev prototype; docker-compose is the source of truth for secrets already. UI-managed credentials would add a manual setup step each time a dev rebuilds the container, and split secret storage between `.env` and n8n's internal DB.
+**Tradeoffs:** Any workflow editor can read all container env vars via an expression. Acceptable for single-user local dev; production deployment would flip this back to `true` and use n8n Credentials. Recorded in `docker-compose.yml` header comment.
 
 ## D-3 — Schema validation: hand-rolled, not ajv — 2026-04-24T14:00:00-04:00
 **Context:** Phase 2 spike 2.0b tested whether `ajv` can `compile()` schemas inside n8n's Code node with `NODE_FUNCTION_ALLOW_EXTERNAL=ajv` (design plan §3.2 primary path).

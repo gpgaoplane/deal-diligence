@@ -86,18 +86,20 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.ALICLOUD_BASE_URL }}/embeddings",
+        "url": "={{ $env.EMBEDDING_BASE_URL }}/embeddings",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            { "name": "Authorization", "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "HTTP-Referer",  "value": "http://localhost" },
+            { "name": "X-Title",       "value": "Deal Diligence Prototype" }
           ]
         },
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_EMBEDDING_MODEL }}\",\n  \"input\": {{ JSON.stringify($json.text) }}\n}",
+        "jsonBody": "={\n  \"model\": \"{{ $env.EMBEDDING_MODEL }}\",\n  \"input\": {{ JSON.stringify($json.text) }}\n}",
         "options": {
           "timeout": 30000,
           "response": {
