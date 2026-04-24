@@ -2,7 +2,7 @@
 status: active
 type: context
 owner: claude
-last-updated: 2026-04-24T02:30:00-04:00
+last-updated: 2026-04-24T04:15:00-04:00
 read-if: "you need durable project truths as understood by Claude"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -68,5 +68,19 @@ Per-run estimate: ~$0.55–$1.10 (200K+ input + 20K output + 40K embedding token
 5. **Audit-trail query layer.** Compliance queries ("all deals flagged on concentration last quarter") demand materialized views or reporting surface not in prototype.
 
 **Why this is a durable truth and not just a plan section:** Phase 6's 250-word submission answers "what breaks first at 10x?" — this invariant sources that answer. If the Evaluator, Memo Generation, or Portfolio Fit prompts later mention scaling, they should reference these five bottlenecks, not "LLM costs scale linearly." Cross-referenced in `docs/plans/2026-04-24-deal-diligence-design.md §5`.
+
+## I-9 — qwen3.5-plus is a reasoning model — 2026-04-24T04:15:00-04:00
+
+Empirically verified via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208` — i.e., ~97% of output tokens were internal reasoning, not visible content. Response shape is `{"content": "pong", "reasoning_content": "<chain-of-thought>"}`.
+
+**Three binding implications:**
+
+1. **Cost model underestimates.** Design plan §5 assumed ~24K output tokens/run at $0.55–$1.10/deal. Real output will be 2–4× higher due to reasoning. Refined estimate: ~$1.50–$3.00/deal. **Scaling conclusions unchanged** — cost is still not the #1 bottleneck. Update the cost model in the design plan after Phase 3 produces real multi-agent run numbers.
+
+2. **JSON-output parsing risk.** If n8n's AI Agent node concatenates `content` + `reasoning_content` before JSON parsing, structured outputs break. The Extraction / Contradiction / Memo-Gen / Evaluator schemas all require pure JSON. Phase 2 spike 2.0a MUST explicitly verify that only `content` is consumed by schema validation, not the concatenation. If concatenation happens: post-process to strip `reasoning_content` before the schema validator Code node.
+
+3. **Latency budget.** ~200 reasoning tokens × ~30ms/token ≈ 6s/call × 7 calls = ~40s added per run. Live demo budget tightens. Options if the demo stalls: (a) use `reasoning_effort: "low"` if DashScope exposes it, (b) switch to a non-reasoning model for some specialists (e.g., Evaluator could use `qwen-plus` base), (c) cache good runs for fallback.
+
+**Where to verify:** DashScope OpenAI-compat endpoint doesn't document `reasoning_effort` clearly; check Alicloud's native API or test empirically in spike 2.0a.
 
 <!-- section:entries:end -->
