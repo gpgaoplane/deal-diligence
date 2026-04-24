@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-24T02:15:00-04:00
+last-updated: 2026-04-24T03:30:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -169,6 +169,63 @@ Missing / intentionally skipped:
 - Reviewer subagent pass — advisor's explicit guidance was to skip (self-checks + two advisor passes sufficient at this file size).
 - `AI_AGENTS.md` — no adapter or shared-contract changes; unchanged.
 - `CONTEXT.md` — content unchanged; it remains the scope-locked source. Frontmatter `last-updated` not bumped since only downstream references changed.
+
+## 2026-04-24T03:45:00-04:00 — Integrity audit after abrupt cutoff, gaps fixed
+
+**Context.** Session was interrupted mid-work during the Phase 2 closure commit chain. On resume, user requested a thorough integrity inspection before proceeding. Ran a four-way audit (framework `check`, managed-file coverage, frontmatter-vs-fs drift, Receipt completeness) and found real gaps.
+
+**Audit findings.**
+
+1. **Frontmatter `last-updated` drift on 6 files.** During Phase 1 cleanup and Phase 2 closure I edited content in `CONTEXT.md`, `AI_AGENTS.md`, `docs/project-conventions.md`, `docs/agents/claude.md`, `.claude/memory/context.md`, `.claude/memory/decisions.md` but never bumped their frontmatter `last-updated`. Delta-read relies on this field; stale values mean other agents' watermarks could skip the updated files on delta-read.
+2. **`.gitignore` never registered in INDEX.** Created during Phase 1 migration, modified during Phase 2 housekeeping. Framework's "free file creation with obligations" rule requires INDEX registration. Missed both times.
+3. **`README.md` lacked frontmatter AND was stored as UTF-16 LE.** In-repo markdown should be UTF-8 for consistent cross-platform readability. Windows-default encoding artifact. Also absent the framework-mandated YAML frontmatter despite being registered in INDEX as managed.
+4. **INDEX `last-updated` column values stale** for multiple files vs their actual edit times.
+5. **Row 5 of routing matrix (durable truths) was under-filled** during Phase 2 closure. The advisor-surfaced "cost is NOT the scaling bottleneck — reviewer throughput, FP fatigue, prompt drift, trace storage, audit-query layer are" finding lived only in the design plan. If that plan later drifts, the insight rots. This is exactly the class of non-obvious durable truth that belongs in `.claude/memory/context.md`.
+6. **No Receipt was emitted for the `.gitignore` commit (93909ad)** that added `.claude/settings.local.json`. Framework's routing matrix row 1 (code change) fired; should have at minimum a short-form Receipt in the work log.
+
+**Root cause (per user's question "why did we miss these").**
+
+- I conflated "file's semantics materially changed" with "`last-updated` needs updating." Wrong mental model — the field tracks *any* edit that reaches git, not just semantic changes. After a Phase 1 cleanup edit to `CONTEXT.md §11` I should have bumped the frontmatter regardless of whether §11 is a "significant" section.
+- `.gitignore` was treated as boring scaffolding rather than a managed artifact. The framework's "free file creation with obligations" rule explicitly covers this case; I didn't internalize it for files that don't carry frontmatter themselves.
+- Short-form Receipts feel optional for "trivial" changes. They aren't — they are the audit mechanism for precisely the small-change class that would otherwise slip silently. Skipping one establishes the pattern.
+
+**Fixes applied.**
+
+- Bumped `last-updated` on the 6 drift files to match actual edit times (02:30 for Phase 1 cleanup, 03:30 for Phase 2 closure, 03:45 for this audit pass itself).
+- Synced all INDEX rows to agree with their files' frontmatter.
+- Registered `.gitignore` in INDEX (type: `config`, owner: `shared`, status: `active`).
+- Rewrote `README.md` as UTF-8 with framework frontmatter.
+- Added `I-8 — Cost is NOT the scaling bottleneck` to `.claude/memory/context.md` with the five durable bottlenecks (reviewer throughput, FP fatigue, prompt drift, trace storage, audit-query layer). Cross-referenced to design plan §5.
+
+**Integrity verification after fix.**
+- `npx @gpgaoplane/multi-agent-collab check` → OK.
+- Frontmatter vs fs-mtime spot-check on all managed files — all consistent within ≤15 min window (edits after frontmatter bump are normal and expected between the frontmatter write and commit).
+- `file README.md` → `UTF-8 text` (not `data`).
+- No file in repo (excluding runtime caches and local settings) is unregistered in INDEX.
+
+**Watch out (reinforced for future sessions).**
+- **Every content edit bumps `last-updated` frontmatter in the same turn.** Not just "significant" edits. If you touch the file, bump the field.
+- **Every new file in git gets an INDEX entry in the same turn**, even if it has no frontmatter itself (gitignore-class files register with type=config).
+- **Every git commit outside a task ends with at least a short-form Receipt** in the work log. `Missing / intentionally skipped: <reason>` is acceptable but must be explicit.
+- **Row 5 of the routing matrix is the most easily missed.** When advisor or reviewer surfaces a durable project truth, write it to `context.md` — do not rely on it being "captured in the plan."
+
+### Task Receipt
+Updates fanned out this task:
+- `CONTEXT.md` ............................... frontmatter last-updated bumped (02:15 → 02:30)
+- `AI_AGENTS.md` ............................. frontmatter last-updated bumped (template date → 02:17)
+- `docs/project-conventions.md` .............. frontmatter last-updated bumped (02:15 → 02:30)
+- `docs/agents/claude.md` .................... frontmatter last-updated bumped + this entry
+- `.claude/memory/context.md` ................ frontmatter bumped + I-8 added
+- `.claude/memory/decisions.md` .............. frontmatter last-updated bumped (02:15 → 03:30)
+- `README.md` ................................ rewrote UTF-8 with frontmatter; added pointers to docs/plans/ authoritative docs
+- `.gitignore` ............................... registered in INDEX (type: config)
+- `.collab/INDEX.md` ......................... synced all last-updated rows; added .gitignore row; bumped README to 03:45
+
+Missing / intentionally skipped:
+- `AGENTS.md` frontmatter — intentionally not added. Framework-seeded root entrypoint uses marker sections (`<!-- collab:agents-md:start -->`) in lieu of frontmatter. Precedent set by framework itself; not my call to change.
+- `docs/STATUS.md` in-progress section — does not need to be updated to reflect this audit; the audit is retroactive housekeeping, not a project-phase change. STATUS.md remains accurate: Phase 2 closed, ready for implementation Phase 1.
+- Advisor pass on this audit — not called. This is mechanical cleanup; no structural or creative decision points. User can ask for an advisor second-opinion if desired.
+- The D-0 entry in `decisions.md` technically constitutes a row-3 (chose between alternatives) + row-4 (altered architecture) fan-out from Phase 2 closure; that was captured at the time. This audit's fixes don't reopen a decision point, so no new D-entry.
 
 ## Handoff blocks
 

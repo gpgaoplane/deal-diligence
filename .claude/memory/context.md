@@ -2,7 +2,7 @@
 status: active
 type: context
 owner: claude
-last-updated: 2026-04-24T02:15:00-04:00
+last-updated: 2026-04-24T02:30:00-04:00
 read-if: "you need durable project truths as understood by Claude"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -54,5 +54,19 @@ LLM provider, vector store, notification channel, and storage backend are all pa
 - Non-principle sections of `DESIGN.md` that describe component internals
 
 Flag any proposed change to scope-locked sections via `ARCHITECTURAL-CONCERN:` commit prefix and wait for Will.
+
+## I-8 — Cost is NOT the scaling bottleneck — 2026-04-24T03:45:00-04:00
+
+Per-run estimate: ~$0.55–$1.10 (200K+ input + 20K output + 40K embedding tokens at Qwen3.5-Plus rates). At 10× deal volume: ~$10/day. LLM inference cost is linear, small, and not the bottleneck.
+
+**Actual scaling bottlenecks, in order of impact:**
+
+1. **Reviewer throughput.** 10 deals/day × ~30 items each (red flags, contradictions, missing info) = 300 items/day demanding human triage. Review queue UI, priority sorting, team distribution required at 10×.
+2. **False-positive fatigue on red flags.** Regex-based detectors fire on boilerplate over volume. Threshold drift and FP-rate monitoring required.
+3. **Prompt drift as Sagard's thesis evolves.** Portfolio Fit agent hard-codes thesis pillars. Unstaffed maintenance cost over a year.
+4. **Langfuse trace storage.** Free tier 50K observations/month supports ~30 deals/day; paid tier required for sustained 10×.
+5. **Audit-trail query layer.** Compliance queries ("all deals flagged on concentration last quarter") demand materialized views or reporting surface not in prototype.
+
+**Why this is a durable truth and not just a plan section:** Phase 6's 250-word submission answers "what breaks first at 10x?" — this invariant sources that answer. If the Evaluator, Memo Generation, or Portfolio Fit prompts later mention scaling, they should reference these five bottlenecks, not "LLM costs scale linearly." Cross-referenced in `docs/plans/2026-04-24-deal-diligence-design.md §5`.
 
 <!-- section:entries:end -->

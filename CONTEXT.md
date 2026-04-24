@@ -2,7 +2,7 @@
 status: active
 type: project-scope
 owner: shared
-last-updated: 2026-04-24T02:15:00-04:00
+last-updated: 2026-04-24T02:30:00-04:00
 read-if: "you are any agent working on this project — this is the authoritative scope and locked-decisions doc"
 skip-if: "never on first session; re-read §5 and §5.10 before proposing changes to locked decisions"
 related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.md, .claude/memory/decisions.md]

@@ -2,7 +2,7 @@
 status: active
 type: conventions
 owner: shared
-last-updated: 2026-04-24T02:15:00-04:00
+last-updated: 2026-04-24T02:30:00-04:00
 read-if: "you are any agent making non-trivial changes — commits, prompt drafts, workflow edits, code"
 skip-if: "read-only exploration or clarification-only tasks"
 ---

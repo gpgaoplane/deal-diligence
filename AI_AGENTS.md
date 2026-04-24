@@ -2,7 +2,7 @@
 status: active
 type: shared
 owner: shared
-last-updated: 2026-04-22T00:00:00-05:00
+last-updated: 2026-04-24T02:17:00-04:00
 read-if: "you are any AI agent starting work in this repo"
 skip-if: "never"
 related: []
