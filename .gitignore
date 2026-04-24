@@ -1,2 +1,5 @@
 # multi-agent-collab runtime caches
 .collab/.update-cache
+
+# Claude Code local permission settings (per-developer; should not be shared)
+.claude/settings.local.json
