@@ -41,6 +41,18 @@ LLM provider, vector store, notification channel, and storage backend are all pa
 
 ## I-7 — Three-doc planning system is authoritative — 2026-04-24T02:15:00-04:00
 
-`CONTEXT.md` owns scope and locked decisions, `DESIGN.md` owns component behavior, `IMPLEMENTATION.md` owns sequencing. When they conflict, `CONTEXT.md` wins on decisions, `DESIGN.md` wins on behavior, `IMPLEMENTATION.md` wins on order. These are Claude-Chat-maintained; Claude Code reads them but does not modify §1–§10 of `CONTEXT.md` or the principles section of `DESIGN.md`.
+`CONTEXT.md` owns scope and locked decisions, `DESIGN.md` owns component behavior, `IMPLEMENTATION.md` owns sequencing. When they conflict: `CONTEXT.md` wins on decisions, `DESIGN.md` wins on behavior, `IMPLEMENTATION.md` wins on order.
+
+**Scope-locked (Claude Chat / Will only, do not modify without approval):**
+- `CONTEXT.md §5` (locked decisions) and `§5.10` (decision rationales)
+- `DESIGN.md §1` (design philosophy)
+- `IMPLEMENTATION.md` phase gate acceptance criteria
+
+**Framework-aligned (Claude Code may update as conventions evolve):**
+- `CONTEXT.md §6` (repo structure), `§7` (local setup runbook), `§8` (agent ops), `§11` (progress log — now a strategic journal)
+- `IMPLEMENTATION.md §12` (current status) and completed-task checkoffs
+- Non-principle sections of `DESIGN.md` that describe component internals
+
+Flag any proposed change to scope-locked sections via `ARCHITECTURAL-CONCERN:` commit prefix and wait for Will.
 
 <!-- section:entries:end -->

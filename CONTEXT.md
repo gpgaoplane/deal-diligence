@@ -594,11 +594,12 @@ The `docker-compose.yml` should define a single n8n service with:
 **Your role:** Execute the build plan. Write code, generate n8n workflow JSON, maintain the repository. You are the hands-on builder.
 
 **Before doing anything:**
-1. Read this entire CONTEXT.md file
-2. Read all files in `prompts/` and `docs/` if they exist
-3. Check `.progress-log.md` at repo root to see what's been done
-4. Understand the decisions in Section 5 are locked — do not re-debate them without explicit permission from Will; Section 5.10 has the rationales for each
-5. If you identify a genuine architectural concern, flag it in a commit message prefixed `ARCHITECTURAL-CONCERN:` and let Will decide
+1. Read `AGENTS.md` and `AI_AGENTS.md` — framework entrypoints
+2. Read this entire CONTEXT.md file, especially §5 and §5.10
+3. Read all files in `prompts/` and `docs/` if they exist
+4. Check `docs/STATUS.md` (project phase) and `docs/agents/claude.md` (your own prior work log) to see what's been done
+5. Understand the decisions in Section 5 are locked — do not re-debate them without explicit permission from Will; Section 5.10 has the rationales for each
+6. If you identify a genuine architectural concern, flag it in a commit message prefixed `ARCHITECTURAL-CONCERN:` and let Will decide
 
 **What you own:**
 - `docker-compose.yml`
@@ -619,7 +620,7 @@ The `docker-compose.yml` should define a single n8n service with:
 - Commit message format: `[component] action — brief description`
   - Example: `[prompts] add extraction agent system prompt with IC memo taxonomy`
   - Example: `[n8n] wire contradiction agent with vector store tool access`
-- Update `.progress-log.md` after each meaningful commit
+- Append a dated entry to `docs/agents/claude.md` after each meaningful commit, ending with a Task Receipt per `.collab/PROTOCOL.md`. (Originally this said `.progress-log.md`; superseded by the multi-agent-collab framework on 2026-04-24.)
 
 **When you are uncertain:**
 1. Check this CONTEXT.md first
@@ -802,13 +803,14 @@ The reply to Pari should briefly note:
 
 ## 11. Progress Log
 
-**Update this section after each meaningful work unit.** Format: date, agent (Claude Code / Codex / Will / Claude Chat), action taken, outcome.
+**Superseded on 2026-04-24 by the multi-agent-collab framework.** This section is kept as a strategic milestone journal only — one-line strategic entries (scope shifts, evaluator decisions, phase closeouts), maintained by Claude Chat / Will. Day-to-day working entries live in `docs/agents/<agent>.md` per agent, and project-wide phase state lives in `docs/STATUS.md`.
 
 ### 2026-04-23
-
 - **Claude Chat / Will** — Finalized architecture v1, locked decisions, produced initial CONTEXT.md
 - **Claude Chat / Will** — Switched from n8n Cloud to local n8n; updated CONTEXT.md to v2 with Docker setup, repo structure, runbook, and decision rationales (Section 5.10)
-- [Next entry here]
+
+### 2026-04-24
+- **Claude Code / Will** — Adopted `multi-agent-collab` v0.3.0; repo migrated to framework layout with per-agent memory, presence, Receipts, and delta-read. Full migration detail in `docs/agents/claude.md` entry dated 2026-04-24T02:15:00-04:00.
 
 ---
 

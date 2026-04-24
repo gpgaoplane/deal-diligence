@@ -92,7 +92,6 @@ Tasks 1.1-1.7 are independent and can be done in any order. Task 1.8 depends on 
 | 2.4 | Write `docker-compose.yml` per CONTEXT.md Section 7.4 | Claude Code | 15 min | 2.1 |
 | 2.5 | Write `scripts/up.sh`, `scripts/down.sh`, `scripts/import-workflow.sh`, `scripts/export-workflow.sh` | Claude Code | 20 min | 2.4 |
 | 2.6 | Write minimal README.md pointing to CONTEXT.md | Claude Code | 10 min | 2.1 |
-| 2.7 | ~~Create `.progress-log.md` stub~~ — **superseded by multi-agent-collab framework.** Per-agent work logs live at `docs/agents/claude.md` and `docs/agents/codex.md` (already scaffolded); project-wide phase state in `docs/STATUS.md` (already seeded). No `.progress-log.md` to create. | Claude Code | — | — |
 | 2.8 | Write stub prompt files in `prompts/` (6 files, each with placeholder content and schema reference) | Claude Code | 20 min | 2.1 |
 | 2.9 | Write `schemas/supabase-schema.sql` from CONTEXT.md Section 5.8 | Claude Code | 10 min | 2.1 |
 | 2.10 | Write `schemas/agent-output-schemas.json` from DESIGN.md Section 4 | Claude Code | 20 min | 2.1 |
@@ -110,6 +109,8 @@ Tasks 1.1-1.7 are independent and can be done in any order. Task 1.8 depends on 
 - [ ] Community nodes installed in n8n (`n8n-nodes-openai-langfuse`, `@langfuse/n8n-nodes-langfuse`)
 - [ ] All 6 stub prompt files exist in `prompts/`
 - [ ] First commit pushed to GitHub
+
+**Note:** Original task 2.7 ("Create `.progress-log.md` stub") was superseded by the `multi-agent-collab` framework on 2026-04-24. Per-agent work logs now live at `docs/agents/claude.md` and `docs/agents/codex.md`; project-wide phase state lives in `docs/STATUS.md`. No `.progress-log.md` is created.
 
 ### 3.3 Parallelization
 

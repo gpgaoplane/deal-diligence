@@ -81,10 +81,13 @@ See `.claude/memory/context.md` I-2 for the invariant and its rationale.
 
 | File | Owner | Claude Code may modify? |
 |------|-------|--------------------------|
-| `CONTEXT.md` (§1–§10) | Claude Chat | No |
-| `CONTEXT.md §11 Progress Log` | all | Append-only (but prefer `docs/agents/<you>.md` under the framework) |
-| `DESIGN.md` | Claude Chat | No |
-| `IMPLEMENTATION.md` | Claude Chat | Check off completed tasks; update §12 Current Status |
+| `CONTEXT.md §5` (locked decisions) + `§5.10` (rationales) | Claude Chat / Will | **No** — scope-locked |
+| `CONTEXT.md §6, §7, §8, §11` (structural + agent ops + strategic journal) | Claude Chat (primary) | Claude Code may update as framework conventions evolve |
+| `CONTEXT.md` other sections | Claude Chat | No edits without approval |
+| `DESIGN.md §1` (design philosophy) | Claude Chat / Will | **No** — scope-locked |
+| `DESIGN.md` other sections | Claude Chat (primary) | Claude Code may update component-internal descriptions as implementation lands |
+| `IMPLEMENTATION.md` phase gate acceptance criteria | Claude Chat / Will | **No** — scope-locked |
+| `IMPLEMENTATION.md §12` (current status) + task checkoffs | shared | Claude Code may update |
 | `AI_AGENTS.md` | framework (shared) | Only inside marker sections |
 | `AGENTS.md` | framework | No |
 | `.collab/*` | framework (shared) | `INDEX.md` on every file create/archive; `ACTIVE.md` on session start/end |

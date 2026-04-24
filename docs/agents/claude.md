@@ -61,6 +61,34 @@ Missing / intentionally skipped:
 - `.claude/memory/state.md` — will update on next substantive session (branch, active task, watermark).
 - `docs/plans/` — directory will be created when first implementation sub-plan is drafted; framework does not require empty directory.
 
+## 2026-04-24T02:30:00-04:00 — Phase 1 cleanup after advisor review
+
+**Context.** Post-Phase-1 advisor call flagged three residual gaps and one structural question. Fixing the gaps now; surfacing the structural question to Will before Phase 2.
+
+**Gaps fixed:**
+
+- **`CONTEXT.md §8.1`** — "Check `.progress-log.md` at repo root" was a broken instruction (file never existed, never will). Replaced with pointers to `docs/STATUS.md` and `docs/agents/claude.md`, and added AGENTS.md / AI_AGENTS.md to the mandatory-read list.
+- **`CONTEXT.md §8.1` commit discipline** — "Update `.progress-log.md` after each meaningful commit" replaced with the framework's work-log + Receipt convention.
+- **`CONTEXT.md §11 Progress Log`** — originally told all agents to append to it, creating a parallel surface with `docs/agents/<you>.md`. Repositioned as a strategic milestone journal (Claude Chat / Will only, one line per scope shift / phase closeout); added the 2026-04-24 framework-adoption milestone.
+- **I-7 overclaim tightened.** Said "Claude Chat owns §1–§10 of `CONTEXT.md`" — but I just modified §6. Split into two buckets: **scope-locked** (§5, §5.10 in CONTEXT; §1 in DESIGN; phase-gate acceptance in IMPLEMENTATION) vs **framework-aligned** (§6, §7, §8, §11 in CONTEXT; §12 in IMPLEMENTATION; component-internal descriptions in DESIGN). Updated `.claude/memory/context.md` I-7 and the authority table in `docs/project-conventions.md §7` to match.
+- **`IMPLEMENTATION.md` task 2.7 row removed.** Strikethrough was confusing in a Tasks table. Row deleted; supersession note added to §3.2 Acceptance Criteria.
+
+**Watch out:**
+- The authority table in `docs/project-conventions.md §7` now has row-level granularity on which CONTEXT / DESIGN / IMPLEMENTATION sections are scope-locked vs framework-aligned. If Codex reviews edits to a scope-locked section without an `ARCHITECTURAL-CONCERN:` commit prefix, flag for Will.
+
+### Task Receipt
+Updates fanned out this task:
+- `docs/agents/claude.md` ............................... this entry
+- `CONTEXT.md §8.1` ..................................... fixed broken `.progress-log.md` references
+- `CONTEXT.md §11` ...................................... repositioned as strategic journal; added 2026-04-24 milestone
+- `.claude/memory/context.md` I-7 ....................... split into scope-locked vs framework-aligned buckets
+- `docs/project-conventions.md §7` ...................... authority table tightened to match I-7
+- `IMPLEMENTATION.md §3.1 / §3.2` ....................... task 2.7 row removed; supersession note in §3.2
+
+Missing / intentionally skipped:
+- `docs/STATUS.md` — "done" list should add this cleanup; will fold into the next STATUS refresh at start of Phase 2.
+- `.collab/INDEX.md` — no new files created; existing rows' `last-updated` will be refreshed on next substantive task.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,
