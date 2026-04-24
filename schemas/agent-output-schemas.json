@@ -1,0 +1,716 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://deal-diligence.local/agent-output-schemas.json",
+  "title": "Sagard AI Deal Diligence — Agent Output Schemas",
+  "description": "Authoritative JSON Schemas for every inter-agent handoff. Spec: docs/plans/2026-04-24-deal-diligence-design.md §3 and §4. Uses only the draft-07 subset the hand-rolled fallback validator supports (design plan §3.2): type (incl. null-unions), required, enum, pattern, minLength, minItems, properties, items, anyOf.",
+
+  "$defs": {
+
+    "Severity": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW"]
+    },
+
+    "Importance": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW"]
+    },
+
+    "SourceType": {
+      "type": "string",
+      "enum": [
+        "regulatory_filing",
+        "press_release",
+        "analyst_report",
+        "expert_transcript",
+        "management_deck"
+      ]
+    },
+
+    "Classification": {
+      "type": "string",
+      "enum": [
+        "CORROBORATED",
+        "UNCONTRADICTED",
+        "DISPUTED",
+        "UNSUPPORTED"
+      ]
+    },
+
+    "DiligenceCategory": {
+      "type": "string",
+      "enum": [
+        "financial_diligence",
+        "commercial_diligence",
+        "operational_diligence",
+        "legal_regulatory"
+      ]
+    },
+
+    "Recommendation": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "pursue",
+        "advance_to_deep_diligence"
+      ]
+    },
+
+    "RoutingDecision": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "complete_high_confidence",
+        "flagged_for_review"
+      ]
+    },
+
+    "Citation": {
+      "description": "Canonical citation format per design plan §2.4 and §11: '<CompanyName> <SourceTypeHuman>(#N)? <locator>' where locator is 'p. N', 'p. ~N', or 'Risk Factors p. N'. Null permitted when the claim is cite-less (the claim itself should then be marked UNSUPPORTED or omitted).",
+      "type": ["string", "null"],
+      "pattern": "^[A-Z][A-Za-z0-9 &.,'\\-]+ (?:S-1 Filing|10-K Filing|10-Q Filing|8-K Filing|20-F Filing|Press Release|Analyst Report|Expert Transcript|Management Deck)(?: \\(#\\d+\\))? (?:p\\. ~?\\d+|Risk Factors p\\. \\d+)$"
+    },
+
+    "CitationRequired": {
+      "description": "Citation that must NOT be null — format identical to Citation.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9 &.,'\\-]+ (?:S-1 Filing|10-K Filing|10-Q Filing|8-K Filing|20-F Filing|Press Release|Analyst Report|Expert Transcript|Management Deck)(?: \\(#\\d+\\))? (?:p\\. ~?\\d+|Risk Factors p\\. \\d+)$"
+    },
+
+    "CitationArray": {
+      "description": "Array of citations. minItems: 0 is intentional — allows empty for null-valued facts.",
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/$defs/Citation" }
+    },
+
+    "CitationArrayRequired": {
+      "description": "Array where at least one citation is required. Used for material claims in Memo Generation (§2.9 two-layer enforcement).",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/CitationRequired" }
+    },
+
+    "ConfidenceScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+
+    "EvaluatorCriterion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+
+    "FactWithCitation": {
+      "description": "Single fact with optional numeric value and period, plus citation.",
+      "type": "object",
+      "properties": {
+        "value": { "type": ["number", "null"] },
+        "period": { "type": ["string", "null"] },
+        "citation": { "$ref": "#/$defs/Citation" }
+      },
+      "required": ["value", "citation"]
+    },
+
+    "StringOrNull": {
+      "type": ["string", "null"]
+    },
+
+    "NumberOrNull": {
+      "type": ["number", "null"]
+    },
+
+    "IntegerOrNull": {
+      "type": ["integer", "null"]
+    },
+
+    "BooleanOrNull": {
+      "type": ["boolean", "null"]
+    },
+
+    "ExtractionOutput": {
+      "description": "Extraction Agent output per design plan §2.4. One invocation per document; all 11 IC Memo Taxonomy sections are always present (null-valued if not extractable).",
+      "type": "object",
+      "properties": {
+        "source_name": { "type": "string", "minLength": 1 },
+        "source_type": { "$ref": "#/$defs/SourceType" },
+        "extracted_facts": {
+          "type": "object",
+          "properties": {
+            "company_overview": {
+              "type": "object",
+              "properties": {
+                "description":   { "$ref": "#/$defs/StringOrNull" },
+                "founding_year": { "$ref": "#/$defs/IntegerOrNull" },
+                "headcount":     { "$ref": "#/$defs/IntegerOrNull" },
+                "geography":     { "$ref": "#/$defs/StringOrNull" },
+                "citations":     { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["description", "citations"]
+            },
+            "investment_thesis": {
+              "type": "object",
+              "properties": {
+                "bull_case": { "$ref": "#/$defs/StringOrNull" },
+                "citations": { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["bull_case", "citations"]
+            },
+            "market_opportunity": {
+              "type": "object",
+              "properties": {
+                "tam": { "$ref": "#/$defs/NumberOrNull" },
+                "sam": { "$ref": "#/$defs/NumberOrNull" },
+                "som": { "$ref": "#/$defs/NumberOrNull" },
+                "growth_drivers": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": { "type": "string" }
+                },
+                "citations": { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            },
+            "business_model": {
+              "type": "object",
+              "properties": {
+                "revenue_streams": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": { "type": "string" }
+                },
+                "pricing":   { "$ref": "#/$defs/StringOrNull" },
+                "citations": { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            },
+            "financial_performance": {
+              "type": "object",
+              "properties": {
+                "revenue_latest_period": { "$ref": "#/$defs/FactWithCitation" },
+                "revenue_growth_yoy":    { "$ref": "#/$defs/FactWithCitation" },
+                "gross_margin":          { "$ref": "#/$defs/FactWithCitation" },
+                "operating_loss":        { "$ref": "#/$defs/FactWithCitation" },
+                "cash_balance":          { "$ref": "#/$defs/FactWithCitation" },
+                "monthly_burn":          { "$ref": "#/$defs/FactWithCitation" }
+              },
+              "required": [
+                "revenue_latest_period",
+                "revenue_growth_yoy",
+                "gross_margin",
+                "operating_loss"
+              ]
+            },
+            "unit_economics": {
+              "type": "object",
+              "properties": {
+                "cac": { "$ref": "#/$defs/NumberOrNull" },
+                "ltv": { "$ref": "#/$defs/NumberOrNull" },
+                "payback_period_months": { "$ref": "#/$defs/NumberOrNull" },
+                "citations": { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            },
+            "competitive_position": {
+              "type": "object",
+              "properties": {
+                "competitors": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": { "type": "string" }
+                },
+                "moat":      { "$ref": "#/$defs/StringOrNull" },
+                "citations": { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            },
+            "management_assessment": {
+              "type": "object",
+              "properties": {
+                "key_personnel": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": { "type": "string" }
+                },
+                "key_person_risk": { "$ref": "#/$defs/BooleanOrNull" },
+                "citations":       { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            },
+            "customer_profile": {
+              "type": "object",
+              "properties": {
+                "concentration_top_1": { "$ref": "#/$defs/NumberOrNull" },
+                "concentration_top_2": { "$ref": "#/$defs/NumberOrNull" },
+                "concentration_top_5": { "$ref": "#/$defs/NumberOrNull" },
+                "retention_rate":      { "$ref": "#/$defs/NumberOrNull" },
+                "citations":           { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            },
+            "risk_factors": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "factor":   { "type": "string", "minLength": 1 },
+                  "citation": { "$ref": "#/$defs/CitationRequired" }
+                },
+                "required": ["factor", "citation"]
+              }
+            },
+            "management_claims": {
+              "description": "What management SAYS — collected for cross-checking by Contradiction Agent.",
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "claim":    { "type": "string", "minLength": 1 },
+                  "citation": { "$ref": "#/$defs/CitationRequired" }
+                },
+                "required": ["claim", "citation"]
+              }
+            },
+            "deal_structure": {
+              "type": "object",
+              "properties": {
+                "valuation":       { "$ref": "#/$defs/NumberOrNull" },
+                "amount_raising":  { "$ref": "#/$defs/NumberOrNull" },
+                "use_of_proceeds": { "$ref": "#/$defs/StringOrNull" },
+                "citations":       { "$ref": "#/$defs/CitationArray" }
+              },
+              "required": ["citations"]
+            }
+          },
+          "required": [
+            "company_overview",
+            "investment_thesis",
+            "market_opportunity",
+            "business_model",
+            "financial_performance",
+            "unit_economics",
+            "competitive_position",
+            "management_assessment",
+            "customer_profile",
+            "risk_factors",
+            "management_claims",
+            "deal_structure"
+          ]
+        }
+      },
+      "required": ["source_name", "source_type", "extracted_facts"]
+    },
+
+    "ContradictionOutput": {
+      "description": "Contradiction Agent output per design plan §2.5. Both tool-use and stuffed-context variants produce this shape.",
+      "type": "object",
+      "properties": {
+        "contradictions": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim": { "type": "string", "minLength": 1 },
+              "sources_making_claim": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/CitationRequired" }
+              },
+              "contradicting_evidence": {
+                "type": "array",
+                "minItems": 0,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source":   { "type": "string", "minLength": 1 },
+                    "citation": { "$ref": "#/$defs/CitationRequired" },
+                    "evidence": { "type": "string", "minLength": 1 }
+                  },
+                  "required": ["source", "citation", "evidence"]
+                }
+              },
+              "nature_of_conflict": { "type": "string" },
+              "severity":           { "$ref": "#/$defs/Severity" },
+              "classification":     { "$ref": "#/$defs/Classification" }
+            },
+            "required": ["claim", "sources_making_claim", "classification", "severity"]
+          }
+        },
+        "verified_claims": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim":    { "type": "string", "minLength": 1 },
+              "sources":  { "$ref": "#/$defs/CitationArrayRequired" },
+              "classification": {
+                "type": "string",
+                "enum": ["CORROBORATED", "UNCONTRADICTED"]
+              }
+            },
+            "required": ["claim", "sources", "classification"]
+          }
+        }
+      },
+      "required": ["contradictions", "verified_claims"]
+    },
+
+    "GapAnalysisOutput": {
+      "description": "Gap Analysis Agent output per design plan §2.6.",
+      "type": "object",
+      "properties": {
+        "missing_information": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "category":        { "$ref": "#/$defs/DiligenceCategory" },
+              "item":            { "type": "string", "minLength": 1 },
+              "importance":      { "$ref": "#/$defs/Importance" },
+              "suggested_source": { "type": "string" }
+            },
+            "required": ["category", "item", "importance"]
+          }
+        }
+      },
+      "required": ["missing_information"]
+    },
+
+    "RedFlagDetectorOutput": {
+      "description": "Red Flag Detector output per design plan §2.7. Deterministic — every entry has deterministic: true.",
+      "type": "object",
+      "properties": {
+        "red_flags": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "flag_type": {
+                "type": "string",
+                "enum": [
+                  "customer_concentration_high",
+                  "customer_concentration_extreme",
+                  "material_weakness",
+                  "going_concern",
+                  "related_party_above_threshold",
+                  "revenue_growth_anomalous",
+                  "burn_rate_runway_short",
+                  "auditor_change_recent",
+                  "dual_class_structure",
+                  "s1_previously_withdrawn"
+                ]
+              },
+              "severity": { "$ref": "#/$defs/Severity" },
+              "evidence": {
+                "type": "object",
+                "properties": {
+                  "actual_value": { "type": ["number", "string", "null"] },
+                  "threshold":    { "type": ["number", "string", "null"] },
+                  "source":       { "type": "string" },
+                  "raw_text":     { "type": ["string", "null"] }
+                },
+                "required": ["actual_value", "source"]
+              },
+              "deterministic": { "type": "boolean", "enum": [true] }
+            },
+            "required": ["flag_type", "severity", "evidence", "deterministic"]
+          }
+        }
+      },
+      "required": ["red_flags"]
+    },
+
+    "PortfolioFitOutput": {
+      "description": "Portfolio Fit Agent output per design plan §2.8. recommended_action is DIRECTIONAL — does not constitute a recommendation (invariant I-1).",
+      "type": "object",
+      "properties": {
+        "portfolio_fit": {
+          "type": "object",
+          "properties": {
+            "strategic_fit": {
+              "type": "object",
+              "properties": {
+                "score":     { "$ref": "#/$defs/NumberOrNull" },
+                "rationale": { "type": "string" }
+              },
+              "required": ["score", "rationale"]
+            },
+            "stage_fit": {
+              "type": "object",
+              "properties": {
+                "score":     { "$ref": "#/$defs/NumberOrNull" },
+                "rationale": { "type": "string" }
+              },
+              "required": ["score", "rationale"]
+            },
+            "synergy_potential": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "portfolio_company": { "type": "string" },
+                  "synergy_type":      { "type": "string" },
+                  "description":       { "type": "string" },
+                  "strength":          { "$ref": "#/$defs/Severity" }
+                },
+                "required": ["portfolio_company", "strength"]
+              }
+            },
+            "anti_patterns": {
+              "type": "array",
+              "minItems": 0,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pattern": { "type": "string" },
+                  "concern": { "type": "string" }
+                },
+                "required": ["pattern", "concern"]
+              }
+            },
+            "overall_thesis_alignment": {
+              "type": "string",
+              "enum": ["HIGH", "MEDIUM", "LOW"]
+            },
+            "recommended_action": { "$ref": "#/$defs/Recommendation" }
+          },
+          "required": [
+            "strategic_fit",
+            "stage_fit",
+            "synergy_potential",
+            "anti_patterns",
+            "overall_thesis_alignment",
+            "recommended_action"
+          ]
+        }
+      },
+      "required": ["portfolio_fit"]
+    },
+
+    "MemoGenerationOutput": {
+      "description": "Memo Generation Agent output per design plan §2.9. Two-layer citation enforcement: schema-level (pattern + minItems) + post-validation (§3.1 validity check).",
+      "type": "object",
+      "properties": {
+        "executive_summary":        { "$ref": "#/$defs/StringOrNull" },
+        "recommendation":           {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/Recommendation" }
+          ]
+        },
+        "recommendation_rationale": { "$ref": "#/$defs/StringOrNull" },
+        "company_snapshot": {
+          "type": ["object", "null"],
+          "properties": {
+            "description": { "$ref": "#/$defs/StringOrNull" },
+            "stage":       { "$ref": "#/$defs/StringOrNull" },
+            "sector":      { "$ref": "#/$defs/StringOrNull" },
+            "geography":   { "$ref": "#/$defs/StringOrNull" }
+          }
+        },
+        "investment_thesis": { "$ref": "#/$defs/StringOrNull" },
+        "key_strengths": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "strength":   { "type": "string", "minLength": 1 },
+              "severity":   { "$ref": "#/$defs/Severity" },
+              "sources":    { "$ref": "#/$defs/CitationArrayRequired" },
+              "confidence": { "$ref": "#/$defs/ConfidenceScore" }
+            },
+            "required": ["strength", "severity", "sources", "confidence"]
+          }
+        },
+        "key_risks": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "risk":       { "type": "string", "minLength": 1 },
+              "severity":   { "$ref": "#/$defs/Severity" },
+              "sources":    { "$ref": "#/$defs/CitationArrayRequired" },
+              "confidence": { "$ref": "#/$defs/ConfidenceScore" }
+            },
+            "required": ["risk", "severity", "sources", "confidence"]
+          }
+        },
+        "contradictions": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim":    { "type": "string", "minLength": 1 },
+              "severity": { "$ref": "#/$defs/Severity" },
+              "sources":  { "$ref": "#/$defs/CitationArrayRequired" }
+            },
+            "required": ["claim", "severity", "sources"]
+          }
+        },
+        "missing_information": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item":       { "type": "string", "minLength": 1 },
+              "importance": { "$ref": "#/$defs/Importance" }
+            },
+            "required": ["item", "importance"]
+          }
+        },
+        "red_flags": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "flag_type": { "type": "string", "minLength": 1 },
+              "severity":  { "$ref": "#/$defs/Severity" }
+            },
+            "required": ["flag_type", "severity"]
+          }
+        },
+        "portfolio_fit": {
+          "type": ["object", "null"],
+          "properties": {
+            "overall_alignment": {
+              "type": "string",
+              "enum": ["HIGH", "MEDIUM", "LOW"]
+            },
+            "rationale": { "type": "string" }
+          }
+        },
+        "open_diligence_questions": {
+          "type": "array",
+          "minItems": 0,
+          "items": { "type": "string" }
+        },
+        "confidence_scores": {
+          "type": "object",
+          "properties": {
+            "overall":                  { "$ref": "#/$defs/ConfidenceScore" },
+            "financial_analysis":       { "$ref": "#/$defs/ConfidenceScore" },
+            "competitive_positioning":  { "$ref": "#/$defs/ConfidenceScore" },
+            "management_assessment":    { "$ref": "#/$defs/ConfidenceScore" },
+            "portfolio_fit":            { "$ref": "#/$defs/ConfidenceScore" }
+          },
+          "required": ["overall"]
+        }
+      },
+      "required": [
+        "executive_summary",
+        "recommendation",
+        "key_strengths",
+        "key_risks",
+        "contradictions",
+        "missing_information",
+        "red_flags",
+        "open_diligence_questions",
+        "confidence_scores"
+      ]
+    },
+
+    "EvaluatorOutput": {
+      "description": "Evaluator Agent output per design plan §2.10. Six criteria scored 0-10, total 0-60. routing_decision threshold rules per §2.10.",
+      "type": "object",
+      "properties": {
+        "evaluator_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "criteria_scores": {
+          "type": "object",
+          "properties": {
+            "citation_completeness":         { "$ref": "#/$defs/EvaluatorCriterion" },
+            "contradiction_acknowledgment":  { "$ref": "#/$defs/EvaluatorCriterion" },
+            "missing_information_coverage":  { "$ref": "#/$defs/EvaluatorCriterion" },
+            "red_flag_propagation":          { "$ref": "#/$defs/EvaluatorCriterion" },
+            "reasoning_coherence":           { "$ref": "#/$defs/EvaluatorCriterion" },
+            "hallucination_check":           { "$ref": "#/$defs/EvaluatorCriterion" }
+          },
+          "required": [
+            "citation_completeness",
+            "contradiction_acknowledgment",
+            "missing_information_coverage",
+            "red_flag_propagation",
+            "reasoning_coherence",
+            "hallucination_check"
+          ]
+        },
+        "critical_issues": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "issue_type": {
+                "type": "string",
+                "enum": [
+                  "potential_hallucination",
+                  "missing_citation",
+                  "unacknowledged_contradiction",
+                  "ignored_red_flag",
+                  "incoherent_recommendation",
+                  "strategic_incoherence",
+                  "other"
+                ]
+              },
+              "description": { "type": "string", "minLength": 1 },
+              "severity":    { "$ref": "#/$defs/Severity" }
+            },
+            "required": ["issue_type", "description", "severity"]
+          }
+        },
+        "routing_decision": { "$ref": "#/$defs/RoutingDecision" },
+        "schema_errors": {
+          "description": "Populated only when upstream agents had retry-and-failure chain-effect per design plan §3.3. Empty array when clean.",
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "agent":      { "type": "string" },
+              "attempt_number": { "type": "integer" },
+              "error_path": { "type": "string" },
+              "message":    { "type": "string" }
+            },
+            "required": ["agent", "error_path", "message"]
+          }
+        },
+        "unresolved_sources": {
+          "description": "Populated only when Citation Validity Check (§3.1) found citations with unknown source_name. Empty array when clean.",
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim":               { "type": "string" },
+              "invalid_source_name": { "type": "string" }
+            },
+            "required": ["claim", "invalid_source_name"]
+          }
+        }
+      },
+      "required": [
+        "evaluator_score",
+        "criteria_scores",
+        "critical_issues",
+        "routing_decision"
+      ]
+    }
+  }
+}

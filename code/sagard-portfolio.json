@@ -1,0 +1,91 @@
+{
+  "$comment": "Simulated Sagard portfolio for prototype Portfolio Fit agent. Shape locked by design plan §2.8. Production would replace with API pull from Sagard's portfolio management system (design plan §8 Extension Point 3).",
+  "portfolio_companies": [
+    {
+      "name": "KOHO",
+      "sector": "fintech",
+      "sub_sector": "neobank_cards",
+      "stage": "series_d",
+      "investment_year": 2021,
+      "thesis_pillar": "consumer_fintech",
+      "geography": "CA",
+      "synergy_keywords": ["spending", "cards", "banking", "consumer_accounts", "prepaid"]
+    },
+    {
+      "name": "Wealthsimple",
+      "sector": "fintech",
+      "sub_sector": "digital_wealth",
+      "stage": "growth",
+      "investment_year": 2017,
+      "thesis_pillar": "consumer_fintech",
+      "geography": "CA",
+      "synergy_keywords": ["investing", "wealth", "retirement", "crypto", "brokerage", "robo-advisor"]
+    },
+    {
+      "name": "Boosted.AI",
+      "sector": "fintech",
+      "sub_sector": "investment_ai",
+      "stage": "series_b",
+      "investment_year": 2022,
+      "thesis_pillar": "ai_in_finance",
+      "geography": "CA",
+      "synergy_keywords": ["portfolio_management", "ai", "quantitative", "asset_managers", "alpha"]
+    },
+    {
+      "name": "Dialogue",
+      "sector": "healthtech",
+      "sub_sector": "virtual_care",
+      "stage": "public",
+      "investment_year": 2018,
+      "thesis_pillar": "healthtech",
+      "geography": "CA",
+      "synergy_keywords": ["telemedicine", "digital_health", "employee_wellness", "primary_care"]
+    },
+    {
+      "name": "CarbonCure",
+      "sector": "climate_tech",
+      "sub_sector": "construction_materials",
+      "stage": "series_c",
+      "investment_year": 2019,
+      "thesis_pillar": "climate_tech",
+      "geography": "CA",
+      "synergy_keywords": ["carbon_capture", "concrete", "decarbonization", "cement", "co2_utilization"]
+    }
+  ],
+  "thesis_pillars": [
+    {
+      "name": "consumer_fintech",
+      "focus": "Consumer financial services — neobanks, payments, digital wealth, lending."
+    },
+    {
+      "name": "ai_in_finance",
+      "focus": "AI/ML applications in institutional finance — portfolio management, risk, compliance."
+    },
+    {
+      "name": "healthtech",
+      "focus": "Digital health, virtual care delivery, healthcare payers, employer-sponsored wellness."
+    },
+    {
+      "name": "climate_tech",
+      "focus": "Clean energy, carbon capture and utilization, climate mitigation, decarbonization."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "pattern": "large-cap AI infrastructure IPO ($10B+ valuation)",
+      "reason": "Outside Sagard's typical check size and stage; public-market exposure deviates from alternative-asset strategy."
+    },
+    {
+      "pattern": "speculative web3 / crypto-native protocols",
+      "reason": "Absent from disclosed thesis pillars; regulatory and custody complexity unaligned with institutional LP mandates."
+    },
+    {
+      "pattern": "early-stage single-founder deeptech with no commercial traction",
+      "reason": "Sagard's stage focus is series B+; pre-commercial risk profile unsuited to fund strategies."
+    },
+    {
+      "pattern": "companies with extreme customer concentration (>70% top-2) and no diversification roadmap",
+      "reason": "Fiduciary risk to LPs; concentration without path to mitigation fails diligence at IC level."
+    }
+  ]
+}

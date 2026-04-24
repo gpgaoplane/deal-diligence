@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-24T04:15:00-04:00
+last-updated: 2026-04-24T13:21:24-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -39,4 +39,21 @@ skip-if: "never"
 | .codex/memory/pitfalls.md | pitfalls | codex | active | 2026-04-24T02:07:00-04:00 |
 | docs/plans/2026-04-24-deal-diligence-design.md | design-plan | shared | active | 2026-04-24T03:00:00-04:00 |
 | docs/plans/2026-04-24-deal-diligence-implementation.md | implementation-plan | shared | active | 2026-04-24T03:15:00-04:00 |
+| prompts/extraction-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| prompts/contradiction-agent.tool-use.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| prompts/contradiction-agent.stuffed.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| prompts/gap-analysis-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| prompts/portfolio-fit-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| prompts/memo-generation-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| prompts/evaluator-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
+| docker-compose.yml | compose-config | shared | active | 2026-04-24T13:30:00-04:00 |
+| .env.example | config-template | shared | active | 2026-04-24T13:30:00-04:00 |
+| scripts/up.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
+| scripts/down.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
+| scripts/import-workflow.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
+| scripts/export-workflow.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
+| schemas/supabase-schema.sql | schema-sql | shared | active | 2026-04-24T13:30:00-04:00 |
+| schemas/agent-output-schemas.json | schema-json | shared | active | 2026-04-24T13:30:00-04:00 |
+| code/red-flag-detector.js | code | claude | active | 2026-04-24T13:30:00-04:00 |
+| code/sagard-portfolio.json | data | claude | active | 2026-04-24T13:30:00-04:00 |
 <!-- collab:index:end -->

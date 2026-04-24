@@ -1,0 +1,52 @@
+# docker-compose.yml — local n8n stack
+# ---------------------------------------------------------------------
+# This is the BOOTSTRAP form (Phase 2 task 2.0b.pre). It is enough to
+# run spike 2.0b (ajv availability test). Task 2.4 expands this file
+# post-spike with full community-node wiring and volume mounts.
+#
+# Current features:
+#   - n8n at localhost:5678 with basic auth
+#   - NODE_FUNCTION_ALLOW_EXTERNAL=ajv (so Code nodes can `require('ajv')`)
+#   - Persistent workflow data volume at ./n8n/n8n-data
+#   - Test-case docs mounted at /files (read-only) for Form Trigger uploads
+#
+# Pending additions in task 2.4 (post-spike 2.0b):
+#   - Community node install: n8n-nodes-openai-langfuse,
+#     @langfuse/n8n-nodes-langfuse (via N8N_COMMUNITY_PACKAGES env)
+#   - Additional n8n config (execution mode, timezone, etc.)
+# ---------------------------------------------------------------------
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: deal-diligence-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      # Host + auth
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: ${N8N_PORT:-5678}
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE:-true}
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-America/Toronto}
+      # Code node external module allowlist (load-bearing per design plan §3.2)
+      NODE_FUNCTION_ALLOW_EXTERNAL: "ajv"
+      # Surface secrets we need inside workflow HTTP Request / credentials
+      # (n8n nodes read these via ${{ $env.VAR_NAME }} expressions)
+      ALICLOUD_API_KEY: ${ALICLOUD_API_KEY}
+      ALICLOUD_BASE_URL: ${ALICLOUD_BASE_URL}
+      ALICLOUD_MODEL: ${ALICLOUD_MODEL}
+      ALICLOUD_EMBEDDING_MODEL: ${ALICLOUD_EMBEDDING_MODEL}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+    volumes:
+      - ./n8n/n8n-data:/home/node/.n8n
+      - ./test-cases:/files:ro
