@@ -127,6 +127,18 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1720, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Aggregate Vector Store — Phase 3 task 3.3d\n// Folds all per-chunk items (from Extract Embedding) into ONE item\n// carrying the full in-memory vector store. Downstream specialist\n// agents run cosine-similarity retrieval against `chunks[]`, optionally\n// filtering to a single document via chunk.file_id.\n//\n// Path A (hand-rolled retrieval, decided 2026-04-24T18:30) — we do NOT\n// use n8n's LangChain Simple Vector Store. Our store is just a JSON\n// array held in a single workflow item.\n//\n// Input: N items (one per chunk), each with run-level + per-chunk meta.\n// Output: 1 item:\n//   { run_id, deal_id, company_name, timestamp_started, source_manifest,\n//     chunks: [{ file_id, source_name, source_type, filename,\n//                chunk_index, char_offset_start, char_offset_end,\n//                page_estimate, text, embedding }],\n//     meta: { chunk_count, total_embedding_tokens, documents_ingested } }\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Aggregate Vector Store received 0 items. Ingestion broke upstream.');\n}\n\n// Run-level metadata comes from the first item; all items share it.\nconst first = items[0].json;\n\n// Flatten each chunk into a retrieval-ready shape. Nested `document`\n// object is hoisted up so retrieval filters can access .file_id etc.\n// without deep-path access.\nconst chunks = items.map((item) => {\n  const j = item.json || {};\n  const doc = j.document || {};\n  return {\n    file_id: doc.file_id || null,\n    source_name: doc.source_name || 'Unknown Source',\n    source_type: doc.source_type || 'regulatory_filing',\n    filename: doc.filename || null,\n    chunk_index: j.chunk_index ?? null,\n    char_offset_start: j.char_offset_start ?? null,\n    char_offset_end: j.char_offset_end ?? null,\n    page_estimate: j.page_estimate ?? null,\n    text: j.text || '',\n    embedding: Array.isArray(j.embedding) ? j.embedding : null,\n  };\n});\n\nconst totalTokens = items.reduce(\n  (acc, i) => acc + (i.json?.embedding_tokens || 0),\n  0\n);\nconst documentsIngested = Array.from(\n  new Set(chunks.map((c) => c.source_name))\n);\n\nconst validChunks = chunks.filter((c) => c.embedding && c.embedding.length > 0);\nif (validChunks.length === 0) {\n  throw new Error('No chunks have valid embeddings — retrieval will be impossible.');\n}\nif (validChunks.length < chunks.length) {\n  console.log(`WARN: ${chunks.length - validChunks.length} of ${chunks.length} chunks lacked embeddings; dropped.`);\n}\n\nconsole.log(`Vector store ready: ${validChunks.length} chunks across ${documentsIngested.length} documents; ${totalTokens} embedding tokens total.`);\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    chunks: validChunks,\n    meta: {\n      chunk_count: validChunks.length,\n      total_embedding_tokens: totalTokens,\n      documents_ingested: documentsIngested,\n    },\n  },\n};\n"
+      },
+      "id": "b8c9d0e1-aggregate-vs-0000000008",
+      "name": "Aggregate Vector Store",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300]
     }
   ],
   "connections": {
@@ -190,6 +202,17 @@
         [
           {
             "node": "Extract Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Embedding": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Vector Store",
             "type": "main",
             "index": 0
           }
