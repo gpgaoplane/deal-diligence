@@ -89,6 +89,87 @@ Missing / intentionally skipped:
 - `docs/STATUS.md` — "done" list should add this cleanup; will fold into the next STATUS refresh at start of Phase 2.
 - `.collab/INDEX.md` — no new files created; existing rows' `last-updated` will be refreshed on next substantive task.
 
+## 2026-04-24T03:30:00-04:00 — Phase 2 closed: Refined design and implementation plans under docs/plans/
+
+**Outcome.** Produced authoritative design plan (`docs/plans/2026-04-24-deal-diligence-design.md`) and implementation plan (`docs/plans/2026-04-24-deal-diligence-implementation.md`) per user's instruction that Phase 2 be "robust, fool-proof, loophole-free." Originals at root flipped to `status: reference-only` with explicit pointer banners; content preserved, authority transferred.
+
+**Process.** User selected Option B (framework-native peers in `docs/plans/` with originals archived-later) from the Phase 2 structural question. Best-judgment defaults committed on the three advisor "ask Will first" items: (1) Will authors meta-eval fixtures, (2) `ajv` primary + hand-rolled fallback, (3) Codex protocol with skip-logging — all revertable if Will disagrees.
+
+**Execution path.**
+1. Full end-to-end reads of `DESIGN.md` and `IMPLEMENTATION.md` (advisor flagged I had only read ~100-120 lines each during Phase 1).
+2. Design + implementation skeletons laid out inline (30+ refinement targets catalyzed).
+3. First advisor pass on skeleton → 7 blockers + 3 tightening items + 3 best-judgment calls.
+4. Skeleton refined; second advisor pass → 3 more lock items.
+5. Full expansion to two files (~700 lines design, ~500 lines implementation).
+6. Third advisor pass on full drafts → 5 surgical fixes (§3.1 citation marker ordering, §3.3 chain-effect spec, §4 authorship procedural separation, §10 Codex trigger-by-prompt-type, task-number collision) + missing helper-script tasks (3.18w–3.20w).
+7. Reviewer subagent pass skipped per advisor's explicit guidance ("self-checks + two advisor passes have caught more than the reviewer would").
+
+**Refinements beyond the original (summary — see the diff tables §14 of design plan and §15 of implementation plan for section-level deltas).**
+
+- **Section-targeted retrieval + union pass** for Extraction (11 section retrievals @ k=5 + 1 union @ k=8 per document).
+- **Two-layer citation enforcement:** schema `pattern` for format + post-validation node against Coordinator's `source_manifest` for validity.
+- **Source-name regex extraction** with explicit marker ordering (`Risk Factors p. N` before `p. N`).
+- **Retry-and-failure chain-effect:** canonical empty-but-schema-valid bypass output; 2+-bypassed → Memo Generation skipped; 1-bypassed → memo runs with `confidence_scores.overall × 0.5` penalty. Every agent schema declares `minItems: 0`.
+- **Meta-evaluation** with authorship procedural separation: Will authors fixtures without reading DESIGN §3.10 six criteria first; bad fixture must include at least one off-criteria defect.
+- **Cost model**: ~$1/deal; non-cost scaling bottlenecks named (reviewer throughput, FP fatigue, prompt drift, trace storage, audit query layer) — becomes language for Phase 6 250-word submission.
+- **Manual Langfuse span for RFD** via explicit HTTP Request to `/api/public/ingestion`.
+- **Deterministic source_type classifier** (filename regex table; no LLM fallback).
+- **Canonical source-name** (`<CompanyName> <SourceTypeHuman>`) and citation formats enforced by schema `pattern`.
+- **Spikes 2.0a (Qwen tool-use → D-2) and 2.0b.pre + 2.0b (`ajv` availability → D-3)** resolving design-time unknowns before Phase 3 wiring. Circular dependency fixed via minimal-compose bootstrap.
+- **Iteration caps of 3/prompt** in Phase 4 with meta-eval discrimination gap (≥20) as co-exit-criterion alongside absolute score (≥40).
+- **Codex engagement protocol** with numbered triggers, prompt-type-aware (refined prompts → Codex before Claude Chat refine; unrefined → Codex post-commit), skip-logging format for honest path when Codex isn't invoked.
+- **Routing-matrix row mappings per task** (mechanical Receipt composition).
+- **Verification commands per acceptance criterion** (proof-of-done; ~20 commands consolidated in §13 of implementation plan).
+- **Parameterized phase-closure Receipt template** (single form across phases).
+- **Framework agent names throughout**: `claude`, `codex`, `Will` — "Claude Chat" consistently rendered as "Will (with Claude Chat assist)".
+- **Helper scripts explicitly tasked:** 3.18w run-meta-eval.js, 3.19w validate-memo-citations.js, 3.20w validate-fixture.js — were previously referenced as verification commands but unassigned.
+
+**Acceptance criteria met (Phase 2 = refined plans committed):**
+- [x] `docs/plans/2026-04-24-deal-diligence-design.md` exists — `test -f` passes.
+- [x] `docs/plans/2026-04-24-deal-diligence-implementation.md` exists — same.
+- [x] Both files registered in `.collab/INDEX.md` — `npx @gpgaoplane/multi-agent-collab check` returns OK.
+- [x] Originals `DESIGN.md` and `IMPLEMENTATION.md` flipped to `status: reference-only` with pointer banners.
+- [x] INDEX status rows updated to `reference-only` for both originals.
+- [x] Design plan diff table (§14) maps every original section to its refinement.
+- [x] Implementation plan diff table (§15) maps every original section to its refinement.
+- [x] Three advisor passes completed; all 5 surgical-fix items applied.
+- [x] `docs/STATUS.md` updated (current phase, done, up-next).
+- [x] `.claude/memory/state.md` refreshed (branch, active task, next steps, watermark).
+- [x] `.claude/memory/decisions.md` D-0 entry added.
+
+**Decisions landed.** D-0 (refined plans under docs/plans/; originals flipped).
+
+**Decisions deferred to Phase 2 spikes.** D-2 (Contradiction topology), D-3 (ajv vs hand-rolled validator). D-4 (Langfuse path) deferred to Phase 3.
+
+**Invariants touched.** None — I-1 through I-7 preserved verbatim. Plan references them by ID.
+
+**Watch out:**
+- The plans commit Will to authoring meta-eval fixtures (~45 min Phase 4 prep). If Will prefers delegation, fallback in design §4 names Claude Chat as alternate author with documented self-correlation limitation.
+- Codex engagement protocol assumes Codex may or may not run. If Codex runs: findings flow to `docs/agents/codex.md`; Claude Code reads on session start via delta-read. If Codex is never invoked for a trigger point: Claude Code emits a skip-log entry per §10 format. Do not silently skip without the log.
+- The 35-test target for RFD (not 100 as originally sketched) is deliberate — timeline does not support 100; advisor flagged diminishing signal. Phase 3 task 3.P7t should honor this.
+- `(run_id, deal_id)` unique index on Supabase deal_memos was added in the plan (§2.11); Phase 2 task 2.9 must include it in the DDL file alongside the base schema from CONTEXT.md §5.8.
+
+**Time spent.** Rough estimate 3h (reading originals end-to-end + two skeleton rounds + full expansion + three advisor passes + surgical fixes + status/state/index/decisions refresh). Phase 2 was not time-estimated up front as a planning phase; this is the ledger entry.
+
+### Task Receipt
+Updates fanned out this task:
+- `docs/agents/claude.md` ............................... this entry (Phase 2 closure)
+- `docs/plans/2026-04-24-deal-diligence-design.md` ...... created (authoritative design plan; §14 diff table)
+- `docs/plans/2026-04-24-deal-diligence-implementation.md`  created (authoritative execution plan; §15 diff table)
+- `DESIGN.md` ........................................... flipped to `status: reference-only`; pointer banner added
+- `IMPLEMENTATION.md` ................................... flipped to `status: reference-only`; pointer banner added
+- `.collab/INDEX.md` .................................... registered both plan files; updated status rows for DESIGN/IMPLEMENTATION to `reference-only`
+- `docs/STATUS.md` ...................................... current-phase, done, in-progress, up-next sections refreshed
+- `.claude/memory/state.md` ............................. branch, active task, next steps, watermark updated
+- `.claude/memory/decisions.md` ......................... D-0 added (above D-1)
+
+Missing / intentionally skipped:
+- `.claude/memory/context.md` — no new invariants surfaced; I-1…I-7 unchanged. Plans reference by ID rather than restating.
+- `.claude/memory/pitfalls.md` — no recurring pitfalls encountered during planning work; remains at template seed.
+- Reviewer subagent pass — advisor's explicit guidance was to skip (self-checks + two advisor passes sufficient at this file size).
+- `AI_AGENTS.md` — no adapter or shared-contract changes; unchanged.
+- `CONTEXT.md` — content unchanged; it remains the scope-locked source. Frontmatter `last-updated` not bumped since only downstream references changed.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,

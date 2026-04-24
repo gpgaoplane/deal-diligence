@@ -15,6 +15,14 @@ Claude Code's own decisions (implementation-level choices Claude made while buil
 
 <!-- section:entries:start -->
 
+## D-0 — Refined design and implementation plans under docs/plans/ — 2026-04-24T03:30:00-04:00
+**Context:** Original `DESIGN.md` and `IMPLEMENTATION.md` at repo root were planning v1. Framework's `docs/plans/YYYY-MM-DD-*` convention expects dated, framework-native refinements. User requested robust / fool-proof / loophole-free refined plans.
+**Alternatives:** (A) edit in place at root; (B) create framework-native peers under `docs/plans/` and flip originals to `reference-only`.
+**Choice:** (B). Wrote `docs/plans/2026-04-24-deal-diligence-{design,implementation}.md` as authoritative. Flipped originals to `reference-only` with explicit pointer banner.
+**Rationale:** Aligns with framework convention and user's stated archive-later endgame (once originals go stale, `collab-archive` moves them). Preserves full history — originals are unchanged, so anyone referencing them still finds their content.
+**Tradeoffs:** Larger initial diff; two-doc-per-artifact state until archival. Accepted per user instruction.
+**Refinements surfaced:** section-targeted retrieval + union pass, two-layer citation enforcement (format schema + validity post-check), retry-and-failure chain-effect spec, meta-eval with authorship procedural separation, manual Langfuse span for RFD, cost model with non-cost scaling bottlenecks, iteration caps, routing-matrix row mappings per task, verification commands per acceptance criterion, parameterized Receipt template, Codex engagement protocol with numbered triggers.
+
 ## D-1 — Adopt multi-agent-collab framework — 2026-04-24T02:15:00-04:00
 **Context:** Existing collaboration model (Claude Code + Codex + Claude Chat) was specified in prose in `CONTEXT.md §8` with no presence board, no delta-read, no enforced End-of-Task Receipts.
 **Alternatives:** (a) Keep prose-only; (b) Build custom collab scripts; (c) Adopt `multi-agent-collab` skill.
