@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-24T16:45:00-04:00
+last-updated: 2026-04-24T17:00:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -30,7 +30,7 @@ skip-if: "never"
 | .claude/memory/state.md | state | claude | active | 2026-04-24T16:15:00-04:00 |
 | .claude/memory/context.md | context | claude | active | 2026-04-24T04:15:00-04:00 |
 | .claude/memory/decisions.md | decisions | claude | active | 2026-04-24T03:30:00-04:00 |
-| .claude/memory/pitfalls.md | pitfalls | claude | active | 2026-04-24T02:07:00-04:00 |
+| .claude/memory/pitfalls.md | pitfalls | claude | active | 2026-04-24T17:00:00-04:00 |
 | .codex/CODEX.md | adapter | codex | active | 2026-04-24T02:07:00-04:00 |
 | docs/agents/codex.md | work-log | codex | active | 2026-04-24T02:07:00-04:00 |
 | .codex/memory/state.md | state | codex | active | 2026-04-24T02:07:00-04:00 |
@@ -50,8 +50,8 @@ skip-if: "never"
 | .env.example | config-template | shared | active | 2026-04-24T13:30:00-04:00 |
 | scripts/up.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
 | scripts/down.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
-| scripts/import-workflow.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
-| scripts/export-workflow.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
+| scripts/import-workflow.sh | script | shared | active | 2026-04-24T17:00:00-04:00 |
+| scripts/export-workflow.sh | script | shared | active | 2026-04-24T17:00:00-04:00 |
 | schemas/supabase-schema.sql | schema-sql | shared | active | 2026-04-24T13:30:00-04:00 |
 | schemas/agent-output-schemas.json | schema-json | shared | active | 2026-04-24T13:30:00-04:00 |
 | code/red-flag-detector.js | code | claude | active | 2026-04-24T16:45:00-04:00 |
