@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-24T15:45:00-04:00
+last-updated: 2026-04-24T16:00:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -61,4 +61,7 @@ skip-if: "never"
 | test-cases/meta-eval/chatgpt-authoring-prompt.md | external-prompt | shared | active | 2026-04-24T15:30:00-04:00 |
 | test-cases/meta-eval/intentionally-good-memo.json | meta-eval-fixture | shared | active | 2026-04-24T14:21:00-04:00 |
 | test-cases/meta-eval/intentionally-bad-memo.json | meta-eval-fixture | shared | active | 2026-04-24T14:22:00-04:00 |
+| code/sec-edgar-downloader.py | code | claude | active | 2026-04-24T16:00:00-04:00 |
+| test-cases/coreweave/coreweave-s1.pdf | test-case | shared | active | 2026-04-24T16:00:00-04:00 |
+| test-cases/cerebras/cerebras-s1.pdf | test-case | shared | active | 2026-04-24T16:00:00-04:00 |
 <!-- collab:index:end -->
