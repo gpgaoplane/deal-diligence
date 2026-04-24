@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-24T15:00:00-04:00
+last-updated: 2026-04-24T15:30:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -58,4 +58,5 @@ skip-if: "never"
 | code/sagard-portfolio.json | data | claude | active | 2026-04-24T13:30:00-04:00 |
 | code/json-schema-validator.js | code | claude | active | 2026-04-24T14:15:00-04:00 |
 | code/test/json-schema-validator.test.js | test | claude | active | 2026-04-24T14:15:00-04:00 |
+| test-cases/meta-eval/chatgpt-authoring-prompt.md | external-prompt | shared | active | 2026-04-24T15:30:00-04:00 |
 <!-- collab:index:end -->
