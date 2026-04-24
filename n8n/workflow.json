@@ -82,6 +82,51 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/embeddings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_EMBEDDING_MODEL }}\",\n  \"input\": {{ JSON.stringify($json.text) }}\n}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "f6a7b8c9-embed-000000000006",
+      "name": "Embed Chunk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1460, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Extract Embedding — Phase 3 task 3.3c\n// The HTTP Request node output merges the Alicloud response into the\n// item's JSON. Response shape (OpenAI-compatible embeddings):\n//   { object: 'list',\n//     data: [{ embedding: [0.1, -0.05, ...], index: 0, object: 'embedding' }],\n//     model: 'text-embedding-v4',\n//     usage: { prompt_tokens: 900, total_tokens: 900 } }\n//\n// We want: the chunk metadata + a flat `embedding` field. Everything else\n// (data array, model echo, usage) is bulky and not useful downstream.\n\nconst j = $input.item.json;\nconst data = Array.isArray(j.data) ? j.data : [];\nconst embedding = data[0] && Array.isArray(data[0].embedding) ? data[0].embedding : null;\nif (!embedding) {\n  // Non-fatal: emit the item with embedding: null. Downstream retrieval\n  // will skip chunks whose embedding is missing.\n  console.log(`WARN: no embedding in response for chunk_index=${j.chunk_index}`);\n}\n\n// Extract usage for token accounting (logged for cost model refinement).\nconst usage = j.usage || {};\n\nreturn {\n  json: {\n    run_id: j.run_id,\n    deal_id: j.deal_id,\n    company_name: j.company_name,\n    timestamp_started: j.timestamp_started,\n    source_manifest: j.source_manifest,\n    document: j.document,\n    chunk_index: j.chunk_index,\n    char_offset_start: j.char_offset_start,\n    char_offset_end: j.char_offset_end,\n    page_estimate: j.page_estimate,\n    text: j.text,\n    embedding,\n    embedding_dim: embedding ? embedding.length : 0,\n    embedding_tokens: usage.prompt_tokens || 0,\n  },\n};\n"
+      },
+      "id": "a7b8c9d0-extract-embed-00000000007",
+      "name": "Extract Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 300]
     }
   ],
   "connections": {
@@ -123,6 +168,28 @@
         [
           {
             "node": "Text Chunker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Chunker": {
+      "main": [
+        [
+          {
+            "node": "Embed Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Chunk": {
+      "main": [
+        [
+          {
+            "node": "Extract Embedding",
             "type": "main",
             "index": 0
           }

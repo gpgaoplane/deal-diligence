@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-24T18:00:00-04:00
+last-updated: 2026-04-24T18:15:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -46,7 +46,7 @@ skip-if: "never"
 | prompts/portfolio-fit-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
 | prompts/memo-generation-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
 | prompts/evaluator-agent.md | prompt-stub | claude | active | 2026-04-24T13:30:00-04:00 |
-| docker-compose.yml | compose-config | shared | active | 2026-04-24T15:00:00-04:00 |
+| docker-compose.yml | compose-config | shared | active | 2026-04-24T18:15:00-04:00 |
 | .env.example | config-template | shared | active | 2026-04-24T13:30:00-04:00 |
 | scripts/up.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
 | scripts/down.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
@@ -71,5 +71,5 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-24T18:00:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-24T18:15:00-04:00 |
 <!-- collab:index:end -->

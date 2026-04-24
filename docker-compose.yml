@@ -51,6 +51,13 @@ services:
       #   - n8n-nodes-openai-langfuse       (Langfuse tracing; unscoped)
       # Installation persists in ./n8n/n8n-data/ (bind-mounted volume) and
       # survives container restarts. See Phase 3 task 3.24.
+
+      # Allow workflow expressions to read container env vars via {{ $env.* }}.
+      # Default in n8n 2.x is to BLOCK env access in expressions for security.
+      # For this local-dev prototype we open it so HTTP Request nodes can read
+      # ALICLOUD_API_KEY etc. from .env without needing UI-managed Credentials.
+      # Production deployment would use n8n Credentials instead.
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       # Surface secrets we need inside workflow HTTP Request / credentials
       # (n8n nodes read these via ${{ $env.VAR_NAME }} expressions)
       ALICLOUD_API_KEY: ${ALICLOUD_API_KEY}
