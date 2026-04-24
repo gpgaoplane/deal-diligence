@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-24T17:00:00-04:00
+last-updated: 2026-04-24T17:15:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -80,5 +80,44 @@ For any new script in this project that passes Unix paths to `docker exec` / `ku
 On Windows Git Bash: run `./scripts/import-workflow.sh` against a workflow.json that exists; confirm it succeeds without ENOENT on the `/tmp/workflow.json` path inside the container. (No CI test for this; manual verification on first Windows run.)
 
 **See also:** scripts/import-workflow.sh, scripts/export-workflow.sh — both apply the env var to every docker-exec invocation.
+
+## P-3 — n8n Code node sandbox also blocks `require('crypto')` (stdlib !== safe) — 2026-04-24T17:15:00-04:00
+
+**Symptom:**
+A Code node using `const crypto = require('crypto')` fails at runtime with:
+```
+Module 'crypto' is disallowed [line 10]
+  at .../task-runner/.../require-resolver.js:16:27
+  at VmCodeWrapper (evalmachine.<anonymous>:10:16)
+```
+
+**Root cause:**
+n8n 2.17.7's Code node sandbox blocks `require()` for stdlib modules too, not only external npm packages. The assumption "stdlib is safe, external needs NODE_FUNCTION_ALLOW_EXTERNAL" is wrong for this version. The sandbox has an allowlist of which modules can be required, and `crypto` is not on it by default. Adding `crypto` to `NODE_FUNCTION_ALLOW_EXTERNAL` also doesn't work — that env var is for external packages, not stdlib.
+
+Related to P-1 (ajv compile blocked) — same sandbox, different failure surface.
+
+**Workaround:**
+Use the **Web Crypto API global** `crypto` (Node 18+, globally available without require):
+- `crypto.randomUUID()` — generates a UUID v4 string
+- `crypto.getRandomValues(new Uint8Array(n))` — n random bytes
+- `crypto.subtle.*` — SubtleCrypto interface for hashing/signing
+
+Both work inside the sandbox because they're globals, not require'd modules.
+
+For Node-`crypto`-only APIs (pbkdf2, createCipheriv, etc.), the workaround is either:
+- Do the crypto outside the Code node (upstream script, or dedicated non-sandboxed container)
+- Hand-roll the algorithm using Web Crypto API equivalents (usually possible for common cases)
+
+**Regression test:**
+When authoring any n8n Code node: grep the jsCode string for `require(` → if present, either remove or verify the module is on the sandbox allowlist. Default assumption: require is not available. The `json-schema-validator.js` design path relies on this (paste-friendly, no require needed).
+
+**Related pitfall table (sandbox blocklist, empirically found on n8n 2.17.7):**
+- `new Function(...)` → blocked (P-1)
+- `eval(...)` → blocked (P-1)
+- `require('crypto')` → blocked (P-3)
+- `require('ajv')` with NODE_FUNCTION_ALLOW_EXTERNAL=ajv → loads but compile fails (P-1)
+- `crypto.randomUUID()` global → works ✓
+- `crypto.getRandomValues()` global → works ✓
+- `Array.from`, template literals, async/await, destructuring → all work ✓
 
 <!-- section:entries:end -->
