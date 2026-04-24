@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-24T17:30:00-04:00
+last-updated: 2026-04-24T19:00:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -138,5 +138,34 @@ When authoring any n8n Code node: grep the jsCode string for `require(` → if p
 | `$execution.id` | ✅ works (n8n helper; alternative to UUID generation) |
 
 Rule of thumb: **assume Node APIs are NOT available in the Code node sandbox.** Only ECMAScript language primitives + n8n's `$`-prefixed helpers are reliably accessible. Anything else, verify empirically or move outside the sandbox.
+
+## P-4 — n8n HTTP Request node REPLACES $json with response body (not merge) — 2026-04-24T19:00:00-04:00
+
+**Symptom:**
+A Code node immediately after an HTTP Request node sees `$input.item.json` containing ONLY the HTTP response body (e.g., `{data: [...], model: ..., usage: {...}}`). The chunk/run metadata that existed upstream (run_id, document, chunk_index, etc.) is GONE. Downstream aggregation produces items with `null` for all metadata fields despite the embedding/response being present and correct.
+
+**Root cause:**
+By default, n8n 2.x HTTP Request node REPLACES `$json` with the response body per item. It does not merge. There's no obvious `includeIncomingFields` toggle in the node's parameter JSON (UI has a setting but it maps to a non-obvious JSON path, and flipping it is easy to miss).
+
+**Workaround:**
+In the Code node after HTTP Request, use n8n's cross-node reference expression to reach back to the ORIGINAL upstream node's output:
+
+```javascript
+const response = $input.item.json;              // HTTP response body
+const original = $('Upstream Node').item.json;  // Upstream node's item at SAME position
+// merge: { ...original, embedding: response.data[0].embedding, ... }
+```
+
+`$('NodeName').item` returns the item at the current item's position from the named node's output. n8n preserves per-item order through HTTP Request in runOnceForEachItem mode, so position i after HTTP matches position i before HTTP.
+
+**Alternative workarounds (not used in this project):**
+- HTTP Request `options.response.response.fullResponse = true` — still replaces, but includes more response metadata. Doesn't help here.
+- Use a Merge node between HTTP Request and the next Code node to zip response ↔ original by position. More nodes, same effect as cross-node reference.
+- Embed original metadata in the REQUEST body so it's echoed back. Requires the API to echo; most don't.
+
+**Regression test:**
+For any new HTTP Request → Code-node pair in this workflow: if the Code node needs upstream metadata, it MUST use `$('Upstream Node').item.json` to reach back. Grep the workflow for patterns `$input.item.json` immediately after an HTTP Request — check if metadata is really coming from the response or needs upstream reference.
+
+**See also:** n8n/workflow.json "Extract Embedding" node — demonstrates the correct pattern.
 
 <!-- section:entries:end -->
