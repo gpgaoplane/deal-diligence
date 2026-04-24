@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-24T14:30:00-04:00
+last-updated: 2026-04-24T15:00:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -26,7 +26,7 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:open-questions:start -->
 - D-2 confirmation deferred to Phase 3 task 3.6 (wire Contradiction Agent AI Agent node; confirm tool-use works in-n8n with qwen3.5-plus via DashScope).
 - D-4 (Langfuse community node vs manual HTTP) — Phase 3 task 3.24.
-- Community node package names (`rorubyy/n8n-nodes-openai-langfuse`) — verify at Phase 3 task 3.24; update docker-compose.yml if the string is wrong.
+- Community node package names — RESOLVED 2026-04-24T15:00: correct names are `@langfuse/n8n-nodes-langfuse` (Prompt Management) and `n8n-nodes-openai-langfuse` (tracing, unscoped). Old design-plan name `rorubyy/n8n-nodes-openai-langfuse` was a github-slug mistake inherited from CONTEXT.md §5.4; corrected in CONTEXT and design plan.
 - I-9 latency implication: if Phase 4 demos stall due to reasoning-token overhead (~40s/run), may need to switch some specialists to non-reasoning `qwen-plus` or use `reasoning_effort: low` if DashScope exposes it.
 <!-- section:open-questions:end -->
 

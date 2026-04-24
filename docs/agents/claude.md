@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-24T03:30:00-04:00
+last-updated: 2026-04-24T15:00:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -253,8 +253,8 @@ Missing / intentionally skipped:
 
 **Watch out:**
 - **D-2 confirmation at Phase 3 task 3.6.** Variant A (tool-use) is provisional. If n8n's AI Agent node handles qwen3.5-plus tool-use poorly (reasoning_content concatenation, response parsing), flip to Variant B (`prompts/contradiction-agent.stuffed.md` already committed). Target rework: ~30 min.
-- **Community node package names are best-guess.** `rorubyy/n8n-nodes-openai-langfuse` may or may not be the exact npm registry name. Phase 3 task 3.24 verifies; update `docker-compose.yml` if wrong.
-- **`docker-compose.yml` changed post-bootstrap.** Will must `docker compose down && docker compose up -d` to pick up `N8N_COMMUNITY_PACKAGES` (installs at fresh container start).
+- **Community node package names.** RESOLVED 2026-04-24T15:00 after Will restarted n8n and no install was attempted: (a) `N8N_COMMUNITY_PACKAGES` env var is not honored by n8n 2.17.7 (no log entry, no install attempt); (b) the design-plan package string `rorubyy/n8n-nodes-openai-langfuse` was wrong — correct npm names verified on registry are `@langfuse/n8n-nodes-langfuse` + `n8n-nodes-openai-langfuse` (unscoped). Switched to UI-based install per docker-compose.yml comments.
+- **`docker-compose.yml` changed post-bootstrap.** Will must `docker compose down && docker compose up -d` when this file changes. Community-node installation is via n8n UI (Settings → Community Nodes); persists in bind-mounted `./n8n/n8n-data/`.
 - **Hand-rolled validator is paste-friendly.** Phase 3 task 3.12 (schema-validation-with-retry machinery) will either create a validate sub-workflow OR paste the validator source into each agent's schema-check Code node. Decision made at wire-up time.
 - **`NODE_FUNCTION_ALLOW_EXTERNAL=ajv`** is retained in docker-compose.yml despite D-3 — harmless; benefits outside-sandbox scripts that docker-compose-exec in.
 - **Meta-eval authorship requires procedural separation.** Will authors both fixtures (2.Z) based on investment-professional judgment WITHOUT reading DESIGN.md §3.10 / design plan §4 six-criteria list first. Bad fixture must include at least one off-criteria defect. This is load-bearing for meta-eval credibility per Pari's evaluation lens.
@@ -294,6 +294,42 @@ Missing / intentionally skipped:
 - n8n instance restart (docker compose down+up) — Will's task; needed to pick up community-node install from expanded docker-compose.yml.
 - In-n8n confirmation of Qwen tool-use (Spike 2.0a proper) — deferred to Phase 3 task 3.6; API-level evidence deemed sufficient for provisional D-2.
 - Helper scripts (3.18w/3.19w/3.20w: run-meta-eval.js, validate-memo-citations.js, validate-fixture.js) — Phase 3 tasks; not Phase 2 scope.
+
+## 2026-04-24T15:00:00-04:00 — Corrections: community node name + env-var path
+
+**Context.** Will restarted n8n post-Phase-2-closure. `docker compose logs` showed clean n8n 2.17.7 startup with zero mention of `N8N_COMMUNITY_PACKAGES` and no install attempt. UI showed no community nodes.
+
+**Two root causes:**
+
+1. **Wrong package name.** Design plan §2.12 and CONTEXT.md §5.4 referenced `rorubyy/n8n-nodes-openai-langfuse`. That's a GitHub-slug form, not a valid npm package name (missing `@` scope prefix). npm registry 404s it. Correct names verified live on `registry.npmjs.org`:
+   - ✅ `@langfuse/n8n-nodes-langfuse` (Prompt Management, official)
+   - ✅ `n8n-nodes-openai-langfuse` (tracing — unscoped, no `@` prefix)
+   - ❌ `@rorubyy/n8n-nodes-openai-langfuse` (404)
+2. **`N8N_COMMUNITY_PACKAGES` env var not honored in n8n 2.17.7.** Empirically: the variable is ignored — no startup log entry, no install attempt even with a valid package name would have been evident. Rather than debug which flag activates it in this specific n8n version, switched to UI-install path. Community-node installations persist in the bind-mounted `./n8n/n8n-data/` volume across container restarts, so it's a one-time setup.
+
+**Fixes applied:**
+
+- `docker-compose.yml`: removed the non-functional `N8N_COMMUNITY_PACKAGES` env var; added clear comments directing Will to Settings → Community Nodes in the UI with the correct npm package names.
+- `CONTEXT.md §5.4` and `§12`: replaced `rorubyy/n8n-nodes-openai-langfuse` with `n8n-nodes-openai-langfuse`.
+- `docs/plans/2026-04-24-deal-diligence-design.md §2.12`: same correction + verification timestamp.
+- `.claude/memory/state.md` open-questions: marked community-node name as RESOLVED with correct values.
+- This work-log watch-out item updated to reflect resolution.
+
+**Watch out:**
+- The `rorubyy/` string was wrong across CONTEXT.md, the design plan, and derived docs. Search confirmed all 4 occurrences fixed. If it resurfaces in a future prompt/doc, it's a propagation bug — treat as a red flag.
+- Will's community-node install via UI is now the official path per docker-compose.yml comments. Phase 3 task 3.24 should load the packages via UI, not re-attempt env-var auto-install.
+
+### Task Receipt
+Updates fanned out this task:
+- `docker-compose.yml` ............................... removed non-functional env var; UI-install instructions
+- `CONTEXT.md §5.4, §12` ............................. corrected package name (2 occurrences)
+- `docs/plans/2026-04-24-deal-diligence-design.md §2.12` same + verification note
+- `.claude/memory/state.md` .......................... open-question marked RESOLVED
+- `docs/agents/claude.md` ............................ this entry + updated prior watch-out
+
+Missing / intentionally skipped:
+- `.collab/INDEX.md` last-updated bumps — no row adds/removes; existing rows' timestamps already reflect each file's last substantive edit. Since this is a correction to content that existed in last commit, the relevant INDEX rows could be bumped, but the mechanical rule is "bump when content changes reach git" — that happens at commit time. Bumping in this Receipt.
+- Advisor pass — not called; mechanical correction with empirical evidence from npm registry.
 
 ## Handoff blocks
 

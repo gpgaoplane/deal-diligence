@@ -7,17 +7,17 @@
 #   - n8n at localhost:5678 with basic auth
 #   - Persistent workflow data volume at ./n8n/n8n-data
 #   - Test-case docs mounted at /files (read-only) for Form Trigger uploads
-#   - Community nodes auto-installed on first startup:
-#     * rorubyy/n8n-nodes-openai-langfuse (Langfuse tracing)
-#     * @langfuse/n8n-nodes-langfuse (Langfuse Prompt Management)
-#     Names per design plan §2.12; verify at Phase 3 task 3.24.
 #   - NODE_FUNCTION_ALLOW_EXTERNAL=ajv retained for outside-sandbox
 #     scripts that docker-compose-exec in. Inside-Code-node schema
 #     validation uses code/json-schema-validator.js per D-3 / P-1.
 #
-# On first startup after expanding this file from bootstrap:
-#   docker compose down && docker compose up -d
-#   (community packages install on fresh container start)
+# Community nodes (Langfuse):
+#   Install via UI: Settings → Community Nodes → Install.
+#     - @langfuse/n8n-nodes-langfuse    (Prompt Management)
+#     - n8n-nodes-openai-langfuse       (tracing)
+#   n8n 2.17.7 does not honor N8N_COMMUNITY_PACKAGES env var (verified
+#   empirically 2026-04-24; see docs/agents/claude.md Phase 2 closure
+#   entry). Installations persist in ./n8n/n8n-data/.
 # ---------------------------------------------------------------------
 
 services:
@@ -42,10 +42,15 @@ services:
       # Inside-sandbox schema validation uses code/json-schema-validator.js.
       NODE_FUNCTION_ALLOW_EXTERNAL: "ajv"
 
-      # Community nodes installed automatically on first startup.
-      # Names per design plan §2.12. Verify at Phase 3 task 3.24 — if a
-      # package name is wrong, update here and restart.
-      N8N_COMMUNITY_PACKAGES: "rorubyy/n8n-nodes-openai-langfuse,@langfuse/n8n-nodes-langfuse"
+      # NOTE: Community nodes are installed via the n8n UI, not via env var.
+      # N8N_COMMUNITY_PACKAGES was attempted but is not processed by
+      # n8n 2.17.7 (no log entry, no install attempt). UI install path:
+      #   Settings → Community Nodes → Install a community node
+      # Install these two packages (verified on npm registry 2026-04-24):
+      #   - @langfuse/n8n-nodes-langfuse    (Langfuse Prompt Management)
+      #   - n8n-nodes-openai-langfuse       (Langfuse tracing; unscoped)
+      # Installation persists in ./n8n/n8n-data/ (bind-mounted volume) and
+      # survives container restarts. See Phase 3 task 3.24.
       # Surface secrets we need inside workflow HTTP Request / credentials
       # (n8n nodes read these via ${{ $env.VAR_NAME }} expressions)
       ALICLOUD_API_KEY: ${ALICLOUD_API_KEY}

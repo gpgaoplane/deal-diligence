@@ -2,7 +2,7 @@
 status: active
 type: project-scope
 owner: shared
-last-updated: 2026-04-24T02:30:00-04:00
+last-updated: 2026-04-24T15:00:00-04:00
 read-if: "you are any agent working on this project — this is the authoritative scope and locked-decisions doc"
 skip-if: "never on first session; re-read §5 and §5.10 before proposing changes to locked decisions"
 related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.md, .claude/memory/decisions.md]
@@ -237,7 +237,7 @@ Parinaz Sobhani is not a typical hiring manager. Build with her specifically in 
 | Embeddings | Alicloud text-embedding-v3 | Matches LLM provider for prototype |
 | Vector store | n8n Simple Vector Store (in-memory) | Zero-setup for prototype; Supabase pgvector for production |
 | Primary data store | Supabase (Postgres, hosted) | Real database, queryable, production-appropriate |
-| Observability | Langfuse Cloud via `rorubyy/n8n-nodes-openai-langfuse` community node | Only workable Langfuse integration for n8n as of April 2026 |
+| Observability | Langfuse Cloud via `n8n-nodes-openai-langfuse` community node | Only workable Langfuse integration for n8n as of April 2026 |
 | Prompt management | Langfuse Prompt Management (official n8n node) | Versioned specialist prompts with audit trail |
 | Human notification | Slack Free (via incoming webhook) | Industry standard for financial firms; no OAuth needed for webhook |
 | Repository | GitHub (`deal-diligence`) | Version-controlled workflow JSON + prompts + documentation |
@@ -818,7 +818,7 @@ The reply to Pari should briefly note:
 
 **Known risks to project completion:**
 
-1. **Langfuse community node quality** — `rorubyy/n8n-nodes-openai-langfuse` is community-maintained; if it fails, fallback is manual HTTP logging to Langfuse via HTTP Request node
+1. **Langfuse community node quality** — `n8n-nodes-openai-langfuse` is community-maintained; if it fails, fallback is manual HTTP logging to Langfuse via HTTP Request node
 2. **Qwen3.5-Plus token limits** — S-1 filings can be 300+ pages; chunking strategy must handle this (1000 tokens per chunk, retrieval-based approach rather than full-document inclusion)
 3. **Local n8n Docker setup friction** — Community node installation via env vars can be fragile; allow extra time for this in Phase 1
 4. **Time to record demo** — Budget 2 hours minimum for recording including retakes

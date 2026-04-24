@@ -2,7 +2,7 @@
 status: active
 type: design-plan
 owner: shared
-last-updated: 2026-04-24T03:00:00-04:00
+last-updated: 2026-04-24T15:00:00-04:00
 read-if: "you need component internals, data contracts, failure modes, or evaluation spec — this is the authoritative design for the build phases"
 skip-if: "your question is only about project scope (CONTEXT.md) or phase sequencing (2026-04-24-deal-diligence-implementation.md)"
 related: [CONTEXT.md, DESIGN.md, IMPLEMENTATION.md, 2026-04-24-deal-diligence-implementation.md, schemas/agent-output-schemas.json]
@@ -422,7 +422,7 @@ Transitions are UPDATE on `(run_id, deal_id)` composite; `(run_id, deal_id)` is 
 
 ### §2.12 — Observability (Langfuse)
 
-**Primary instrumentation path.** The Langfuse community node (`rorubyy/n8n-nodes-openai-langfuse`) wraps every LLM call, attaching automatic generation events with prompt, completion, tokens, latency, cost.
+**Primary instrumentation path.** The Langfuse community node (`n8n-nodes-openai-langfuse` — unscoped npm package; verified on registry 2026-04-24) wraps every LLM call, attaching automatic generation events with prompt, completion, tokens, latency, cost.
 
 **Session hierarchy:**
 
