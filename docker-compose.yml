@@ -1,19 +1,23 @@
-# docker-compose.yml — local n8n stack
+# docker-compose.yml — local n8n stack (Phase 2 task 2.4 FULL)
 # ---------------------------------------------------------------------
-# This is the BOOTSTRAP form (Phase 2 task 2.0b.pre). It is enough to
-# run spike 2.0b (ajv availability test). Task 2.4 expands this file
-# post-spike with full community-node wiring and volume mounts.
+# Full-feature form. Bootstrapped at task 2.0b.pre; expanded here at
+# task 2.4 post-spike per design plan §3.2 and CONTEXT.md §7.4.
 #
-# Current features:
+# Features:
 #   - n8n at localhost:5678 with basic auth
-#   - NODE_FUNCTION_ALLOW_EXTERNAL=ajv (so Code nodes can `require('ajv')`)
 #   - Persistent workflow data volume at ./n8n/n8n-data
 #   - Test-case docs mounted at /files (read-only) for Form Trigger uploads
+#   - Community nodes auto-installed on first startup:
+#     * rorubyy/n8n-nodes-openai-langfuse (Langfuse tracing)
+#     * @langfuse/n8n-nodes-langfuse (Langfuse Prompt Management)
+#     Names per design plan §2.12; verify at Phase 3 task 3.24.
+#   - NODE_FUNCTION_ALLOW_EXTERNAL=ajv retained for outside-sandbox
+#     scripts that docker-compose-exec in. Inside-Code-node schema
+#     validation uses code/json-schema-validator.js per D-3 / P-1.
 #
-# Pending additions in task 2.4 (post-spike 2.0b):
-#   - Community node install: n8n-nodes-openai-langfuse,
-#     @langfuse/n8n-nodes-langfuse (via N8N_COMMUNITY_PACKAGES env)
-#   - Additional n8n config (execution mode, timezone, etc.)
+# On first startup after expanding this file from bootstrap:
+#   docker compose down && docker compose up -d
+#   (community packages install on fresh container start)
 # ---------------------------------------------------------------------
 
 services:
@@ -32,8 +36,16 @@ services:
       N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
       N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-America/Toronto}
-      # Code node external module allowlist (load-bearing per design plan §3.2)
+      # Code node external module allowlist. Kept for outside-sandbox scripts
+      # that docker-compose-exec in; inside the Code node, ajv.compile() is
+      # blocked by the VM sandbox (see P-1 in pitfalls.md / D-3 in decisions.md).
+      # Inside-sandbox schema validation uses code/json-schema-validator.js.
       NODE_FUNCTION_ALLOW_EXTERNAL: "ajv"
+
+      # Community nodes installed automatically on first startup.
+      # Names per design plan §2.12. Verify at Phase 3 task 3.24 — if a
+      # package name is wrong, update here and restart.
+      N8N_COMMUNITY_PACKAGES: "rorubyy/n8n-nodes-openai-langfuse,@langfuse/n8n-nodes-langfuse"
       # Surface secrets we need inside workflow HTTP Request / credentials
       # (n8n nodes read these via ${{ $env.VAR_NAME }} expressions)
       ALICLOUD_API_KEY: ${ALICLOUD_API_KEY}

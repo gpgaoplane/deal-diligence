@@ -227,6 +227,74 @@ Missing / intentionally skipped:
 - Advisor pass on this audit — not called. This is mechanical cleanup; no structural or creative decision points. User can ask for an advisor second-opinion if desired.
 - The D-0 entry in `decisions.md` technically constitutes a row-3 (chose between alternatives) + row-4 (altered architecture) fan-out from Phase 2 closure; that was captured at the time. This audit's fixes don't reopen a decision point, so no new D-entry.
 
+## 2026-04-24T14:30:00-04:00 — Phase 2 closed (claude side): Scaffolding
+
+**Outcome.** All Phase 2 tasks assigned to claude are complete. Spike 2.0a passed at API level (strong positive, D-2 provisional at Variant A). Spike 2.0b surfaced a real incompatibility (ajv.compile() blocked by n8n sandbox); design plan §3.2 fallback invoked, hand-rolled JSON Schema validator written with 25/25 tests passing. Docker-compose, scripts, schemas, code skeletons, and all 7 prompt stubs are committed. Phase 3 can begin once Will completes tasks 2.13 (Supabase schema apply) and 2.Z (meta-eval fixtures).
+
+**Acceptance criteria met (implementation plan §4.3):**
+
+- [x] Repo structure matches design §2.3 / CONTEXT §6 — verified via `ls` of repo root + subdirectories
+- [x] `docker compose up` starts n8n without error — Will confirmed via successful ajv-spike execution during 2.0b
+- [x] n8n UI accessible with basic auth — Will confirmed
+- [x] Community nodes install config present (will verify at Phase 3 task 3.24) — `N8N_COMMUNITY_PACKAGES` env var added to docker-compose.yml
+- [x] All 6 stub prompt files exist (7 with Variant A+B Contradiction split) — `ls prompts/*.md | wc -l` → 7
+- [x] JSON Schema file validates — `python -c "import json; json.load(open('schemas/agent-output-schemas.json'))"` → valid; 25 `$defs` including all 7 agent outputs
+- [x] Hand-rolled validator tests pass — `node --test code/test/json-schema-validator.test.js` → 25/25
+- [x] INDEX aligned — `npx @gpgaoplane/multi-agent-collab check` → OK
+- [x] D-2 and D-3 recorded — `grep -E '^## D-[23]' .claude/memory/decisions.md | wc -l` → 2
+- [ ] **Supabase `deal_memos` table exists** — pending Will task 2.13
+- [ ] **Meta-eval fixtures exist and validate against memo schema** — pending Will task 2.Z
+
+**Decisions landed.** D-2 (Contradiction Variant A provisional), D-3 (hand-rolled validator). D-4 (Langfuse path) deferred to Phase 3 task 3.24.
+
+**Invariants touched.** None — I-1 through I-9 preserved. I-9 was added earlier (post-credential-sanity-check) and informed Phase 3 spike 3.4's concern about `reasoning_content` parsing.
+
+**New pitfall.** P-1 — n8n Code node sandbox blocks ajv.compile(). Documented with regression-test directive.
+
+**Watch out:**
+- **D-2 confirmation at Phase 3 task 3.6.** Variant A (tool-use) is provisional. If n8n's AI Agent node handles qwen3.5-plus tool-use poorly (reasoning_content concatenation, response parsing), flip to Variant B (`prompts/contradiction-agent.stuffed.md` already committed). Target rework: ~30 min.
+- **Community node package names are best-guess.** `rorubyy/n8n-nodes-openai-langfuse` may or may not be the exact npm registry name. Phase 3 task 3.24 verifies; update `docker-compose.yml` if wrong.
+- **`docker-compose.yml` changed post-bootstrap.** Will must `docker compose down && docker compose up -d` to pick up `N8N_COMMUNITY_PACKAGES` (installs at fresh container start).
+- **Hand-rolled validator is paste-friendly.** Phase 3 task 3.12 (schema-validation-with-retry machinery) will either create a validate sub-workflow OR paste the validator source into each agent's schema-check Code node. Decision made at wire-up time.
+- **`NODE_FUNCTION_ALLOW_EXTERNAL=ajv`** is retained in docker-compose.yml despite D-3 — harmless; benefits outside-sandbox scripts that docker-compose-exec in.
+- **Meta-eval authorship requires procedural separation.** Will authors both fixtures (2.Z) based on investment-professional judgment WITHOUT reading DESIGN.md §3.10 / design plan §4 six-criteria list first. Bad fixture must include at least one off-criteria defect. This is load-bearing for meta-eval credibility per Pari's evaluation lens.
+
+**Time spent.** Rough estimate 2.5h (directory structure, docker-compose bootstrap + expansion, 4 scripts, .env.example, supabase-schema.sql, agent-output-schemas.json with 25 $defs, red-flag-detector.js skeleton, sagard-portfolio.json, 7 prompt stubs, Qwen tool-use API test, ajv spike diagnosis, hand-rolled validator + 25 tests, decisions/pitfall/state/STATUS updates). Implementation plan §1 budgeted 2-3h for Phase 2; came in at the low end.
+
+### Task Receipt
+Updates fanned out this phase:
+
+**Scaffolding artifacts (18 files committed in b3f9b46):**
+- `docker-compose.yml` ............................... bootstrap + expansion to full form
+- `.env.example` ..................................... config template
+- `scripts/{up,down,import-workflow,export-workflow}.sh` all chmod +x
+- `schemas/supabase-schema.sql` ...................... with `(run_id, deal_id)` unique index
+- `schemas/agent-output-schemas.json` ................ 25 `$defs`, 7 agent outputs, draft-07 valid
+- `code/red-flag-detector.js` ........................ skeleton with constants + regex patterns
+- `code/sagard-portfolio.json` ....................... 5 portfolio companies, 4 pillars, 4 anti-patterns
+- `prompts/*.md` (7 files) ........................... 7-part checklist structure, Phase-3 placeholders
+
+**Post-spike fallback (5 files committed in fd7193b):**
+- `code/json-schema-validator.js` .................... hand-rolled draft-07 validator, ~210 LOC
+- `code/test/json-schema-validator.test.js` .......... 25 tests, all passing, P-1 regression included
+- `.claude/memory/decisions.md` ...................... D-2 + D-3 appended
+- `.claude/memory/pitfalls.md` ....................... P-1 added (first project pitfall)
+
+**Closure artifacts (this commit):**
+- `docker-compose.yml` ............................... task 2.4 completion (community-nodes env var)
+- `docs/agents/claude.md` ............................ this entry
+- `docs/STATUS.md` ................................... current-phase / done / up-next refreshed
+- `.claude/memory/state.md` .......................... branch, active task, next steps, watermark
+- `.collab/INDEX.md` ................................. timestamps refreshed for changed files
+
+Missing / intentionally skipped:
+- `.claude/memory/context.md` — no new invariants surfaced during scaffolding; I-1…I-9 unchanged.
+- Supabase schema apply (task 2.13) — Will's task; blocking Phase 3 task 3.13.
+- Meta-eval fixtures (task 2.Z) — Will's task; blocking Phase 4 task 4.16.
+- n8n instance restart (docker compose down+up) — Will's task; needed to pick up community-node install from expanded docker-compose.yml.
+- In-n8n confirmation of Qwen tool-use (Spike 2.0a proper) — deferred to Phase 3 task 3.6; API-level evidence deemed sufficient for provisional D-2.
+- Helper scripts (3.18w/3.19w/3.20w: run-meta-eval.js, validate-memo-citations.js, validate-fixture.js) — Phase 3 tasks; not Phase 2 scope.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,

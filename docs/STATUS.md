@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-24T03:30:00-04:00
+last-updated: 2026-04-24T14:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -14,69 +14,70 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:current-phase:start -->
 ## Current phase
 
-**Phase 0 — Planning Lock (complete)** + **Framework Migration (complete)** + **Refined Design + Implementation Plans (complete)**
+**Phase 2 — Scaffolding (claude side complete; pending Will's 2.13 + 2.Z).**
 
-All planning artifacts are committed:
-- `CONTEXT.md` — scope + locked decisions (active)
-- `DESIGN.md` — v1 baseline (**reference-only** as of 2026-04-24T03:30)
-- `IMPLEMENTATION.md` — v1 baseline (**reference-only** as of 2026-04-24T03:30)
-- `docs/plans/2026-04-24-deal-diligence-design.md` — authoritative design plan (active)
-- `docs/plans/2026-04-24-deal-diligence-implementation.md` — authoritative implementation plan (active)
+Claude Code finished all scaffolding tasks assigned to it — directory structure, docker-compose (full), scripts, schemas, code skeletons, and all 7 prompt stubs. The ajv spike (2.0b) surfaced a sandbox incompatibility; design plan §3.2 fallback was invoked — hand-rolled JSON Schema validator written with 25/25 tests passing. Contradiction topology D-2 provisional at Variant A (tool-use); API-level Qwen tool-use spike was strong positive.
 
-Next step: Will begins **Phase 1 — Environment Setup** per implementation plan §3.
+Phase 3 gated on Will completing two remaining Phase 2 tasks.
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->
 ## Done
 
-- Architecture v2 locked in `CONTEXT.md` (switched to local n8n Docker mode)
-- `DESIGN.md` v1 drafted (design philosophy, topology, data contracts, frameworks) — now reference-only
-- `IMPLEMENTATION.md` v1 drafted (7 phases with tasks, owners, acceptance gates) — now reference-only
-- `multi-agent-collab` framework bootstrapped (claude + codex; gemini skipped)
-- Framework adopted: `.collab/`, per-agent memory, work logs, routing matrix, Receipt protocol
-- Durable invariants seeded in `.claude/memory/context.md` (I-1…I-7)
-- Locked decisions cross-referenced in `.claude/memory/decisions.md` (D-1 + CONTEXT §5.10 refs)
-- Phase 1 residual gaps fixed (broken `.progress-log.md` refs; I-7 overclaim; §11 repositioned)
-- **Refined design plan** at `docs/plans/2026-04-24-deal-diligence-design.md` covering: per-component contracts with full JSON Schema refs, section-targeted retrieval + union pass, two-layer citation enforcement (format + validity), `ajv` primary + hand-rolled fallback, retry-and-failure chain-effect spec, meta-evaluation with authorship-separated fixtures, cost model + scaling bottlenecks, manual Langfuse span for RFD, ~35 RFD unit tests, canonical source-name / citation formats
-- **Refined implementation plan** at `docs/plans/2026-04-24-deal-diligence-implementation.md` covering: routing-matrix row mappings per task, verification commands per acceptance criterion, parameterized phase-closure Receipt template, spikes 2.0a/2.0b with dependency sequencing, iteration caps (≤3/prompt), meta-eval discrimination gate (≥20), Codex engagement protocol with numbered triggers, framework-agent-name ownership, helper-script tasks (3.18w–3.20w)
-- Two advisor passes (skeleton + full draft); surgical fixes applied for citation-marker ordering, chain-effect schema-permits-empty invariant, meta-eval procedural separation, Codex trigger-by-prompt-type, task-number collision
+- Planning: CONTEXT.md, DESIGN.md, IMPLEMENTATION.md (originals reference-only)
+- Framework: multi-agent-collab v0.3.0 bootstrapped, invariants I-1…I-9 seeded, decisions D-0…D-3 recorded, pitfall P-1 recorded
+- Refined plans at `docs/plans/2026-04-24-deal-diligence-{design,implementation}.md`
+- Phase 1: all credentials validated (Alicloud LLM + embedding, Supabase both keys, Langfuse, Slack webhook); test-case docs downloaded
+- Phase 2 (claude side):
+  - 2.0a (API-level Qwen tool-use spike) ✓ — strong positive
+  - 2.0b.pre minimal docker-compose ✓
+  - 2.0b ajv spike ✓ — D-3 resolved: hand-rolled validator
+  - 2.1 directory structure ✓
+  - 2.2 .gitignore ✓
+  - 2.3 .env.example ✓
+  - 2.4 docker-compose.yml expanded (community nodes) ✓
+  - 2.5 scripts/{up,down,import-workflow,export-workflow}.sh ✓
+  - 2.6 README ✓
+  - 2.8 all 7 prompt stubs ✓
+  - 2.9 schemas/supabase-schema.sql ✓
+  - 2.Y schemas/agent-output-schemas.json (25 $defs, 7 agents) ✓
+  - 2.10 code/red-flag-detector.js skeleton ✓
+  - 2.11 code/sagard-portfolio.json ✓
+  - code/json-schema-validator.js + 25-test suite (all passing) ✓
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->
 ## In progress
 
-Nothing in progress — Phase 2 (of framework migration + refined plans) is committed and closed. Ready for **implementation Phase 1** (Environment Setup) whenever Will begins.
+Nothing in progress on claude's side. Awaiting Will's pending Phase 2 tasks.
 <!-- section:in-progress:end -->
 
 <!-- section:up-next:start -->
 ## Up next
 
-**Phase 1 — Environment Setup** (owner: Will, ~2–3h). Per implementation plan §3:
+**Will (Phase 2 finish):**
+1. `docker compose down && docker compose up -d` (pick up community-node install from expanded docker-compose.yml)
+2. **Task 2.13** — apply `schemas/supabase-schema.sql` via Supabase SQL Editor. Verify: `SELECT count(*) FROM deal_memos;` returns 0.
+3. **Task 2.Z** — author `test-cases/meta-eval/intentionally-bad-memo.json` and `intentionally-good-memo.json`. ~45 min. Procedural separation: do NOT read DESIGN.md §3.10 / design plan §4 six-criteria before writing. Bad fixture must include at least one off-criteria defect.
 
-- 1.1 Docker Desktop verified
-- 1.2 Supabase project created, keys noted
-- 1.3 Langfuse Cloud project `sagard-deal-diligence` created
-- 1.4 Slack workspace + `#investment-team` webhook
-- 1.5 Alicloud DashScope credits verified
-- 1.6 CoreWeave test-case docs downloaded
-- 1.7 Cerebras test-case docs downloaded
-- 1.8 `.env` populated locally (never committed)
-
-**Phase 2 — Scaffolding** (claude + Will, ~2–3h). New spikes in the refined plan:
-- 2.0a — Qwen3.5-Plus tool-use spike → D-2
-- 2.0b.pre + 2.0b — `ajv` availability spike → D-3
-- 2.Y — write `schemas/agent-output-schemas.json` (first concrete JSON Schema work)
-- 2.Z — Will authors meta-eval fixtures (investment-professional judgment, procedurally separated from Evaluator criteria)
+**Claude Code (Phase 3 start, after Will's tasks):**
+1. Task 3.1 — Implement Form Trigger node (company name + 2-4 PDF uploads) per design plan §2.1.
+2. Task 3.2 — Implement Coordinator (Set node emitting run_id, deal_id, source_manifest, timestamps) per design plan §2.2.
+3. Task 3.3 — Document Ingestion pipeline (Extract → Text Splitter → Embeddings → Simple Vector Store).
+4. Then workflow track (3.4–3.17w) and prompt track (3.P1–3.P8) parallel.
 <!-- section:up-next:end -->
 
 <!-- section:test-results:start -->
 ## Test results
 
-n/a — no runnable workflow yet. Framework audit (`npx @gpgaoplane/multi-agent-collab check`) passes; this is the only check applicable pre-Phase-3.
+- `code/test/json-schema-validator.test.js` — **25/25 pass** (includes P-1 regression: validator source contains no `new Function` or `eval`).
+- `npx @gpgaoplane/multi-agent-collab check` — **OK**, INDEX and filesystem aligned.
+- Credential sanity-checks (live calls to all 4 services) — **all pass**.
+- Phase 3+ end-to-end run tests: not yet applicable.
 <!-- section:test-results:end -->
 
 <!-- section:branch:start -->
 ## Branch
 
-`main` — planning work and framework migration landing directly. Feature branches expected once Phase 3 (Core Build) begins.
+`main` — all Phase 2 work landing directly. Feature branches expected once Phase 3 task 3.8 (Red Flag Detector JS logic, where tests drive real TDD) begins.
 <!-- section:branch:end -->
