@@ -1,0 +1,145 @@
+{
+    "executive_summary": "CoreWeave is an AI infrastructure provider offering GPU-as-a-service, experiencing explosive revenue growth driven primarily by Microsoft. Despite strong demand tailwinds, the company exhibits extreme customer concentration (~77% from two customers, ~62% from Microsoft), material weaknesses in internal controls, and a highly leveraged capital structure. Supply-side dependency on Nvidia and the risk of hyperscaler disintermediation materially threaten long-term viability. Given the combination of structural risks and limited visibility into profitability, the opportunity warrants caution. Recommendation is to pass unless critical diligence questions materially de-risk concentration and sustainability.",
+    "recommendation": "pass",
+    "recommendation_rationale": "While growth is exceptional, the business is structurally fragile due to customer concentration, reliance on Microsoft, and supply dependency on Nvidia. Material weaknesses and lack of profitability visibility further reduce confidence. The risk-adjusted profile does not meet IC standards without substantial de-risking.",
+    "company_snapshot": {
+        "description": "Provider of GPU-based cloud infrastructure optimized for AI and ML workloads",
+        "stage": "IPO",
+        "sector": "AI infrastructure",
+        "geography": "United States"
+    },
+    "investment_thesis": "CoreWeave is positioned to benefit from accelerating demand for AI compute infrastructure, leveraging specialized GPU clusters to serve high-growth AI workloads. Its early positioning and relationships with major customers like Microsoft provide near-term revenue visibility. However, the durability of this positioning is contingent on maintaining supply access and customer dependence not deteriorating.",
+    "key_strengths": [
+        {
+            "strength": "Explosive revenue growth driven by AI demand",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. 45"
+            ],
+            "confidence": 0.85
+        },
+        {
+            "strength": "Strategic relationship with Microsoft providing large-scale demand",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. ~23"
+            ],
+            "confidence": 0.8
+        },
+        {
+            "strength": "Specialized infrastructure optimized for GPU workloads",
+            "severity": "MEDIUM",
+            "sources": [
+                "CoreWeave Analyst Report p. ~5"
+            ],
+            "confidence": 0.75
+        }
+    ],
+    "key_risks": [
+        {
+            "risk": "Extreme customer concentration (~77% revenue from two customers, ~62% from Microsoft)",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. 23"
+            ],
+            "confidence": 0.95
+        },
+        {
+            "risk": "Material weaknesses in internal controls over financial reporting",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing Risk Factors p. 41"
+            ],
+            "confidence": 0.9
+        },
+        {
+            "risk": "High leverage with debt-heavy capital structure",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. ~67"
+            ],
+            "confidence": 0.85
+        },
+        {
+            "risk": "Dependence on Nvidia for GPU supply",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing Risk Factors p. 52"
+            ],
+            "confidence": 0.9
+        },
+        {
+            "risk": "Hyperscaler disintermediation risk as Microsoft builds internal capacity",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave Analyst Report p. ~8"
+            ],
+            "confidence": 0.85
+        }
+    ],
+    "contradictions": [
+        {
+            "claim": "Revenue growth suggests scalability but is driven by a single dominant customer",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. 23"
+            ]
+        },
+        {
+            "claim": "Positioned as infrastructure provider but lacks control over core hardware supply",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing Risk Factors p. 52"
+            ]
+        }
+    ],
+    "missing_information": [
+        {
+            "item": "Detailed unit economics and path to profitability",
+            "importance": "HIGH"
+        },
+        {
+            "item": "Contract terms and renewal risk with Microsoft",
+            "importance": "HIGH"
+        },
+        {
+            "item": "Long-term GPU supply agreements with Nvidia",
+            "importance": "HIGH"
+        },
+        {
+            "item": "Capex requirements to sustain growth",
+            "importance": "MEDIUM"
+        }
+    ],
+    "red_flags": [
+        {
+            "flag_type": "customer_concentration_extreme",
+            "severity": "HIGH"
+        },
+        {
+            "flag_type": "internal_control_weakness",
+            "severity": "HIGH"
+        },
+        {
+            "flag_type": "leverage_high",
+            "severity": "HIGH"
+        }
+    ],
+    "portfolio_fit": {
+        "overall_alignment": "MEDIUM",
+        "rationale": "While AI infrastructure aligns with thematic focus, risk profile and lack of diversification reduce attractiveness for institutional portfolios."
+    },
+    "open_diligence_questions": [
+        "What are the termination clauses and duration of Microsoft contracts?",
+        "Can CoreWeave secure diversified customer base in next 2–3 years?",
+        "What are long-term GPU supply guarantees from Nvidia?",
+        "What is the realistic timeline to profitability?"
+    ],
+    "confidence_scores": {
+        "overall": 0.65,
+        "financial_analysis": 0.55,
+        "competitive_positioning": 0.7,
+        "management_assessment": 0.6,
+        "portfolio_fit": 0.65
+    }
+}

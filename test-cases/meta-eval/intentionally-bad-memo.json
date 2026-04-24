@@ -1,0 +1,88 @@
+{
+    "executive_summary": "CoreWeave is a rapidly growing AI infrastructure company benefiting from strong demand across a diversified enterprise customer base. The company has demonstrated impressive scalability and is well positioned to capture long-term AI tailwinds. While there are some operational considerations, overall the business appears resilient and high-growth. The opportunity merits further diligence given its strong positioning.",
+    "recommendation": "advance_to_deep_diligence",
+    "recommendation_rationale": "CoreWeave’s exceptional growth and strategic positioning in AI infrastructure outweigh manageable risks, making it an attractive opportunity to explore further.",
+    "company_snapshot": {
+        "description": "AI cloud infrastructure provider offering GPU-based compute services",
+        "stage": "IPO",
+        "sector": "AI infrastructure",
+        "geography": "United States"
+    },
+    "investment_thesis": "CoreWeave is well positioned to benefit from accelerating AI adoption trends, with strong partnerships and scalable infrastructure enabling continued growth. The company’s exposure to multiple enterprise customers provides diversification and stability.",
+    "key_strengths": [
+        {
+            "strength": "Highly diversified customer base across enterprise segments",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. 23"
+            ],
+            "confidence": 0.9
+        },
+        {
+            "strength": "Strong revenue growth driven by AI demand",
+            "severity": "HIGH",
+            "sources": [
+                "CoreWeave S-1 Filing p. 45"
+            ],
+            "confidence": 0.95
+        }
+    ],
+    "key_risks": [
+        {
+            "risk": "Some customer concentration risk",
+            "severity": "LOW",
+            "sources": [
+                "CoreWeave S-1 Filing p. 23"
+            ],
+            "confidence": 0.8
+        },
+        {
+            "risk": "Dependence on GPU suppliers like Nvidia",
+            "severity": "MEDIUM",
+            "sources": [
+                "CoreWeave S-1 Filing Risk Factors p. 52"
+            ],
+            "confidence": 0.85
+        }
+    ],
+    "contradictions": [
+        {
+            "claim": "Business is diversified but also has customer concentration risk",
+            "severity": "MEDIUM",
+            "sources": [
+                "CoreWeave S-1 Filing p. 23"
+            ]
+        }
+    ],
+    "missing_information": [
+        {
+            "item": "Additional financial details",
+            "importance": "LOW"
+        },
+        {
+            "item": "More customer information",
+            "importance": "LOW"
+        }
+    ],
+    "red_flags": [
+        {
+            "flag_type": "customer_concentration",
+            "severity": "LOW"
+        }
+    ],
+    "portfolio_fit": {
+        "overall_alignment": "HIGH",
+        "rationale": "Strong alignment with AI investment themes and growth opportunities."
+    },
+    "open_diligence_questions": [
+        "What is the growth outlook?",
+        "How scalable is the infrastructure?"
+    ],
+    "confidence_scores": {
+        "overall": 0.95,
+        "financial_analysis": 0.9,
+        "competitive_positioning": 0.95,
+        "management_assessment": 0.9,
+        "portfolio_fit": 0.95
+    }
+}
