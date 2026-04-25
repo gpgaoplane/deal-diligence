@@ -14,11 +14,9 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:current-phase:start -->
 ## Current phase
 
-**Phase 3 (Core Build) is in progress. Extraction (`3.5`) and Contradiction (`3.6`) are now live-verified on the CoreWeave test pair, the active chat model is `qwen3-max-2026-01-23`, and the project is ready to move to `3.7` Gap Analysis.**
+**Phase 3 (Core Build) is COMPLETE.** The workflow runs end-to-end on CoreWeave: Form Trigger → ingestion → Extraction → Contradiction → Gap Analysis → Red Flag Detector → Portfolio Fit → Memo Generation → Citation Validity → Evaluator → Supabase persistence → Slack notification → Langfuse trace, with a parallel Error Trigger sub-flow handling failures. 52 total nodes. Two successful CoreWeave runs verified the chain (58/60 evaluator score, complete_high_confidence routing, 17/17 citations valid, Supabase row landed, Slack message correct, Memo institutional-grade with stage-aware risk calibration). Active chat model: `qwen3-max-2026-01-23`.
 
-All environment setup, scaffolding, spikes, schemas, prompts, validators, test-case documents (8 PDFs across both deals), and meta-eval fixtures are in place. The live workflow now includes the Form Trigger, Coordinator, per-document split, PDF extraction, text chunking, embedding request, embedding extraction, aggregate retrieval store, retrieval-query preparation, query embedding, chunk ranking, extraction-context aggregation, Extraction request build, Extraction LLM call, and Extraction response parse stages.
-
-The remaining Core Build work now continues from Gap Analysis through Red Flag Detector integration, Portfolio Fit, Citation Validity, Memo Generation, Evaluator, and downstream persistence / notification / observability nodes.
+**Phase 4 (CoreWeave dev iteration → meta-eval discrimination ≥ 20)** is the next phase. The `scripts/run-meta-eval.js` harness is already authored; needs upstream fixture pairs supplied via CLI flags for full criteria-2/3/4 calibration of the Evaluator.
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->

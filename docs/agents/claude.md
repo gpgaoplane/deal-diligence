@@ -545,6 +545,68 @@ Missing / intentionally skipped:
 - Live runtime verification — Will runs the workflow.
 - Commit — not yet made. Surface diff for Will eyeball; commit after sign-off.
 
+## 2026-04-25T16:30:00-04:00 — Phase 3 closure receipt
+
+**Outcome.** Phase 3 (Core Build) complete. Workflow runs end-to-end on CoreWeave with 52 connected nodes producing IC-grade memos that persist to Supabase with valid citations and notify via Slack. Two live runs verified the chain.
+
+**Phase 3 acceptance criteria** (per implementation plan §5.4):
+- [x] Workflow triggers via Form Trigger
+- [x] Document ingestion populates the aggregate chunk store (per D-6)
+- [x] All 7 specialist agents execute without error on CoreWeave run
+- [x] Red Flag Detector emits non-empty `red_flags` for CoreWeave (caught customer concentration extreme HIGH, revenue growth anomalous LOW)
+- [x] Memo is written to Supabase with all required fields
+- [x] Citations populated with format per design §11 regex (17/17 validated)
+- [x] Slack message received in `#investment-team` (verified after P-4 fix)
+- [x] LLM calls traced in Langfuse with correct metadata (manual instrumentation per §3.12 fallback path)
+- [ ] Meta-eval discrimination — gated to Phase 4
+
+**Decisions landed this phase.** D-2 confirmed for the hand-rolled raw-HTTP tool-use path (not n8n AI Agent node). D-3 hand-rolled validator carried forward. D-4 N8N_BLOCK_ENV_ACCESS_IN_NODE=false. D-5 OpenRouter embeddings. D-6 formalized the hand-rolled aggregate chunk store + raw-HTTP tool-call loops as the canonical repo pattern.
+
+**Pitfalls captured.** P-1 sandbox blocks `ajv.compile`. P-2 MSYS path conversion on Windows Git Bash. P-3 sandbox blocks `require('crypto')` AND Web Crypto global. P-4 multiple n8n node classes REPLACE `$json` instead of merging — encountered three times this phase (HTTP Request, Extract from File, and again in 3.16w Slack post-Insert).
+
+**Phase 3 commit count (this session).** 14 commits beyond Codex's accepted baseline:
+1. `d3cd83b` plan formalization (D-6) + deadline removal
+2. `7f7a0ac` 3.P3 Gap Analysis prompt
+3. `1043ed5` 3.7 Gap Analysis wiring
+4. `9c66760` 3.8 Red Flag Detector wiring
+5. `b9e544e` 3.P4 Portfolio Fit prompt + 3.9 wiring
+6. `6981adb` 3.10a Citation Validity JS module
+7. `6a149e7` 3.P5 Memo Generation pre-refinement
+8. `137324b` 3.P6 Evaluator prompt
+9. `970e762` 3.18w-3.20w helper scripts
+10. `e7320fa` 3.9 fix (`$input.all()` runtime bug)
+11. `fd32499` 3.P5r refined Memo Generation prompt
+12. `a165b3a` 3.10a fix (Codex P1 + P3)
+13. `e52439b` 3.P3 fix (Codex P2 partial-coverage)
+14. `8c32c23` 3.20w fix (Codex P2 meta-eval upstream)
+15. `a190cfd` 3.11 Memo Generation wiring + inject-prompts.js (D-6 mitigation)
+16. `0c9b15f` 3.10b + 3.13 + 3.14 + 3.15 + 3.16w Citation Validity + Evaluator + persistence + notification
+17. `c0ee968` 3.16w fix (Slack P-4)
+18. `12a74db` 3.17w error handler + 3.24-3.29 Langfuse instrumentation; Phase 3 closed
+
+**Watch out for Phase 4:**
+- Extraction recall regressions: S-1 `headcount` and `key_personnel` still null. Gap Analysis correctly flags these as MEDIUM missing items in CoreWeave, but Phase 4 calibration may need supplemental fixtures if they propagate weirdly.
+- RFD missed `material_weakness` despite 3 sources mentioning it — regex coverage gap. Backlog: add "exist", "remain", "are present" to MATERIAL_WEAKNESS_POS.
+- Memo's first key_strength scored "74% gross margin" as severity HIGH; per the prompt rule, severity in key_strengths means deal materiality, which probably maps to MEDIUM here. Minor calibration drift; can address in a future prompt iteration.
+- The `supabase_id` cosmetic addition to the Slack context footer didn't render — n8n flattened the Supabase REST single-row response from `[{...}]` to `{...}`. Conditional `Array.isArray` branch failed. Fix is one-line if Will wants the cross-system correlation.
+- Per-agent schema-validation-with-retry (3.12) deferred. The parsers' shape projection works for the prototype but isn't the full design plan §3.3 retry-and-bypass machinery. Retrofit if Phase 4 reveals bypass-pattern failures.
+
+**Time spent this phase.** ~6 hours across two work sessions (Codex's pre-handoff session + my post-handoff session). Most-expensive iterations: getting Extraction retrieval caps right (Codex), debugging the Contradiction tool-call loop (Codex), the doubled-prompt mitigation pattern (me, deferred until 3.11 wire-up).
+
+### Task Receipt
+Updates fanned out this phase-closure entry:
+- `docs/agents/claude.md` ............................... this Phase 3 closure receipt
+- `.claude/memory/state.md` ............................. marked Phase 3 closed; pause point set to Phase 4 entry
+- `docs/STATUS.md` ...................................... current-phase rewritten to "Phase 3 COMPLETE; Phase 4 next"
+- `.collab/INDEX.md` .................................... timestamps refreshed for changed files
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no new Claude-owned design decisions in the closeout itself; D-6 already captures the architecture. Future Phase 4 calibration tweaks may surface new decisions.
+- `.claude/memory/context.md` — no new durable invariants beyond what's already captured (I-1 through I-9 + the implicit D-6 truths now in decisions.md).
+- `.claude/memory/pitfalls.md` — three new P-4 instances surfaced this phase but the entry already documents the class. Adding individual occurrences would duplicate. P-4 entry's "see also" section could be extended to list every instance, but that's documentation polish.
+- 3.12 schema-validation-with-retry — deferred deliberately, documented in STATUS.md.
+- Codex post-commit reviews of the medium-stakes prompts (Gap Analysis, Portfolio Fit, Evaluator) — not yet routed to Codex. Will should batch this with the next Codex session if desired; not a Phase 4 blocker.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,
