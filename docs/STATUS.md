@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T09:45:00-04:00
+last-updated: 2026-04-25T10:00:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -76,6 +76,7 @@ The remaining Core Build work now continues from Gap Analysis through Red Flag D
 - Project deadline framing removed across `docs/STATUS.md`, `README.md`, `AI_AGENTS.md`, `CONTEXT.md`, and `docs/plans/2026-04-24-deal-diligence-implementation.md`. Original 2026-04-24 take-home deadline has passed; project continues without an active deadline.
 - 3.P3 Gap Analysis prompt drafted (`prompts/gap-analysis-agent.md` upgraded from Phase 2 stub to Phase 3 draft following the 7-part convention; Institutional LP Diligence Checklist + stage-aware importance calibration + three-way coverage rule + concrete schema-shaped example). Awaiting Codex post-commit review per project-conventions §10 trigger 1.
 - 3.7 Gap Analysis specialist wired into `n8n/workflow.json` — 6 new nodes (Prepare Gap Analysis Inputs → Embed Gap Analysis Query → Rank Gap Analysis Chunks → Build Gap Analysis Request → Call Gap Analysis Agent → Parse Gap Analysis Response) appended after Parse Contradiction Response. Workflow now has 30 connected nodes from Form Trigger through Parse Gap Analysis Response. JSON valid. `versionId: phase3-session2-v7`. Pending live runtime verification.
+- 3.8 Red Flag Detector wired as a single Code node after Parse Gap Analysis Response. Pastes `code/red-flag-detector.js` (minus CommonJS exports) inline; reconstructs per-document raw text from the aggregate chunk store; invokes `detectFlags()`; emits `red_flag_detector_output` with `deterministic: true` on every flag (per I-2). Workflow now has 31 connected nodes. `versionId: phase3-session2-v8`.
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->

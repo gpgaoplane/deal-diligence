@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T09:45:00-04:00
+last-updated: 2026-04-25T10:00:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,8 +11,8 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.7` Gap Analysis wired into `n8n/workflow.json` — 6 new nodes (Prepare Gap Analysis Inputs → Embed Gap Analysis Query → Rank Gap Analysis Chunks → Build Gap Analysis Request → Call Gap Analysis Agent → Parse Gap Analysis Response) appended after `Parse Contradiction Response`. Workflow now has 30 connected nodes from `Form Trigger` through `Parse Gap Analysis Response`. JSON valid. `versionId: phase3-session2-v7`. Pending live runtime verification.
-**Pause point:** Will's eyeball + live runtime verification on CoreWeave run. Then 3.8 (Red Flag Detector integration).
+**Active task:** `3.8` Red Flag Detector wired as a single Code node after `Parse Gap Analysis Response`. Pastes `code/red-flag-detector.js` (minus CommonJS exports) inline + reconstructs per-document raw text from the aggregate chunk store + invokes `detectFlags()`. Workflow now has 31 connected nodes. `versionId: phase3-session2-v8`. Per Will's direction, executing the rest of Phase 3 sequentially without per-step runtime verification; Will runs the integration test at a checkpoint of his choosing.
+**Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->
 
