@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T10:25:00-04:00
+last-updated: 2026-04-25T10:35:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.10a` Citation Validity Check JS module authored at `code/citation-validity.js` with smoke-tested entrypoint `validateCitations(memo, sourceManifest)`. Wiring deferred — the node belongs between Memo Generation and Evaluator, but Memo Gen (3.11) is gated on 3.P5 Claude Chat refinement. Will bundle wiring with 3.11 commit. Workflow still at 34 nodes / `versionId: phase3-session2-v9` (no workflow change this commit).
+**Active task:** `3.P5` Memo Generation prompt drafted as **pre-refinement** at `prompts/memo-generation-agent.md`. HIGH-stakes per project-conventions §3 — Will must send to Claude Chat for refinement (task 3.P5r) before wiring (task 3.11). Codex review per §10 trigger 1 should happen BEFORE Claude Chat (high-stakes ordering). Continuing forward progress on non-blocked tracks (3.P6 Evaluator prompt, 3.12 schema retry, helper scripts) while Memo Gen waits.
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->
