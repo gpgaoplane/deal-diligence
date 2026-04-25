@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-25T09:30:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,14 +11,14 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** Picked up baton from Codex. Phase 3 task `3.P3` (Gap Analysis prompt draft) is the next concrete unit of work. After draft, Codex post-commit review per §10 trigger 1, then `3.7` wiring.
-**Pause point:** Awaiting Will's go-ahead to begin drafting Gap Analysis prompt (or alternative direction).
+**Active task:** `3.P3` Gap Analysis prompt drafted at `prompts/gap-analysis-agent.md` (replaced the Phase 2 stub with a Phase 3 draft following the 7-part convention). Awaiting Codex post-commit review per project-conventions §10 trigger 1.
+**Pause point:** Will's eyeball + Codex review. Then `3.7` wiring (workflow nodes after `Parse Contradiction Response`).
 **Blockers:** None.
 <!-- section:current-state:end -->
 
 <!-- section:next-steps:start -->
-1. **Task 3.P3** — Draft Gap Analysis system prompt by filling in the `[PHASE-3]` placeholders in `prompts/gap-analysis-agent.md`. Not high-stakes per design plan — no mandatory Claude Chat refinement; Codex post-commit review only.
-2. **Task 3.7** — Wire Gap Analysis specialist into `n8n/workflow.json` after `Parse Contradiction Response`. Input: aggregated Extraction outputs + Contradiction output + union retrieval chunks. Output: `GapAnalysisOutput` (`missing_information[]`).
+1. **Codex post-commit review of 3.P3** per project-conventions §10 trigger 1.
+2. **Task 3.7** — Wire Gap Analysis specialist into `n8n/workflow.json` after `Parse Contradiction Response`. Input: aggregated Extraction outputs + Contradiction output + union retrieval chunks. Output: `GapAnalysisOutput` (`missing_information[]`). The wired path will follow the D-6 pattern: aggregate inputs in a Code node → Build Gap Analysis Request → Call Gap Analysis Agent (raw HTTP chat-completions) → Parse Gap Analysis Response with schema-shape projection.
 3. **Tasks 3.8 → 3.13** — Red Flag Detector integration (deterministic JS, I-2), Portfolio Fit, Citation Validity, Memo Generation (high-stakes; Claude Chat refinement), schema-validation-with-retry machinery, Evaluator.
 4. **Tasks 3.14 → 3.17w** — routing IF, Supabase write, Slack, error handler.
 5. **Tasks 3.18w / 3.19w / 3.20w** — helper scripts (run-meta-eval.js, validate-memo-citations.js, validate-fixture.js).

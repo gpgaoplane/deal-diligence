@@ -451,6 +451,54 @@ Missing / intentionally skipped:
 - Advisor pass on the architecture formalization itself — taken before the edits (called once during the evaluation phase). No second pass on the mechanical edits since they were straightforward and verified by spot-read after.
 - Commit — not yet made. Will eyeballs the diff first, then atomic commit `[plan] formalize D-6: aggregate chunk store + raw-HTTP tool-use loops as live architecture; remove post-deadline framing`.
 
+## 2026-04-25T09:30:00-04:00 — Task 3.P3: Gap Analysis prompt draft
+
+**Context.** With D-6 formalized and committed (commits e466300 + d3cd83b), Will gave the green light to proceed to the next concrete unit of work. Per Codex's handoff direction and the implementation plan, that is task 3.P3: draft the Gap Analysis system prompt by upgrading the Phase 2 stub at `prompts/gap-analysis-agent.md` to a Phase 3 draft.
+
+**Action.** Replaced the stub entirely with a prompt-draft following the 7-part convention from `docs/project-conventions.md §3`:
+
+1. **Role** — institutional LP diligence lead identifying missing information; explicit statement that this agent does NOT extract facts (Extraction's job) and does NOT detect contradictions (Contradiction's job), only flags gaps.
+2. **Framework** — Institutional LP Diligence Checklist with four categories (financial / commercial / operational / legal_regulatory) preserved from the stub, expanded with one-line bullets per item for grounding.
+3. **Input description** — three artifacts: `extracted_facts_per_document` (ExtractionOutput[]), `contradiction_output` (ContradictionOutput), `union_chunks` (the same union retrieval used elsewhere in the workflow per design plan §2.6).
+4. **Output schema** — exact `GapAnalysisOutput` shape with concrete schema-shaped example showing 3 missing items spanning 2 categories and 2 importance levels (HIGH / MEDIUM).
+5. **Constraints** — 10 numbered rules covering JSON-only output, enum validity, item specificity, the empty-array case, the no-citations rule (since this agent flags absences not claims), and the no-duplicate / no-already-corroborated rules.
+6. **Edge cases** — comprehensive packet, implicit-but-not-explicit, partial presence, stage-uninferable, conflicting stage signals.
+7. **Citation rules** — explicitly N/A with rationale (this agent flags absences, not claims; the schema does not include a citation field on `missing_information` items).
+
+**Key design choices.**
+
+- **Stage-aware importance calibration.** The single most important property of this prompt: importance is calibrated to inferred deal stage and sector, not absolute. Audited financials missing on a Series C+ = HIGH; same gap on a pre-seed = LOW. Concrete signal thresholds given (revenue + headcount + raise size).
+- **Three-way coverage rule.** A checklist item is PRESENT if ANY of: (a) Extraction field populated, (b) verified_claim in Contradiction output, (c) substantively addressed in union_chunks. The third leg is what prevents flagging items implicit in the corpus that didn't make it into Extraction's structured output. This is also the design plan §2.6 union retrieval pattern realized.
+- **Concrete schema-shaped example.** Per project-conventions §3 requirement that prompt files include a concrete output example. Used a Series B SaaS example (cohort retention HIGH, customer concentration HIGH, board composition MEDIUM) covering category and importance variation.
+- **No citations.** Schema-validated this against `schemas/agent-output-schemas.json#/$defs/GapAnalysisOutput` — `missing_information[]` items have `category`, `item`, `importance`, optional `suggested_source`. No citation field. Prompt states this explicitly so the model doesn't invent one.
+- **Token budget.** Prompt block is ~1700 tokens, under the 2000-token convention cap. Comparable to Extraction (~1900 tokens) and Contradiction Variant A (~2000 tokens).
+
+**Why this is medium-stakes, not high-stakes.** Per `docs/project-conventions.md §3`: "Three high-stakes prompts route through Claude Chat before commit: Extraction, Contradiction, Memo Generation. The other three (Gap Analysis, Portfolio Fit, Evaluator) ship from Claude Code drafts unless quality issues surface during iteration." So this draft does NOT need Claude Chat refinement before wiring. Codex post-commit review per §10 trigger 1 is the gate.
+
+**Watch out:**
+- The doubled-prompt surface flagged in D-6 cost-flags will apply to this prompt too once 3.7 wires it. When that happens, the system prompt will live in both `prompts/gap-analysis-agent.md` AND embedded inside `n8n/workflow.json`'s `Build Gap Analysis Request` node. Memo Generation will make it three. This is the trigger to author `scripts/inject-prompts.js` per the D-6 mitigation deferred to 3.11.
+- Stage-inference logic depends on Extraction's `deal_structure.amount_raising`, `company_overview.headcount`, and `financial_performance.revenue_latest_period` being populated. The known Extraction recall regression (S-1 `headcount` came back null on CoreWeave) means stage may not always infer cleanly. The prompt's edge-case rule for that ("default to MEDIUM importance") is the fallback.
+- The "substantively addressed in union_chunks" rule is qualitative and model-dependent. If Codex review or first-run output suggests the model is overinclusive (treating heading mentions as "substantive coverage" → too few items flagged) or underinclusive (treating long boilerplate disclaimers as "absent" → too many items flagged), the rule will need a tighter operationalization.
+
+**Next concrete step.** Codex review of the draft. If review surfaces no blocker, proceed to task 3.7 wiring.
+
+### Task Receipt
+Updates fanned out this task:
+- `prompts/gap-analysis-agent.md` ....................... upgraded from Phase 2 stub to Phase 3 draft; type: prompt-stub → prompt-draft; full 7-part system prompt with concrete example
+- `.claude/memory/state.md` ............................. active task advanced to 3.P3 drafted / awaiting Codex review; next steps re-pointed to 3.7 wiring under D-6 pattern
+- `docs/STATUS.md` ...................................... 3.P3 added to Done section
+- `docs/agents/claude.md` ............................... this entry
+- `.collab/INDEX.md` .................................... gap-analysis-agent.md row updated to prompt-draft + new timestamp; state.md and STATUS.md timestamps refreshed
+
+Missing / intentionally skipped:
+- Claude Chat refinement — not required per project-conventions §3 (Gap Analysis is medium-stakes, not high-stakes).
+- `n8n/workflow.json` — no wiring yet; that is task 3.7.
+- `.claude/memory/decisions.md` — no new Claude-owned design choice; this was prompt-drafting per the existing plan.
+- `.claude/memory/context.md` — no new durable invariants; the stage-aware calibration rule is documented in the prompt itself, not as a project invariant.
+- `.claude/memory/pitfalls.md` — no new pitfalls encountered; the union_chunks operationalization risk is flagged in this entry's Watch out section, will be promoted to a P-entry only if it materializes during 3.7 runtime.
+- Advisor pass on the prompt — not called. Medium-stakes prompt; one architecture-level advisor pass already happened earlier this session. Codex review per §10 trigger 1 is the operative gate.
+- Commit — not yet made. Surface diff for Will eyeball; commit after sign-off.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,
