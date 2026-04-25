@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T10:35:00-04:00
+last-updated: 2026-04-25T10:45:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -81,6 +81,7 @@ The remaining Core Build work now continues from Gap Analysis through Red Flag D
 - 3.9 Portfolio Fit specialist wired as 3 nodes (Build Portfolio Fit Request → Call Portfolio Fit Agent → Parse Portfolio Fit Response) after Run Red Flag Detector. Embeds system prompt AND `code/sagard-portfolio.json` literal in Build node. Workflow now has 34 connected nodes. `versionId: phase3-session2-v9`.
 - 3.10a Citation Validity Check JS module authored at `code/citation-validity.js`. Pure-function entrypoint `validateCitations(memo, sourceManifest)` returns `{ cleanedMemo, unresolved_sources, dropped_claims, stats }`. Source-name prefix extraction via regex mirroring `schemas/agent-output-schemas.json` citation pattern; distinguishes `malformed` (regex fail) from `unknown_source` (matched but absent from manifest). Smoke-tested. Wiring deferred to bundle with 3.11 Memo Generation since the node belongs between Memo Gen and Evaluator.
 - 3.P5 Memo Generation prompt drafted as **pre-refinement** (`prompts/memo-generation-agent.md` upgraded from Phase 2 stub). HIGH-stakes per project-conventions §3; gated on Claude Chat refinement (task 3.P5r) BEFORE 3.11 wiring. Pre-refinement notes for Claude Chat embedded in the file. Codex pre-refinement review per §10 trigger 1 is the next quality gate.
+- 3.P6 Evaluator prompt drafted (`prompts/evaluator-agent.md` upgraded from Phase 2 stub to Phase 3 draft). Medium-stakes; no Claude Chat refinement. Six-Criteria Quality Check rubric (each 0-10, total 0-60); HIGH-severity critical_issue override forces flagged_for_review regardless of score; "strategic incoherence" criterion (criterion 5) calls out the off-criteria defect type that the Phase 4 meta-eval discrimination gap will test.
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->

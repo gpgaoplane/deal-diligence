@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T10:35:00-04:00
+last-updated: 2026-04-25T10:45:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.P5` Memo Generation prompt drafted as **pre-refinement** at `prompts/memo-generation-agent.md`. HIGH-stakes per project-conventions §3 — Will must send to Claude Chat for refinement (task 3.P5r) before wiring (task 3.11). Codex review per §10 trigger 1 should happen BEFORE Claude Chat (high-stakes ordering). Continuing forward progress on non-blocked tracks (3.P6 Evaluator prompt, 3.12 schema retry, helper scripts) while Memo Gen waits.
+**Active task:** `3.P6` Evaluator prompt drafted (medium-stakes; no Claude Chat refinement) at `prompts/evaluator-agent.md`. Six-Criteria Quality Check rubric with discrimination-gap calibration target (≥ 20 between good/bad meta-eval fixtures). HIGH-severity critical_issue override forces flagged_for_review even on 55/60 memos. Continuing with helper scripts and 3.17w error handler next; 3.13 Evaluator wiring and 3.11 Memo Gen wiring both still gated on the Memo Gen Claude Chat refinement chain.
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->
