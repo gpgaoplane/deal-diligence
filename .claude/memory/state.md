@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T10:15:00-04:00
+last-updated: 2026-04-25T10:25:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.P4` Portfolio Fit prompt drafted (medium-stakes; no Claude Chat refinement) + `3.9` Portfolio Fit wired into workflow as 3 nodes (Build Portfolio Fit Request → Call Portfolio Fit Agent → Parse Portfolio Fit Response). Workflow now has 34 connected nodes. `versionId: phase3-session2-v9`. Per Will's direction, executing the rest of Phase 3 sequentially without per-step runtime verification.
+**Active task:** `3.10a` Citation Validity Check JS module authored at `code/citation-validity.js` with smoke-tested entrypoint `validateCitations(memo, sourceManifest)`. Wiring deferred — the node belongs between Memo Generation and Evaluator, but Memo Gen (3.11) is gated on 3.P5 Claude Chat refinement. Will bundle wiring with 3.11 commit. Workflow still at 34 nodes / `versionId: phase3-session2-v9` (no workflow change this commit).
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->

@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T10:15:00-04:00
+last-updated: 2026-04-25T10:25:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -79,6 +79,7 @@ The remaining Core Build work now continues from Gap Analysis through Red Flag D
 - 3.8 Red Flag Detector wired as a single Code node after Parse Gap Analysis Response. Pastes `code/red-flag-detector.js` (minus CommonJS exports) inline; reconstructs per-document raw text from the aggregate chunk store; invokes `detectFlags()`; emits `red_flag_detector_output` with `deterministic: true` on every flag (per I-2). Workflow now has 31 connected nodes. `versionId: phase3-session2-v8`.
 - 3.P4 Portfolio Fit prompt drafted (`prompts/portfolio-fit-agent.md` upgraded from Phase 2 stub to Phase 3 draft following the 7-part convention; Sagard Thesis Alignment framework with rule-based alignment-to-recommendation mapping; explicit I-1 directional-signal framing).
 - 3.9 Portfolio Fit specialist wired as 3 nodes (Build Portfolio Fit Request → Call Portfolio Fit Agent → Parse Portfolio Fit Response) after Run Red Flag Detector. Embeds system prompt AND `code/sagard-portfolio.json` literal in Build node. Workflow now has 34 connected nodes. `versionId: phase3-session2-v9`.
+- 3.10a Citation Validity Check JS module authored at `code/citation-validity.js`. Pure-function entrypoint `validateCitations(memo, sourceManifest)` returns `{ cleanedMemo, unresolved_sources, dropped_claims, stats }`. Source-name prefix extraction via regex mirroring `schemas/agent-output-schemas.json` citation pattern; distinguishes `malformed` (regex fail) from `unknown_source` (matched but absent from manifest). Smoke-tested. Wiring deferred to bundle with 3.11 Memo Generation since the node belongs between Memo Gen and Evaluator.
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->
