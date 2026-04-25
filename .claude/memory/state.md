@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T10:45:00-04:00
+last-updated: 2026-04-25T11:00:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.P6` Evaluator prompt drafted (medium-stakes; no Claude Chat refinement) at `prompts/evaluator-agent.md`. Six-Criteria Quality Check rubric with discrimination-gap calibration target (≥ 20 between good/bad meta-eval fixtures). HIGH-severity critical_issue override forces flagged_for_review even on 55/60 memos. Continuing with helper scripts and 3.17w error handler next; 3.13 Evaluator wiring and 3.11 Memo Gen wiring both still gated on the Memo Gen Claude Chat refinement chain.
+**Active task:** `3.18w-3.20w` helper scripts authored. `scripts/validate-fixture.js`, `scripts/validate-memo-citations.js`, `scripts/run-meta-eval.js` — all use the hand-rolled validator (`code/json-schema-validator.js`) and citation-validity module to keep dep-free. Smoke-tested both validate-fixture and validate-memo-citations against the meta-eval fixtures (good fixture passes MemoGenerationOutput, citations resolve cleanly when matched against the right manifest). run-meta-eval.js requires API keys; structurally correct, runnable in Phase 4 task 4.16.
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->
