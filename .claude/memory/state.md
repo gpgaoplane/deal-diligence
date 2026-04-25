@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T10:00:00-04:00
+last-updated: 2026-04-25T10:15:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.8` Red Flag Detector wired as a single Code node after `Parse Gap Analysis Response`. Pastes `code/red-flag-detector.js` (minus CommonJS exports) inline + reconstructs per-document raw text from the aggregate chunk store + invokes `detectFlags()`. Workflow now has 31 connected nodes. `versionId: phase3-session2-v8`. Per Will's direction, executing the rest of Phase 3 sequentially without per-step runtime verification; Will runs the integration test at a checkpoint of his choosing.
+**Active task:** `3.P4` Portfolio Fit prompt drafted (medium-stakes; no Claude Chat refinement) + `3.9` Portfolio Fit wired into workflow as 3 nodes (Build Portfolio Fit Request → Call Portfolio Fit Agent → Parse Portfolio Fit Response). Workflow now has 34 connected nodes. `versionId: phase3-session2-v9`. Per Will's direction, executing the rest of Phase 3 sequentially without per-step runtime verification.
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->

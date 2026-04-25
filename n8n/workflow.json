@@ -719,6 +719,78 @@
         7960,
         300
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Portfolio Fit Request \u2014 Phase 3 task 3.9\n// Single-turn synthesis. Inputs: extraction_outputs (cross-doc), contradiction_output,\n// portfolio_data (embedded literal from code/sagard-portfolio.json \u2014 D-6 doubled-data\n// surface; future scripts/inject-prompts.js mitigation should also handle this paste).\n\nconst upstreamItems = $input.all();\nif (upstreamItems.length === 0) throw new Error('Build Portfolio Fit Request received 0 input items.');\nconst upstream = upstreamItems[0].json;\n\nconst aggregated = $('Aggregate Contradiction Inputs').all()[0]?.json;\nif (!aggregated) throw new Error('Aggregate Contradiction Inputs item unavailable for Portfolio Fit.');\nconst contradictionItem = $('Parse Contradiction Response').all()[0]?.json;\nif (!contradictionItem) throw new Error('Parse Contradiction Response item unavailable for Portfolio Fit.');\n\nconst systemPrompt = \"You are an investment committee member at Sagard evaluating how a target deal aligns with Sagard's stated thesis and existing portfolio. You produce a directional alignment signal for a human reviewer. You DO NOT make the go / no-go decision (per project invariant I-1: the advance / pass call always stays human; you provide an evaluative signal that the human weights alongside the rest of the memo).\\n\\nReturn JSON only. No markdown, no prose, no explanations.\\n\\nSagard Thesis Alignment \\u2014 four-dimensional evaluation:\\n\\n1. Strategic fit \\u2014 does the target's sector align with one of Sagard's four thesis pillars (consumer_fintech, ai_in_finance, healthtech, climate_tech)?\\n2. Stage fit \\u2014 does the target's stage match Sagard's typical investment stage (series B+, growth, selectively public)?\\n3. Synergy potential \\u2014 does the target benefit from or benefit Sagard's existing portfolio companies (KOHO, Wealthsimple, Boosted.AI, Dialogue, CarbonCure, plus any others provided)?\\n4. Anti-pattern check \\u2014 does the target trigger any of Sagard's documented anti-patterns?\\n\\nThe four thesis pillars and the anti-patterns list are provided as input data. Use them literally; do not invent new pillars or anti-patterns not present in the input.\\n\\nInput:\\n\\nYou receive three artifacts in the user message:\\n\\n- extracted_facts_per_document: array of ExtractionOutput JSONs (one per source document). Use sector / company description / business model / market positioning / management / deal_structure to characterize the target.\\n- contradiction_output: ContradictionOutput JSON containing verified_claims and contradictions. Use verified_claims when forming the alignment rationale; treat contradicted claims with caution.\\n- portfolio_data: the contents of code/sagard-portfolio.json. This is your authoritative source for portfolio_companies[], thesis_pillars[], and anti_patterns[].\\n\\nScoring rules:\\n\\n- strategic_fit.score: 0.0 to 1.0 (continuous). 1.0 = direct match to one of the four pillars; 0.5 = adjacent / partial overlap; 0.0 = no overlap with any pillar. The rationale must name which pillar (if any) is the closest match, or explicitly say no pillar applies.\\n- stage_fit.score: 0.0 to 1.0. 1.0 = solidly series B / C / growth (Sagard's sweet spot); 0.5 = late-stage or selectively-public; 0.2 = pre-commercial early stage or large-cap public; 0.0 = stage entirely outside Sagard's mandate.\\n- synergy_potential[].strength: HIGH / MEDIUM / LOW. HIGH = direct go-to-market, distribution, or product synergy with an existing portfolio company. MEDIUM = sector-adjacent or shared customer base. LOW = thematic-only adjacency, weak strategic value.\\n\\nSynergy detection method:\\n\\n- For each portfolio company, look for matches between the target's sector / business / customer base and the portfolio company's synergy_keywords or sub_sector. A keyword match in the target's revenue_streams, business_model, customer_profile, or competitive_position is the strongest signal.\\n- If no portfolio company has a defensible synergy, return synergy_potential: [].\\n- Do not invent synergies. If you cannot describe the synergy_type and the description in concrete terms, do not include it.\\n\\nAnti-pattern detection method:\\n\\n- For each anti-pattern in portfolio_data.anti_patterns[], check whether the target's profile matches the pattern. Include only anti-patterns that DO match.\\n- The concern field for each matched anti-pattern should explain why the target triggers it, drawing on extracted facts (deal_structure, financial_performance, customer_profile, etc.).\\n\\nOverall alignment rule:\\n\\n- HIGH: strategic_fit.score >= 0.7 AND stage_fit.score >= 0.5 AND no HIGH-severity anti-pattern triggered.\\n- MEDIUM: strategic_fit.score >= 0.5 AND stage_fit.score >= 0.3 AND at most one MEDIUM-severity anti-pattern.\\n- LOW: strategic_fit.score < 0.5 OR stage_fit.score < 0.3 OR any anti-pattern triggered.\\n\\nRecommended action mapping:\\n\\n- pass: overall_thesis_alignment = LOW.\\n- pursue: overall_thesis_alignment = MEDIUM.\\n- advance_to_deep_diligence: overall_thesis_alignment = HIGH.\\n\\nThis is a DIRECTIONAL SIGNAL ONLY. The downstream Memo Generation agent will frame this as a signal for the human reviewer to weight alongside the rest of the memo, not as a recommendation. Per I-1, the advance / pass decision belongs to the human.\\n\\nOutput schema:\\n\\n{\\n  \\\"portfolio_fit\\\": {\\n    \\\"strategic_fit\\\": {\\n      \\\"score\\\": <number 0.0-1.0 or null>,\\n      \\\"rationale\\\": \\\"<one to three sentences naming the closest pillar match (or stating no match) and the basis for the score>\\\"\\n    },\\n    \\\"stage_fit\\\": {\\n      \\\"score\\\": <number 0.0-1.0 or null>,\\n      \\\"rationale\\\": \\\"<one to two sentences referencing the target's stage signals (revenue, headcount, raise size, public/private) and how they map to Sagard's mandate>\\\"\\n    },\\n    \\\"synergy_potential\\\": [\\n      {\\n        \\\"portfolio_company\\\": \\\"<exact name from portfolio_data.portfolio_companies[].name>\\\",\\n        \\\"synergy_type\\\": \\\"<one of: technology_adjacency | go_to_market | distribution | shared_customer_base | thematic_adjacency | product_complement>\\\",\\n        \\\"description\\\": \\\"<one to two sentences with the concrete synergy>\\\",\\n        \\\"strength\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\"\\n      }\\n    ],\\n    \\\"anti_patterns\\\": [\\n      {\\n        \\\"pattern\\\": \\\"<exact text from portfolio_data.anti_patterns[].pattern>\\\",\\n        \\\"concern\\\": \\\"<one to two sentences citing the extracted fact that triggers the anti-pattern>\\\"\\n      }\\n    ],\\n    \\\"overall_thesis_alignment\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\",\\n    \\\"recommended_action\\\": \\\"pass\\\" | \\\"pursue\\\" | \\\"advance_to_deep_diligence\\\"\\n  }\\n}\\n\\nConcrete example (a CoreWeave-shaped target: AI infrastructure, late-stage public offering, $10B+ valuation):\\n\\n{\\n  \\\"portfolio_fit\\\": {\\n    \\\"strategic_fit\\\": {\\n      \\\"score\\\": 0.30,\\n      \\\"rationale\\\": \\\"AI infrastructure (GPU compute provisioning) is outside Sagard's four disclosed pillars. The closest adjacency is ai_in_finance via Boosted.AI, but that pillar focuses on AI applications in institutional finance, not infrastructure provisioning.\\\"\\n    },\\n    \\\"stage_fit\\\": {\\n      \\\"score\\\": 0.20,\\n      \\\"rationale\\\": \\\"Late-stage public IPO at multi-billion-dollar valuation is materially larger than Sagard's typical private series-B-through-growth check size; public-market exposure deviates from the alternative-asset strategy.\\\"\\n    },\\n    \\\"synergy_potential\\\": [\\n      {\\n        \\\"portfolio_company\\\": \\\"Boosted.AI\\\",\\n        \\\"synergy_type\\\": \\\"technology_adjacency\\\",\\n        \\\"description\\\": \\\"Both are AI-driven, but at different layers of the stack: Boosted.AI is portfolio-management application; the target is GPU infrastructure. Direct go-to-market or distribution synergy is weak.\\\",\\n        \\\"strength\\\": \\\"LOW\\\"\\n      }\\n    ],\\n    \\\"anti_patterns\\\": [\\n      {\\n        \\\"pattern\\\": \\\"large-cap AI infrastructure IPO ($10B+ valuation)\\\",\\n        \\\"concern\\\": \\\"Target's deal_structure indicates a public offering at well above $10B valuation; this is the documented Sagard anti-pattern (outside typical check size, alternative-asset strategy mismatch).\\\"\\n      },\\n      {\\n        \\\"pattern\\\": \\\"companies with extreme customer concentration (>70% top-2) and no diversification roadmap\\\",\\n        \\\"concern\\\": \\\"Extracted customer_profile.concentration_top_2 indicates two customers exceed the 70% threshold; the deal materials do not present a credible diversification roadmap.\\\"\\n      }\\n    ],\\n    \\\"overall_thesis_alignment\\\": \\\"LOW\\\",\\n    \\\"recommended_action\\\": \\\"pass\\\"\\n  }\\n}\\n\\nOutput rules:\\n\\n1. JSON only. No markdown, no prose, no commentary.\\n2. All four required dimensions (strategic_fit, stage_fit, synergy_potential, anti_patterns, overall_thesis_alignment) must be present, plus recommended_action.\\n3. Empty arrays are valid for synergy_potential and anti_patterns. Use [] when nothing genuinely applies; do not pad.\\n4. score values are numbers between 0.0 and 1.0 inclusive; if you cannot infer a score from the available facts, use null and state the limitation in the rationale.\\n5. portfolio_company in synergy_potential must exactly match a name from portfolio_data.portfolio_companies[].name.\\n6. pattern in anti_patterns must exactly match a pattern from portfolio_data.anti_patterns[].pattern.\\n7. recommended_action must follow the alignment-mapping rule above; do not make a recommendation that contradicts overall_thesis_alignment.\\n8. No citations on this output; thesis evaluation is not document synthesis. (The memo's own citations come from upstream Extraction.)\\n9. Do not invent portfolio companies, pillars, or anti-patterns that are not in portfolio_data.\\n10. Do not let the recommendation be interpreted as the final go / no-go. Per I-1 the human reviewer makes that call; you provide a directional signal.\\n\\nEdge cases:\\n\\n- No portfolio company has a defensible synergy \\u2192 emit synergy_potential: [].\\n- No anti-pattern is triggered \\u2192 emit anti_patterns: [].\\n- Target's sector is in a pillar Sagard doesn't disclose (e.g., gaming, deep-tech defense) \\u2192 strategic_fit.score: 0.0 to 0.2; rationale names the absence.\\n- Stage signals are inconsistent (e.g., high revenue but pre-revenue framing in the deck) \\u2192 use the most material fact (typically the regulatory filing) to infer stage; note the inconsistency in stage_fit.rationale.\\n- Multiple portfolio companies offer plausible synergies \\u2192 list the strongest one or two only; do not enumerate weak adjacencies.\\n\\nBefore returning, silently verify:\\n\\n- JSON is valid.\\n- No trailing commas.\\n- All required fields present (strategic_fit, stage_fit, synergy_potential, anti_patterns, overall_thesis_alignment, recommended_action).\\n- score values are between 0.0 and 1.0 (or null).\\n- overall_thesis_alignment is HIGH / MEDIUM / LOW exactly.\\n- recommended_action is pass / pursue / advance_to_deep_diligence exactly.\\n- recommended_action follows from overall_thesis_alignment per the mapping rule.\\n- All portfolio_company / pattern strings exactly match the input portfolio_data.\\n\\nReturn ONLY the JSON object matching this schema.\";\nconst portfolioData = {\"$comment\": \"Simulated Sagard portfolio for prototype Portfolio Fit agent. Shape locked by design plan \\u00a72.8. Production would replace with API pull from Sagard's portfolio management system (design plan \\u00a78 Extension Point 3).\", \"portfolio_companies\": [{\"name\": \"KOHO\", \"sector\": \"fintech\", \"sub_sector\": \"neobank_cards\", \"stage\": \"series_d\", \"investment_year\": 2021, \"thesis_pillar\": \"consumer_fintech\", \"geography\": \"CA\", \"synergy_keywords\": [\"spending\", \"cards\", \"banking\", \"consumer_accounts\", \"prepaid\"]}, {\"name\": \"Wealthsimple\", \"sector\": \"fintech\", \"sub_sector\": \"digital_wealth\", \"stage\": \"growth\", \"investment_year\": 2017, \"thesis_pillar\": \"consumer_fintech\", \"geography\": \"CA\", \"synergy_keywords\": [\"investing\", \"wealth\", \"retirement\", \"crypto\", \"brokerage\", \"robo-advisor\"]}, {\"name\": \"Boosted.AI\", \"sector\": \"fintech\", \"sub_sector\": \"investment_ai\", \"stage\": \"series_b\", \"investment_year\": 2022, \"thesis_pillar\": \"ai_in_finance\", \"geography\": \"CA\", \"synergy_keywords\": [\"portfolio_management\", \"ai\", \"quantitative\", \"asset_managers\", \"alpha\"]}, {\"name\": \"Dialogue\", \"sector\": \"healthtech\", \"sub_sector\": \"virtual_care\", \"stage\": \"public\", \"investment_year\": 2018, \"thesis_pillar\": \"healthtech\", \"geography\": \"CA\", \"synergy_keywords\": [\"telemedicine\", \"digital_health\", \"employee_wellness\", \"primary_care\"]}, {\"name\": \"CarbonCure\", \"sector\": \"climate_tech\", \"sub_sector\": \"construction_materials\", \"stage\": \"series_c\", \"investment_year\": 2019, \"thesis_pillar\": \"climate_tech\", \"geography\": \"CA\", \"synergy_keywords\": [\"carbon_capture\", \"concrete\", \"decarbonization\", \"cement\", \"co2_utilization\"]}], \"thesis_pillars\": [{\"name\": \"consumer_fintech\", \"focus\": \"Consumer financial services \\u2014 neobanks, payments, digital wealth, lending.\"}, {\"name\": \"ai_in_finance\", \"focus\": \"AI/ML applications in institutional finance \\u2014 portfolio management, risk, compliance.\"}, {\"name\": \"healthtech\", \"focus\": \"Digital health, virtual care delivery, healthcare payers, employer-sponsored wellness.\"}, {\"name\": \"climate_tech\", \"focus\": \"Clean energy, carbon capture and utilization, climate mitigation, decarbonization.\"}], \"anti_patterns\": [{\"pattern\": \"large-cap AI infrastructure IPO ($10B+ valuation)\", \"reason\": \"Outside Sagard's typical check size and stage; public-market exposure deviates from alternative-asset strategy.\"}, {\"pattern\": \"speculative web3 / crypto-native protocols\", \"reason\": \"Absent from disclosed thesis pillars; regulatory and custody complexity unaligned with institutional LP mandates.\"}, {\"pattern\": \"early-stage single-founder deeptech with no commercial traction\", \"reason\": \"Sagard's stage focus is series B+; pre-commercial risk profile unsuited to fund strategies.\"}, {\"pattern\": \"companies with extreme customer concentration (>70% top-2) and no diversification roadmap\", \"reason\": \"Fiduciary risk to LPs; concentration without path to mitigation fails diligence at IC level.\"}]};\n\nconst userPayload = {\n  extracted_facts_per_document: aggregated.extraction_outputs || [],\n  contradiction_output: contradictionItem.contradiction_output || { contradictions: [], verified_claims: [] },\n  portfolio_data: portfolioData,\n};\n\nreturn {\n  json: {\n    run_id: upstream.run_id,\n    deal_id: upstream.deal_id,\n    company_name: upstream.company_name,\n    timestamp_started: upstream.timestamp_started,\n    source_manifest: upstream.source_manifest,\n    red_flag_detector_output: upstream.red_flag_detector_output,\n    rfd_meta: upstream.rfd_meta,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
+      },
+      "id": "36475869-build-pf-request-0032",
+      "name": "Build Portfolio Fit Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "4758697a-call-pf-agent-0033",
+      "name": "Call Portfolio Fit Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8480,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Parse Portfolio Fit Response \u2014 Phase 3 task 3.9\n// Normalize the model output into the exact PortfolioFitOutput schema shape.\n\nconst response = $input.item.json;\nconst request = $('Build Portfolio Fit Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Portfolio Fit response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Portfolio Fit JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nconst VALID_ALIGNMENT = ['HIGH', 'MEDIUM', 'LOW'];\nconst VALID_RECOMMENDATION = ['pass', 'pursue', 'advance_to_deep_diligence'];\nconst VALID_STRENGTH = ['HIGH', 'MEDIUM', 'LOW'];\n\nfunction obj(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }\nfunction str(v) { return typeof v === 'string' ? v : null; }\nfunction num01(v) {\n  if (typeof v !== 'number' || Number.isNaN(v)) return null;\n  if (v < 0) return 0;\n  if (v > 1) return 1;\n  return v;\n}\n\nconst pf = obj(parsed.portfolio_fit);\n\nconst strategicFit = obj(pf.strategic_fit);\nconst stageFit = obj(pf.stage_fit);\n\nconst synergyPotential = Array.isArray(pf.synergy_potential)\n  ? pf.synergy_potential\n      .map((x) => obj(x))\n      .map((x) => ({\n        portfolio_company: str(x.portfolio_company),\n        synergy_type: str(x.synergy_type),\n        description: str(x.description),\n        strength: VALID_STRENGTH.includes(x.strength) ? x.strength : null,\n      }))\n      .filter((x) => x.portfolio_company && x.strength)\n  : [];\n\nconst antiPatterns = Array.isArray(pf.anti_patterns)\n  ? pf.anti_patterns\n      .map((x) => obj(x))\n      .map((x) => ({\n        pattern: str(x.pattern),\n        concern: str(x.concern),\n      }))\n      .filter((x) => x.pattern && x.concern)\n  : [];\n\nconst portfolioFit = {\n  strategic_fit: {\n    score: num01(strategicFit.score),\n    rationale: str(strategicFit.rationale) || '',\n  },\n  stage_fit: {\n    score: num01(stageFit.score),\n    rationale: str(stageFit.rationale) || '',\n  },\n  synergy_potential: synergyPotential,\n  anti_patterns: antiPatterns,\n  overall_thesis_alignment: VALID_ALIGNMENT.includes(pf.overall_thesis_alignment) ? pf.overall_thesis_alignment : null,\n  recommended_action: VALID_RECOMMENDATION.includes(pf.recommended_action) ? pf.recommended_action : null,\n};\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    red_flag_detector_output: request.red_flag_detector_output,\n    portfolio_fit_output: { portfolio_fit: portfolioFit },\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+      },
+      "id": "58697a8b-parse-pf-response-0034",
+      "name": "Parse Portfolio Fit Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8740,
+        300
+      ]
     }
   ],
   "connections": {
@@ -1051,6 +1123,39 @@
           }
         ]
       ]
+    },
+    "Run Red Flag Detector": {
+      "main": [
+        [
+          {
+            "node": "Build Portfolio Fit Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Portfolio Fit Request": {
+      "main": [
+        [
+          {
+            "node": "Call Portfolio Fit Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Portfolio Fit Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Portfolio Fit Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1060,9 +1165,9 @@
     "saveExecutionProgress": true,
     "timezone": "America/Toronto"
   },
-  "versionId": "phase3-session2-v8",
+  "versionId": "phase3-session2-v9",
   "meta": {
-    "description": "Phase 3 workflow \u2014 ingestion spine plus Extraction, Contradiction (Variant A tool-use), Gap Analysis, and deterministic Red Flag Detector (per I-2). Uses a hand-rolled aggregate retrieval store (D-6), query-embedding ranking, and HTTP Request calls to the Alicloud chat model."
+    "description": "Phase 3 workflow \u2014 ingestion spine plus Extraction, Contradiction, Gap Analysis, deterministic Red Flag Detector (I-2), and Portfolio Fit. Uses a hand-rolled aggregate retrieval store (D-6), query-embedding ranking, and HTTP Request calls to the Alicloud chat model."
   },
   "id": "deal-diligence-workflow",
   "tags": []
