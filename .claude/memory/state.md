@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T14:55:00-04:00
+last-updated: 2026-04-25T15:30:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,8 +11,8 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** Codex review fixes landed (5 commits this turn). Live runtime blocker fixed (Build Portfolio Fit Request `$input.all()` in runOnceForEachItem). Refined Memo Generation prompt adopted from Claude Chat. Codex P1/P2/P3 findings all addressed: citation-validity now accepts string-array source_manifest and emits schema-shaped unresolved_sources; validate-memo-citations script no longer overwrites input on missing .json suffix; Gap Analysis partial-coverage rule clarified (prompt + workflow embed re-synced); meta-eval harness now warns loudly on empty upstream and accepts fixture paths via CLI flags. Workflow at 34 nodes / `versionId: phase3-session2-v11`.
-**Pause point:** Will re-imports workflow + re-runs CoreWeave test. With the runtime blocker fixed, Gap Analysis / RFD / Portfolio Fit should all execute end-to-end. Then 3.11 Memo Generation wiring + downstream chain (3.10b, 3.13, 3.14, 3.15, 3.16w, 3.17w) lands as one push.
+**Active task:** Phase 3 main path complete (3.11 + 3.10b + 3.13 + 3.14 + 3.15 + 3.16w). Workflow now has 45 connected nodes from Form Trigger through Send Slack Notification: ingestion → Extraction → Contradiction → Gap Analysis → RFD → Portfolio Fit → Memo Generation → Validate Memo Citations → Evaluator → Build Supabase Record → Insert Deal Memo → Build Slack Message → Send Slack Notification. `versionId: phase3-session2-v15`. Also landed: `scripts/inject-prompts.js` (D-6 mitigation; 5 of 5 prompt nodes verified in-sync).
+**Pause point:** Will re-imports workflow + runs the FULL CoreWeave end-to-end test. Memo + Evaluator + Supabase row + Slack message should all materialize. Remaining Phase 3 work after this: 3.17w error handler (separate workflow), 3.12 schema-validation-with-retry machinery (architecture; could be retrofitted later), Langfuse 3.24-3.29.
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->

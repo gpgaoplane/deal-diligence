@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T14:55:00-04:00
+last-updated: 2026-04-25T15:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -84,6 +84,13 @@ The remaining Core Build work now continues from Gap Analysis through Red Flag D
 - 3.P6 Evaluator prompt drafted (`prompts/evaluator-agent.md` upgraded from Phase 2 stub to Phase 3 draft). Medium-stakes; no Claude Chat refinement. Six-Criteria Quality Check rubric (each 0-10, total 0-60); HIGH-severity critical_issue override forces flagged_for_review regardless of score; "strategic incoherence" criterion (criterion 5) calls out the off-criteria defect type that the Phase 4 meta-eval discrimination gap will test.
 - 3.18w-3.20w helper scripts authored: `scripts/validate-fixture.js` (validates JSON against any named $defs schema; smoke-tested on both meta-eval fixtures), `scripts/validate-memo-citations.js` (out-of-sandbox wrapper around `code/citation-validity.js`; smoke-tested with cleaned-memo emission), `scripts/run-meta-eval.js` (Phase 4 task 4.16 readiness — runs Evaluator on good/bad fixtures, asserts discrimination gap ≥ 20). All three reuse the hand-rolled validator at `code/json-schema-validator.js` per D-3 to keep the project dependency-free.
 - Codex review fixes landed: (a) Build Portfolio Fit Request runtime bug (`$input.all()` in runOnceForEachItem) fixed in `e7320fa`; (b) Memo Generation prompt refined via Claude Chat with Codex pre-refinement findings folded in (`fd32499`); (c) `code/citation-validity.js` now accepts string-array source_manifest (live shape) and emits schema-shaped `{ claim, invalid_source_name }` unresolved_sources, plus `scripts/validate-memo-citations.js` no longer overwrites input on missing `.json` suffix (`a165b3a`); (d) Gap Analysis prompt partial-coverage rule clarified and workflow embed re-synced (`e52439b`); (e) `scripts/run-meta-eval.js` accepts upstream fixture paths via CLI flags and emits a loud stderr warning when upstream is fully zeroed.
+- **First green end-to-end run on CoreWeave** (run_id `d5454cc4...`). Confirmed working: source_manifest as string array (with `(#2)` disambiguator), 4 docs classified, RFD picks up customer concentration HIGH (77% top-2) + revenue growth anomalous LOW (700%), Portfolio Fit emits institutional-grade output (LOW alignment, recommend pass, two anti-patterns matched, well-articulated rationale). ~11k tokens for Portfolio Fit prompt.
+- 3.11 Memo Generation specialist wired (3 nodes: Build Memo Request → Call Memo Generation Agent → Parse Memo Response). Reaches back to five upstream specialists via cross-node refs for the seven-input contract.
+- D-6 mitigation `scripts/inject-prompts.js` authored. Single source of truth: `prompts/*.md`. `--check` mode reports drift; default mode injects. Handles backtick template literals (Codex pattern) AND double-quoted JSON strings, always emits JSON form. 5 of 5 prompt nodes (Extraction, Gap Analysis, Portfolio Fit, Memo Generation, Evaluator) currently in-sync. (Contradiction prompt intentionally excluded — different markdown structure; manual sync stays for now.)
+- 3.10b Validate Memo Citations wired as a single Code node after Parse Memo Response. Pastes `code/citation-validity.js` inline; emits cleaned memo + `citation_validity` summary block (unresolved_sources + dropped_claims_count + stats).
+- 3.13 Evaluator specialist wired (3 nodes: Build Evaluator Request → Call Evaluator Agent → Parse Evaluator Response). Parser computes `evaluator_score` as `sum(criteria_scores)` authoritatively (overrides model self-reported total when they disagree). HIGH-severity critical_issue forces `routing_decision = flagged_for_review` regardless of score.
+- 3.14/3.15/3.16w persistence + notification chain wired (4 nodes: Build Supabase Record → Insert Deal Memo → Build Slack Message → Send Slack Notification). Routing IF skipped — `routing_decision` is a column in `deal_memos` and surfaced in the Slack message; both `complete` and `flagged_for_review` paths share the same flow with status differing by enum and Slack emoji/wording.
+- Workflow at 45 connected nodes. `versionId: phase3-session2-v15`. JSON valid.
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->

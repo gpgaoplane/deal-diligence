@@ -863,6 +863,209 @@
         9520,
         300
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Validate Memo Citations \u2014 Phase 3 task 3.10b\n// Layer-2 citation enforcement per design plan \u00a73.1.\n// Pastes code/citation-validity.js inline (CommonJS exports stripped;\n// functions stay in this Code-node scope). Future changes to that file\n// must be re-pasted here OR (preferred) re-injected via a future\n// scripts/inject-resources.js extension of inject-prompts.js to cover\n// JS modules as well as prompts.\n\nconst upstream = $input.item.json;\nif (!upstream) throw new Error('Validate Memo Citations received empty input.');\nif (!upstream.memo_output) throw new Error('No memo_output found on upstream item.');\n\nconst memo = upstream.memo_output;\nconst sourceManifest = upstream.source_manifest || [];\n\n// =====================================================================\n// Module: code/citation-validity.js (pasted)\n// =====================================================================\n\n// code/citation-validity.js\n// ---------------------------------------------------------------------\n// Citation Validity Check \u2014 Phase 3 task 3.10.\n// Per design plan \u00a73.1: layer-2 citation enforcement.\n//\n// Layer 1 (schema-level pattern regex on every citation string) is\n// already enforced upstream by the validators wrapping each agent's\n// JSON Schema. Layer 2 \u2014 implemented here \u2014 checks that every\n// source_name prefix actually appears in the Coordinator's\n// source_manifest. Unknown sources strip the claim from the memo\n// and populate `unresolved_sources` for downstream surfacing.\n//\n// No LLM. No randomness. Pure function (memo, sourceManifest) -> result.\n//\n// Public output contract (matches schemas/agent-output-schemas.json\n// EvaluatorOutput.unresolved_sources):\n//   unresolved_sources: [{ claim, invalid_source_name }]\n//   - `claim`              = the claim text (strength / risk / claim)\n//   - `invalid_source_name` = the rejected source identifier\n//                            (extracted name when regex matched, or\n//                             the full citation when it was malformed)\n//\n// Internal diagnostic output (`dropped_claims`, `stats`, plus per-entry\n// `reason` codes inside dropped_claims._unresolved) is preserved for\n// debugging but is NOT part of the EvaluatorOutput contract.\n// ---------------------------------------------------------------------\n// 'use strict' (sandbox-implicit)\n\n// Source-name prefix extractor.\n// Matches the leading <CompanyName> <SourceTypeHuman> [(#N)] portion\n// of any canonical citation. Mirrors the schema regex (citationFormat\n// in schemas/agent-output-schemas.json) but only on the prefix half.\nconst SOURCE_NAME_PREFIX_RE = /^([A-Z][A-Za-z0-9 &.,'\\-]+ (?:S-1 Filing|10-K Filing|10-Q Filing|8-K Filing|20-F Filing|Press Release|Analyst Report|Expert Transcript|Management Deck)(?: \\(#\\d+\\))?) (?:p\\. ~?\\d+|Risk Factors p\\. \\d+)$/;\n\n/**\n * Extract the source_name prefix from a single citation string.\n * Returns null if the citation doesn't match the canonical pattern.\n * @param {string} citation\n * @returns {string|null}\n */\nfunction extractSourceName(citation) {\n  if (typeof citation !== 'string') return null;\n  const m = citation.match(SOURCE_NAME_PREFIX_RE);\n  return m ? m[1] : null;\n}\n\n/**\n * Build the set of valid source names from the Coordinator's source_manifest.\n *\n * Accepts BOTH live shapes:\n *   - string array: [\"CoreWeave S-1 Filing\", \"CoreWeave Press Release\"]\n *     This is what the live Coordinator emits per design plan \u00a72.2 and\n *     n8n/workflow.json.\n *   - object array: [{ source_name: \"...\", source_type: \"...\", ... }]\n *     This is what test fixtures and helper scripts may pass.\n *\n * @param {Array<string|{source_name: string}>} sourceManifest\n * @returns {Set<string>}\n */\nfunction manifestNameSet(sourceManifest) {\n  const out = new Set();\n  for (const entry of sourceManifest || []) {\n    if (typeof entry === 'string' && entry.length > 0) {\n      out.add(entry);\n    } else if (entry && typeof entry.source_name === 'string') {\n      out.add(entry.source_name);\n    }\n  }\n  return out;\n}\n\n/**\n * Filter an array of citation strings: keep only those whose source_name\n * prefix is in the manifest. Return the kept strings AND a list of the\n * unresolved (rejected) ones with reason codes + the rejected identifier.\n *\n * Reason codes (internal diagnostic):\n *   - \"malformed\"       \u2014 citation didn't match the canonical regex\n *   - \"unknown_source\"  \u2014 source_name prefix not in source_manifest\n *\n * Returned `unresolved` shape:\n *   { citation, reason, invalid_source_name }\n *   where invalid_source_name is the extracted source_name when the\n *   regex matched, or the full citation when it didn't.\n *\n * @param {string[]} citations\n * @param {Set<string>} validSources\n * @returns {{kept: string[], unresolved: Array<{citation: string, reason: string, invalid_source_name: string}>}}\n */\nfunction filterCitations(citations, validSources) {\n  const kept = [];\n  const unresolved = [];\n  for (const c of citations || []) {\n    const name = extractSourceName(c);\n    if (name === null) {\n      unresolved.push({\n        citation: typeof c === 'string' ? c : String(c),\n        reason: 'malformed',\n        invalid_source_name: typeof c === 'string' ? c : String(c),\n      });\n      continue;\n    }\n    if (!validSources.has(name)) {\n      unresolved.push({\n        citation: c,\n        reason: 'unknown_source',\n        invalid_source_name: name,\n      });\n      continue;\n    }\n    kept.push(c);\n  }\n  return { kept, unresolved };\n}\n\n/**\n * Walk a memo claim array (key_strengths, key_risks, contradictions),\n * stripping any claim whose `sources` are entirely unresolved after\n * filtering. Claims with at least one valid source survive (with\n * unresolved citations removed); claims with zero valid sources are\n * dropped from the memo and contribute their original citations to\n * the unresolved list.\n *\n * @param {Array<Object>} claims  array of claim objects with a `sources` field\n * @param {Set<string>} validSources\n * @param {string} claimType  'key_strengths' | 'key_risks' | 'contradictions'\n * @returns {{\n *   kept: Array<Object>,\n *   dropped: Array<Object>,\n *   unresolved_pairs: Array<{claim_text: string, claim_type: string, citation: string, reason: string, invalid_source_name: string}>\n * }}\n */\nfunction filterClaimArray(claims, validSources, claimType) {\n  const kept = [];\n  const dropped = [];\n  const unresolvedPairs = [];\n\n  for (const claim of claims || []) {\n    if (!claim || typeof claim !== 'object') continue;\n    const claimText = claimTextOf(claim, claimType);\n    const result = filterCitations(claim.sources, validSources);\n\n    for (const u of result.unresolved) {\n      unresolvedPairs.push({\n        claim_text: claimText,\n        claim_type: claimType,\n        citation: u.citation,\n        reason: u.reason,\n        invalid_source_name: u.invalid_source_name,\n      });\n    }\n\n    if (result.kept.length === 0) {\n      dropped.push({ ...claim, _drop_reason: 'all_sources_unresolved' });\n      continue;\n    }\n    kept.push({ ...claim, sources: result.kept });\n  }\n  return { kept, dropped, unresolved_pairs: unresolvedPairs };\n}\n\n/**\n * Extract the claim text from a claim object based on its array type.\n */\nfunction claimTextOf(claim, claimType) {\n  if (claimType === 'key_strengths') return typeof claim.strength === 'string' ? claim.strength : '';\n  if (claimType === 'key_risks') return typeof claim.risk === 'string' ? claim.risk : '';\n  if (claimType === 'contradictions') return typeof claim.claim === 'string' ? claim.claim : '';\n  return '';\n}\n\n/**\n * Public entrypoint. Given a MemoGenerationOutput-shaped object and the\n * Coordinator's source_manifest (string array OR object array), return\n * a cleaned memo with only valid citations plus the list of unresolved\n * citations and dropped claims.\n *\n * Cleaning behavior (per design plan \u00a73.1):\n *   - For key_strengths / key_risks / contradictions: any claim whose\n *     `sources` array becomes empty after filtering is dropped.\n *   - Surviving claims have their `sources` arrays restricted to the\n *     subset that maps to valid source_manifest entries.\n *   - Top-level memo fields (executive_summary, recommendation, etc.)\n *     are passed through unchanged \u2014 only sourced claim arrays are\n *     filtered.\n *   - missing_information arrays carry no citations, so they pass through.\n *\n * Returned shape (the `unresolved_sources` field is shaped to match\n * EvaluatorOutput.unresolved_sources in the schema):\n *\n *   {\n *     cleanedMemo:        <memo with filtered citations / dropped claims>,\n *     unresolved_sources: [\n *       { claim: \"<claim text>\", invalid_source_name: \"<extracted name OR full citation>\" }\n *     ],\n *     dropped_claims:     [...original claim objects that were dropped...],\n *     diagnostic: {\n *       unresolved_pairs: [...full per-citation entries with reason codes...]\n *     },\n *     stats: {\n *       claims_input:  <int>,\n *       claims_kept:   <int>,\n *       claims_dropped:<int>,\n *       citations_input:    <int>,\n *       citations_kept:     <int>,\n *       citations_unresolved: <int>\n *     }\n *   }\n *\n * @param {Object} memo  MemoGenerationOutput\n * @param {Array<string|{source_name: string, source_type?: string, file_id?: string}>} sourceManifest\n */\nfunction validateCitations(memo, sourceManifest) {\n  if (!memo || typeof memo !== 'object') {\n    throw new Error('validateCitations: memo must be an object');\n  }\n  const validSources = manifestNameSet(sourceManifest);\n\n  const claimArrays = ['key_strengths', 'key_risks', 'contradictions'];\n  const cleaned = { ...memo };\n  const allUnresolvedPairs = [];\n  const droppedClaims = [];\n\n  let claimsInput = 0;\n  let claimsKept = 0;\n  let claimsDropped = 0;\n  let citationsInput = 0;\n  let citationsKept = 0;\n\n  for (const key of claimArrays) {\n    const original = Array.isArray(memo[key]) ? memo[key] : [];\n    claimsInput += original.length;\n    for (const claim of original) {\n      if (Array.isArray(claim?.sources)) citationsInput += claim.sources.length;\n    }\n    const result = filterClaimArray(original, validSources, key);\n    cleaned[key] = result.kept;\n    claimsKept += result.kept.length;\n    claimsDropped += result.dropped.length;\n    for (const c of result.kept) {\n      if (Array.isArray(c.sources)) citationsKept += c.sources.length;\n    }\n    droppedClaims.push(...result.dropped);\n    allUnresolvedPairs.push(...result.unresolved_pairs);\n  }\n\n  // Public schema-compliant unresolved_sources: { claim, invalid_source_name }.\n  const unresolvedSources = allUnresolvedPairs.map((p) => ({\n    claim: p.claim_text,\n    invalid_source_name: p.invalid_source_name,\n  }));\n\n  return {\n    cleanedMemo: cleaned,\n    unresolved_sources: unresolvedSources,\n    dropped_claims: droppedClaims,\n    diagnostic: {\n      unresolved_pairs: allUnresolvedPairs,\n    },\n    stats: {\n      claims_input: claimsInput,\n      claims_kept: claimsKept,\n      claims_dropped: claimsDropped,\n      citations_input: citationsInput,\n      citations_kept: citationsKept,\n      citations_unresolved: citationsInput - citationsKept,\n    },\n  };\n}\n\n// =====================================================================\n// Run validator + emit cleaned memo\n// =====================================================================\n\nconst result = validateCitations(memo, sourceManifest);\n\nreturn {\n  json: {\n    run_id: upstream.run_id,\n    deal_id: upstream.deal_id,\n    company_name: upstream.company_name,\n    timestamp_started: upstream.timestamp_started,\n    source_manifest: upstream.source_manifest,\n    extraction_outputs: upstream.extraction_outputs,\n    contradiction_output: upstream.contradiction_output,\n    gap_analysis_output: upstream.gap_analysis_output,\n    red_flag_detector_output: upstream.red_flag_detector_output,\n    portfolio_fit_output: upstream.portfolio_fit_output,\n    memo_output: result.cleanedMemo,\n    citation_validity: {\n      unresolved_sources: result.unresolved_sources,\n      dropped_claims_count: result.dropped_claims.length,\n      stats: result.stats,\n    },\n    llm_usage: upstream.llm_usage || {},\n    llm_model: upstream.llm_model,\n  },\n};\n"
+      },
+      "id": "9cadbecf-validate-citations-0038",
+      "name": "Validate Memo Citations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Evaluator Request \u2014 Phase 3 task 3.13\n// Inputs: cleaned memo + all upstream agent outputs + unresolved_sources\n// + schema_errors (empty placeholder until 3.12 retry machinery lands).\n\nconst upstream = $input.item.json;\nif (!upstream) throw new Error('Build Evaluator Request received empty input.');\nif (!upstream.memo_output) throw new Error('No memo_output on upstream item.');\n\nconst systemPrompt = \"You are a senior investment committee member reviewing a generated investment memo for quality before it reaches a human reviewer at Sagard. You are a REVIEWER, not a generator. You score the memo against six objective criteria, flag critical issues, and produce a routing decision.\\n\\nYou DO NOT rewrite the memo. You DO NOT make the advance / pass call (per project invariant I-1, that stays human). You produce a quality signal that determines whether the memo is routed straight through, marked complete with high confidence, or flagged for human review BEFORE the reviewer sees it.\\n\\nReturn JSON only. No markdown, no prose, no explanations.\\n\\nSix-Criteria Quality Check (each scored as an integer 0-10; total 0-60):\\n\\n1. citation_completeness (0-10):\\n   - 10: every claim in key_strengths, key_risks, contradictions has at least one valid citation.\\n   - 7-9: minor citation gaps on non-material claims.\\n   - 4-6: material claims with missing citations, OR citations are present but suspicious.\\n   - 0-3: pervasive missing citations or fabricated-looking citations.\\n   - Reduce by 2 points if unresolved_sources from the Citation Validity Check is non-empty (those claims were stripped, but the model's invention attempt is the signal).\\n\\n2. contradiction_acknowledgment (0-10):\\n   - 10: every DISPUTED contradiction from contradiction_output appears in the memo's contradictions[].\\n   - 7-9: minor omissions of LOW-severity contradictions.\\n   - 4-6: material contradictions omitted or downplayed.\\n   - 0-3: HIGH-severity contradictions ignored.\\n\\n3. missing_information_coverage (0-10):\\n   - 10: every HIGH-importance gap from gap_analysis_output appears in missing_information[] or open_diligence_questions[].\\n   - 7-9: HIGH gaps reflected, MEDIUM gaps occasionally missed.\\n   - 4-6: HIGH gaps inconsistently reflected.\\n   - 0-3: HIGH gaps ignored entirely.\\n\\n4. red_flag_propagation (0-10):\\n   - 10: every red_flag_detector_output.red_flags entry appears in the memo's red_flags[] AND is reflected in key_risks where appropriate.\\n   - 7-9: present in red_flags[] but not always cross-referenced into key_risks.\\n   - 4-6: HIGH-severity flags downgraded.\\n   - 0-3: HIGH-severity flags missing entirely.\\n\\n5. reasoning_coherence (0-10):\\n   - 10: recommendation logically follows from the balance of strengths, risks, contradictions, and Portfolio Fit.\\n   - 7-9: recommendation defensible but rationale is thin.\\n   - 4-6: recommendation tension with evidence (e.g., advance_to_deep_diligence when key_risks contain HIGH-severity customer concentration AND material weakness AND unresolved DISPUTED contradictions).\\n   - 0-3: recommendation flatly contradicts the balance of evidence.\\n   - This is the criterion that catches \\\"strategic incoherence\\\" \\u2014 a memo where the FACTS are right but the NARRATIVE doesn't follow.\\n\\n6. hallucination_check (0-10):\\n   - 10: every key_strengths.strength, key_risks.risk, contradictions.claim is supported by upstream extracted_facts, contradictions, or red_flags.\\n   - 7-9: minor stylistic claims (e.g., \\\"promising company\\\") that are weakly grounded.\\n   - 4-6: at least one specific claim (number, customer name, technology detail) not present in upstream evidence.\\n   - 0-3: multiple fabricated specifics OR a single highly-material fabrication (e.g., a customer name not in any source).\\n   - For each suspicious claim, add a critical_issues entry with issue_type: potential_hallucination.\\n\\nCross-criterion checks:\\n\\n- Strategic incoherence test: even if criteria 1-4 score 8-10, criterion 5 should detect a recommendation that doesn't follow from the evidence. The good vs bad meta-eval fixtures explicitly test this \\u2014 a memo with all citations valid, all contradictions surfaced, all flags propagated can still RECOMMEND advance_to_deep_diligence while the body of the memo is full of HIGH-severity blockers. Catch this on criterion 5.\\n- Confidence sanity: if memo confidence_scores.overall is high (>= 0.8) but key_risks contains 2+ HIGH-severity items, that is strategic incoherence \\u2014 flag.\\n- Bypassed-agent recovery: if recommendation_rationale references \\\"provisional pending re-run\\\" (signaling bypassed agents), criterion 5 should not penalize the recommendation for incompleteness; instead emit a critical_issues entry with issue_type: other and severity MEDIUM noting the upstream failure.\\n\\nCritical issue types (issue_type enum):\\n\\n- potential_hallucination: a memo claim not supported by upstream evidence.\\n- missing_citation: a memo claim with no sources[] (this should not occur because schema enforces minItems: 1, but check anyway).\\n- unacknowledged_contradiction: a DISPUTED contradiction from upstream not surfaced in memo.contradictions.\\n- ignored_red_flag: a HIGH-severity red flag not reflected in memo.red_flags or memo.key_risks.\\n- incoherent_recommendation: the recommendation flatly contradicts the balance of memo content.\\n- strategic_incoherence: the memo passes most criteria but the narrative arc is inconsistent (cite a HIGH-severity risk in key_risks, then recommend advance_to_deep_diligence without override rationale).\\n- other: structural problems (e.g., upstream bypass, all-zero scores).\\n\\nSeverity for critical_issues (HIGH / MEDIUM / LOW):\\n\\n- HIGH: would mislead the human reviewer if shipped \\u2014 fabricated material specifics, ignored HIGH-severity contradictions, recommendation that flatly contradicts evidence.\\n- MEDIUM: would lower the memo's credibility but not mislead \\u2014 minor unacknowledged contradictions, MEDIUM red flags downgraded, mild incoherence.\\n- LOW: stylistic or coverage issues without material impact \\u2014 missing LOW-severity gaps, minor citation softness.\\n\\nRouting decision:\\n\\n- evaluator_score < 35 \\u2192 flagged_for_review.\\n- 35 <= evaluator_score < 50 \\u2192 complete.\\n- evaluator_score >= 50 \\u2192 complete_high_confidence.\\n- ANY critical_issue with severity HIGH overrides the threshold rule and forces flagged_for_review regardless of total score. (You can have a 55/60 memo that still gets flagged because of one fabricated customer name.)\\n\\nInput:\\n\\nYou receive five artifacts in the user message:\\n\\n- memo: the full MemoGenerationOutput (after Citation Validity Check has run; some claims may have been stripped).\\n- extracted_facts_per_document: array of ExtractionOutput JSONs.\\n- contradiction_output: ContradictionOutput.\\n- gap_analysis_output: GapAnalysisOutput.\\n- red_flag_detector_output: RedFlagDetectorOutput.\\n- portfolio_fit_output: PortfolioFitOutput.\\n- unresolved_sources: array (possibly empty) of { claim, invalid_source_name } items that the Citation Validity Check stripped from the memo.\\n- schema_errors: array (possibly empty) of upstream schema-validation failures (per design plan \\u00a73.3 retry-and-failure chain effect).\\n\\nOutput schema:\\n\\n{\\n  \\\"evaluator_score\\\": <integer 0-60, sum of the six criteria scores>,\\n  \\\"criteria_scores\\\": {\\n    \\\"citation_completeness\\\": <0-10>,\\n    \\\"contradiction_acknowledgment\\\": <0-10>,\\n    \\\"missing_information_coverage\\\": <0-10>,\\n    \\\"red_flag_propagation\\\": <0-10>,\\n    \\\"reasoning_coherence\\\": <0-10>,\\n    \\\"hallucination_check\\\": <0-10>\\n  },\\n  \\\"critical_issues\\\": [\\n    {\\n      \\\"issue_type\\\": \\\"<one of the enum values above>\\\",\\n      \\\"description\\\": \\\"<one to three sentences>\\\",\\n      \\\"severity\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\"\\n    }\\n  ],\\n  \\\"routing_decision\\\": \\\"complete\\\" | \\\"complete_high_confidence\\\" | \\\"flagged_for_review\\\",\\n  \\\"schema_errors\\\": <pass-through from input; do NOT modify>,\\n  \\\"unresolved_sources\\\": <pass-through from input; do NOT modify>\\n}\\n\\nOutput rules:\\n\\n1. JSON only. No markdown, no prose, no commentary.\\n2. evaluator_score MUST equal the sum of the six criteria_scores.\\n3. Each criterion score is an integer 0-10 inclusive.\\n4. routing_decision MUST follow the threshold rules unless overridden by a HIGH-severity critical_issue.\\n5. critical_issues array can be empty. Use [] when no issues found.\\n6. Do NOT rewrite the memo. Do NOT propose fixes. Report findings only.\\n7. Pass schema_errors and unresolved_sources through verbatim from the input \\u2014 they are upstream signals you preserve, not generate.\\n8. issue_type MUST be from the enum above. severity MUST be HIGH / MEDIUM / LOW exactly.\\n\\nEdge cases:\\n\\n- Memo has executive_summary: null (upstream Memo Generation bypass): score the criteria on what IS present; emit one critical_issues entry { issue_type: other, severity: HIGH, description: \\\"Memo Generation bypassed; review provisional\\\"}; routing_decision: flagged_for_review.\\n- All six criteria score 0: something is structurally broken; emit one critical_issues entry { issue_type: other, severity: HIGH, description: \\\"Evaluation produced all-zero scores; structural failure\\\" }.\\n- unresolved_sources non-empty: the Citation Validity Check already stripped those claims, but the original Memo Generation attempted to invent a citation. Subtract 2 points from criterion 1 and emit a critical_issues entry { issue_type: missing_citation, severity: MEDIUM, description: \\\"<N> claim(s) had unresolved source_name and were stripped pre-evaluation\\\" }.\\n- Memo recommendation conflicts with Portfolio Fit's recommended_action AND no override rationale is given: emit { issue_type: incoherent_recommendation, severity: HIGH, description: \\\"...\\\" }.\\n\\nBefore returning, silently verify:\\n\\n- JSON is valid.\\n- evaluator_score equals the sum of criteria_scores values.\\n- routing_decision is consistent with the threshold rule and the critical_issues HIGH-severity override.\\n- Each criterion score is an integer (not a float, not a string).\\n- All six criteria_scores keys are present.\\n- critical_issues entries have all three required fields (issue_type, description, severity) with valid enum values.\\n- schema_errors and unresolved_sources are passed through unchanged.\\n\\nReturn ONLY the JSON object matching this schema.\";\n\nconst userPayload = {\n  memo: upstream.memo_output,\n  extracted_facts_per_document: upstream.extraction_outputs || [],\n  contradiction_output: upstream.contradiction_output || { contradictions: [], verified_claims: [] },\n  gap_analysis_output: upstream.gap_analysis_output || { missing_information: [] },\n  red_flag_detector_output: upstream.red_flag_detector_output || { red_flags: [] },\n  portfolio_fit_output: upstream.portfolio_fit_output || { portfolio_fit: null },\n  unresolved_sources: upstream.citation_validity?.unresolved_sources || [],\n  schema_errors: upstream.schema_errors || [],\n};\n\nreturn {\n  json: {\n    ...upstream,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
+      },
+      "id": "adbecfd0-build-eval-0039",
+      "name": "Build Evaluator Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "becfd0e1-call-eval-0040",
+      "name": "Call Evaluator Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        10300,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Parse Evaluator Response \u2014 Phase 3 task 3.13\n// Schema-shape projection per EvaluatorOutput. Validates RoutingDecision +\n// Severity + issue_type enums; ensures evaluator_score = sum(criteria).\n// Passes through unresolved_sources and schema_errors as the spec requires.\n\nconst response = $input.item.json;\nconst request = $('Build Evaluator Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Evaluator response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Evaluator JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nconst VALID_ROUTING = ['complete', 'complete_high_confidence', 'flagged_for_review'];\nconst VALID_SEVERITY = ['HIGH', 'MEDIUM', 'LOW'];\nconst VALID_ISSUE_TYPE = [\n  'potential_hallucination',\n  'missing_citation',\n  'unacknowledged_contradiction',\n  'ignored_red_flag',\n  'incoherent_recommendation',\n  'strategic_incoherence',\n  'other',\n];\n\nfunction clampInt(v, lo, hi) {\n  if (typeof v !== 'number' || Number.isNaN(v)) return null;\n  const n = Math.round(v);\n  if (n < lo) return lo;\n  if (n > hi) return hi;\n  return n;\n}\n\nconst cs = parsed.criteria_scores || {};\nconst criteriaScores = {\n  citation_completeness: clampInt(cs.citation_completeness, 0, 10) ?? 0,\n  contradiction_acknowledgment: clampInt(cs.contradiction_acknowledgment, 0, 10) ?? 0,\n  missing_information_coverage: clampInt(cs.missing_information_coverage, 0, 10) ?? 0,\n  red_flag_propagation: clampInt(cs.red_flag_propagation, 0, 10) ?? 0,\n  reasoning_coherence: clampInt(cs.reasoning_coherence, 0, 10) ?? 0,\n  hallucination_check: clampInt(cs.hallucination_check, 0, 10) ?? 0,\n};\nconst computedTotal = Object.values(criteriaScores).reduce((a, b) => a + b, 0);\n// Honor model's evaluator_score if it matches the sum; otherwise use the\n// computed sum as authoritative (the prompt says they MUST equal).\nlet evaluatorScore = clampInt(parsed.evaluator_score, 0, 60);\nif (evaluatorScore == null || evaluatorScore !== computedTotal) {\n  evaluatorScore = computedTotal;\n}\n\nconst criticalIssues = Array.isArray(parsed.critical_issues)\n  ? parsed.critical_issues\n      .filter((x) => x && typeof x === 'object')\n      .map((x) => ({\n        issue_type: VALID_ISSUE_TYPE.includes(x.issue_type) ? x.issue_type : null,\n        description: typeof x.description === 'string' ? x.description : '',\n        severity: VALID_SEVERITY.includes(x.severity) ? x.severity : null,\n      }))\n      .filter((x) => x.issue_type && x.severity && x.description.length > 0)\n  : [];\n\n// Routing: threshold rule + HIGH critical_issue override.\nlet routingDecision = VALID_ROUTING.includes(parsed.routing_decision) ? parsed.routing_decision : null;\nconst hasHighCritical = criticalIssues.some((c) => c.severity === 'HIGH');\nif (hasHighCritical) {\n  routingDecision = 'flagged_for_review';\n} else if (routingDecision == null) {\n  if (evaluatorScore < 35) routingDecision = 'flagged_for_review';\n  else if (evaluatorScore < 50) routingDecision = 'complete';\n  else routingDecision = 'complete_high_confidence';\n}\n\nconst evaluatorOutput = {\n  evaluator_score: evaluatorScore,\n  criteria_scores: criteriaScores,\n  critical_issues: criticalIssues,\n  routing_decision: routingDecision,\n  schema_errors: Array.isArray(parsed.schema_errors) ? parsed.schema_errors : (request.schema_errors || []),\n  unresolved_sources: Array.isArray(parsed.unresolved_sources) ? parsed.unresolved_sources : (request.citation_validity?.unresolved_sources || []),\n};\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    extraction_outputs: request.extraction_outputs,\n    contradiction_output: request.contradiction_output,\n    gap_analysis_output: request.gap_analysis_output,\n    red_flag_detector_output: request.red_flag_detector_output,\n    portfolio_fit_output: request.portfolio_fit_output,\n    memo_output: request.memo_output,\n    citation_validity: request.citation_validity,\n    evaluator_output: evaluatorOutput,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n    timestamp_completed: new Date().toISOString(),\n  },\n};\n"
+      },
+      "id": "cfd0e1f2-parse-eval-0041",
+      "name": "Parse Evaluator Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Supabase Record \u2014 Phase 3 task 3.15\n// Assembles the row JSON for INSERT into public.deal_memos per\n// schemas/supabase-schema.sql. The status field maps from the\n// Evaluator's routing_decision (per design plan \u00a72.11 state machine).\n\nconst upstream = $input.item.json;\nif (!upstream) throw new Error('Build Supabase Record received empty input.');\n\nconst memo = upstream.memo_output || {};\nconst evaluator = upstream.evaluator_output || {};\nconst routing = evaluator.routing_decision || 'flagged_for_review';\n\n// status enum maps directly from routing_decision\nconst status = routing;\n\n// source_documents: assemble from source_manifest + Coordinator's documents\n// metadata. The Coordinator emits documents on the run-level item but we\n// only have source_manifest (string array) downstream. Reach back to\n// Coordinator for the richer shape.\nconst coordinator = $('Coordinator').all()[0]?.json;\nconst sourceDocuments = coordinator?.documents || (upstream.source_manifest || []).map((name) => ({ source_name: name }));\n\nconst evaluatorFeedback = {\n  criteria_scores: evaluator.criteria_scores || null,\n  critical_issues: evaluator.critical_issues || [],\n  routing_decision: routing,\n  schema_errors: evaluator.schema_errors || [],\n  unresolved_sources: evaluator.unresolved_sources || [],\n};\n\nconst row = {\n  run_id: upstream.run_id,\n  deal_id: upstream.deal_id,\n  company_name: upstream.company_name,\n  status,\n  executive_summary: memo.executive_summary,\n  recommendation: memo.recommendation,\n  recommendation_rationale: memo.recommendation_rationale,\n  company_snapshot: memo.company_snapshot || null,\n  investment_thesis: memo.investment_thesis,\n  key_strengths: memo.key_strengths || [],\n  key_risks: memo.key_risks || [],\n  contradictions: memo.contradictions || [],\n  missing_information: memo.missing_information || [],\n  red_flags: memo.red_flags || [],\n  portfolio_fit: memo.portfolio_fit || null,\n  open_diligence_questions: memo.open_diligence_questions || [],\n  confidence_scores: memo.confidence_scores || null,\n  evaluator_score: typeof evaluator.evaluator_score === 'number' ? evaluator.evaluator_score : null,\n  evaluator_feedback: evaluatorFeedback,\n  source_documents: sourceDocuments,\n};\n\nreturn {\n  json: {\n    ...upstream,\n    supabase_row: row,\n  },\n};\n"
+      },
+      "id": "d0e1f203-build-supabase-0042",
+      "name": "Build Supabase Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/deal_memos",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.supabase_row) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "e1f20314-insert-deal-memo-0043",
+      "name": "Insert Deal Memo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        11080,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Slack Message \u2014 Phase 3 task 3.16w\n// Block Kit JSON for #investment-team. Highlights routing_decision,\n// recommendation, top risks. Emoji + tone differs by routing.\n\nconst upstream = $input.item.json;\nif (!upstream) throw new Error('Build Slack Message received empty input.');\n\nconst memo = upstream.memo_output || {};\nconst evaluator = upstream.evaluator_output || {};\nconst routing = evaluator.routing_decision || 'flagged_for_review';\nconst score = evaluator.evaluator_score;\nconst company = upstream.company_name || upstream.deal_id || 'Unknown deal';\nconst recommendation = memo.recommendation || 'unknown';\n\nconst headerEmoji = routing === 'complete_high_confidence' ? ':white_check_mark:'\n                  : routing === 'complete' ? ':eight_spoked_asterisk:'\n                  : ':rotating_light:';\n\nconst headerText = `${headerEmoji} ${company} \u2014 ${routing.replace(/_/g, ' ')}`;\n\nconst recommendationText = `*Recommendation (directional):* ${recommendation}`;\nconst scoreText = `*Evaluator score:* ${score != null ? `${score} / 60` : 'n/a'}`;\n\nconst risks = (memo.key_risks || [])\n  .filter((r) => r && r.severity === 'HIGH')\n  .slice(0, 3)\n  .map((r) => `\u2022 *[${r.severity}]* ${r.risk}`)\n  .join('\\n');\nconst risksBlock = risks.length > 0 ? `*Top risks:*\\n${risks}` : '_No HIGH-severity risks identified._';\n\nconst criticalIssues = (evaluator.critical_issues || [])\n  .filter((c) => c && c.severity === 'HIGH')\n  .slice(0, 3)\n  .map((c) => `\u2022 [${c.issue_type}] ${c.description}`)\n  .join('\\n');\nconst criticalBlock = criticalIssues.length > 0 ? `*Evaluator critical issues:*\\n${criticalIssues}` : '';\n\nconst summaryBlock = memo.executive_summary || '_No executive summary._';\n\nconst blocks = [\n  { type: 'header', text: { type: 'plain_text', text: headerText.slice(0, 150) } },\n  { type: 'section', text: { type: 'mrkdwn', text: summaryBlock.slice(0, 3000) } },\n  { type: 'section', fields: [\n      { type: 'mrkdwn', text: recommendationText },\n      { type: 'mrkdwn', text: scoreText },\n    ]\n  },\n  { type: 'section', text: { type: 'mrkdwn', text: risksBlock.slice(0, 3000) } },\n];\nif (criticalBlock) {\n  blocks.push({ type: 'section', text: { type: 'mrkdwn', text: criticalBlock.slice(0, 3000) } });\n}\nblocks.push({ type: 'context', elements: [\n  { type: 'mrkdwn', text: `run_id: \\`${upstream.run_id}\\` \u00b7 deal_id: \\`${upstream.deal_id}\\`` }\n]});\n\nreturn {\n  json: {\n    ...upstream,\n    slack_payload: {\n      text: headerText,  // fallback for clients that can't render blocks\n      blocks,\n    },\n  },\n};\n"
+      },
+      "id": "f2031425-build-slack-0044",
+      "name": "Build Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slack_payload) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "03142536-send-slack-0045",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        11600,
+        300
+      ],
+      "retryOnFail": false
     }
   ],
   "connections": {
@@ -1261,6 +1464,94 @@
           }
         ]
       ]
+    },
+    "Parse Memo Response": {
+      "main": [
+        [
+          {
+            "node": "Validate Memo Citations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Memo Citations": {
+      "main": [
+        [
+          {
+            "node": "Build Evaluator Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Evaluator Request": {
+      "main": [
+        [
+          {
+            "node": "Call Evaluator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Evaluator Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Evaluator Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Evaluator Response": {
+      "main": [
+        [
+          {
+            "node": "Build Supabase Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Supabase Record": {
+      "main": [
+        [
+          {
+            "node": "Insert Deal Memo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Deal Memo": {
+      "main": [
+        [
+          {
+            "node": "Build Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1270,9 +1561,9 @@
     "saveExecutionProgress": true,
     "timezone": "America/Toronto"
   },
-  "versionId": "phase3-session2-v12",
+  "versionId": "phase3-session2-v15",
   "meta": {
-    "description": "Phase 3 workflow \u2014 full specialist chain: ingestion + Extraction + Contradiction (Variant A tool-use) + Gap Analysis + deterministic Red Flag Detector (I-2) + Portfolio Fit + Memo Generation. Per D-6: hand-rolled aggregate retrieval store; raw HTTP + Code-node tool-call loops; embedded prompts kept in sync via scripts/inject-prompts.js."
+    "description": "Phase 3 workflow \u2014 full memo pipeline: ingestion + 5 specialists + Citation Validity + Evaluator + Supabase persistence + Slack notification. Per D-6: hand-rolled aggregate retrieval store; raw HTTP + Code-node tool-call loops; embedded prompts kept in sync via scripts/inject-prompts.js."
   },
   "id": "deal-diligence-workflow",
   "tags": []
