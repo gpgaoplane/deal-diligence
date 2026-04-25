@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T11:00:00-04:00
+last-updated: 2026-04-25T14:55:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -83,6 +83,7 @@ The remaining Core Build work now continues from Gap Analysis through Red Flag D
 - 3.P5 Memo Generation prompt drafted as **pre-refinement** (`prompts/memo-generation-agent.md` upgraded from Phase 2 stub). HIGH-stakes per project-conventions §3; gated on Claude Chat refinement (task 3.P5r) BEFORE 3.11 wiring. Pre-refinement notes for Claude Chat embedded in the file. Codex pre-refinement review per §10 trigger 1 is the next quality gate.
 - 3.P6 Evaluator prompt drafted (`prompts/evaluator-agent.md` upgraded from Phase 2 stub to Phase 3 draft). Medium-stakes; no Claude Chat refinement. Six-Criteria Quality Check rubric (each 0-10, total 0-60); HIGH-severity critical_issue override forces flagged_for_review regardless of score; "strategic incoherence" criterion (criterion 5) calls out the off-criteria defect type that the Phase 4 meta-eval discrimination gap will test.
 - 3.18w-3.20w helper scripts authored: `scripts/validate-fixture.js` (validates JSON against any named $defs schema; smoke-tested on both meta-eval fixtures), `scripts/validate-memo-citations.js` (out-of-sandbox wrapper around `code/citation-validity.js`; smoke-tested with cleaned-memo emission), `scripts/run-meta-eval.js` (Phase 4 task 4.16 readiness — runs Evaluator on good/bad fixtures, asserts discrimination gap ≥ 20). All three reuse the hand-rolled validator at `code/json-schema-validator.js` per D-3 to keep the project dependency-free.
+- Codex review fixes landed: (a) Build Portfolio Fit Request runtime bug (`$input.all()` in runOnceForEachItem) fixed in `e7320fa`; (b) Memo Generation prompt refined via Claude Chat with Codex pre-refinement findings folded in (`fd32499`); (c) `code/citation-validity.js` now accepts string-array source_manifest (live shape) and emits schema-shaped `{ claim, invalid_source_name }` unresolved_sources, plus `scripts/validate-memo-citations.js` no longer overwrites input on missing `.json` suffix (`a165b3a`); (d) Gap Analysis prompt partial-coverage rule clarified and workflow embed re-synced (`e52439b`); (e) `scripts/run-meta-eval.js` accepts upstream fixture paths via CLI flags and emits a loud stderr warning when upstream is fully zeroed.
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->

@@ -15,9 +15,24 @@
 //     node scripts/run-meta-eval.js
 //
 // Optional flags:
-//   --good <path>  override good fixture (default: test-cases/meta-eval/intentionally-good-memo.json)
-//   --bad  <path>  override bad  fixture (default: test-cases/meta-eval/intentionally-bad-memo.json)
-//   --json         print machine-readable JSON output
+//   --good <path>           override good fixture (default: test-cases/meta-eval/intentionally-good-memo.json)
+//   --bad  <path>           override bad  fixture (default: test-cases/meta-eval/intentionally-bad-memo.json)
+//   --extraction <path>     upstream ExtractionOutput[] JSON to feed Evaluator (default: empty array)
+//   --contradictions <path> upstream ContradictionOutput JSON              (default: empty)
+//   --gaps <path>           upstream GapAnalysisOutput JSON                (default: empty)
+//   --red-flags <path>      upstream RedFlagDetectorOutput JSON            (default: empty)
+//   --portfolio-fit <path>  upstream PortfolioFitOutput JSON               (default: neutral fit)
+//   --json                  print machine-readable JSON output
+//
+// LIMITATION (Codex P2 finding 2026-04-25): without upstream fixture
+// paths, the Evaluator's criteria 2/3/4 (contradiction_acknowledgment,
+// missing_information_coverage, red_flag_propagation) cannot be
+// meaningfully calibrated — those criteria score the memo against
+// upstream agent outputs, and zeroed-out upstream means the Evaluator
+// has nothing to compare against. For full Phase 4 calibration, supply
+// upstream fixture paths via the flags above. Without them, the
+// discrimination gap is computed against criteria 1, 5, 6 plus
+// whatever the Evaluator infers from the memo body alone.
 //
 // Exits 0 if discrimination gap >= 20, 1 otherwise. Also exits 1 on
 // API errors or schema validation failures of the Evaluator output.
@@ -37,13 +52,34 @@ const DISCRIMINATION_TARGET = 20;
 const FLAGGED_THRESHOLD = 35;
 
 function parseArgs(argv) {
-  const args = { good: DEFAULT_GOOD, bad: DEFAULT_BAD, json: false };
+  const args = {
+    good: DEFAULT_GOOD,
+    bad: DEFAULT_BAD,
+    extraction: null,
+    contradictions: null,
+    gaps: null,
+    redFlags: null,
+    portfolioFit: null,
+    json: false,
+  };
   for (let i = 2; i < argv.length; i++) {
-    if (argv[i] === '--good' && argv[i + 1]) { args.good = argv[++i]; }
-    else if (argv[i] === '--bad' && argv[i + 1]) { args.bad = argv[++i]; }
-    else if (argv[i] === '--json') { args.json = true; }
+    const flag = argv[i];
+    const next = argv[i + 1];
+    if (flag === '--good' && next) { args.good = argv[++i]; }
+    else if (flag === '--bad' && next) { args.bad = argv[++i]; }
+    else if (flag === '--extraction' && next) { args.extraction = argv[++i]; }
+    else if (flag === '--contradictions' && next) { args.contradictions = argv[++i]; }
+    else if (flag === '--gaps' && next) { args.gaps = argv[++i]; }
+    else if (flag === '--red-flags' && next) { args.redFlags = argv[++i]; }
+    else if (flag === '--portfolio-fit' && next) { args.portfolioFit = argv[++i]; }
+    else if (flag === '--json') { args.json = true; }
   }
   return args;
+}
+
+function loadOptional(filePath, fallback) {
+  if (!filePath) return fallback;
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function extractSystemPrompt(promptMarkdown) {
@@ -53,7 +89,7 @@ function extractSystemPrompt(promptMarkdown) {
   return m[1];
 }
 
-async function callEvaluator(memo, systemPrompt) {
+async function callEvaluator(memo, systemPrompt, upstream) {
   const apiKey = process.env.ALICLOUD_API_KEY;
   const baseUrl = process.env.ALICLOUD_BASE_URL;
   const model = process.env.ALICLOUD_MODEL || 'qwen3-max-2026-01-23';
@@ -61,16 +97,16 @@ async function callEvaluator(memo, systemPrompt) {
     throw new Error('ALICLOUD_API_KEY and ALICLOUD_BASE_URL must be set in env.');
   }
 
-  // Minimal upstream stub: meta-eval fixtures stand alone, with no live upstream
-  // agents to forward. We pass empty arrays for the upstream-agent inputs so
-  // the Evaluator runs the criteria against the memo itself.
+  // Upstream artifacts: caller supplies via CLI flags or accepts the
+  // empty-stub defaults. See script header LIMITATION note: empty upstream
+  // means criteria 2/3/4 cannot be fully calibrated.
   const userPayload = {
     memo,
-    extracted_facts_per_document: [],
-    contradiction_output: { contradictions: [], verified_claims: [] },
-    gap_analysis_output: { missing_information: [] },
-    red_flag_detector_output: { red_flags: [] },
-    portfolio_fit_output: { portfolio_fit: { strategic_fit: { score: 0.5, rationale: '' }, stage_fit: { score: 0.5, rationale: '' }, synergy_potential: [], anti_patterns: [], overall_thesis_alignment: 'MEDIUM', recommended_action: 'pursue' } },
+    extracted_facts_per_document: upstream.extraction,
+    contradiction_output: upstream.contradictions,
+    gap_analysis_output: upstream.gaps,
+    red_flag_detector_output: upstream.redFlags,
+    portfolio_fit_output: upstream.portfolioFit,
     unresolved_sources: [],
     schema_errors: [],
   };
@@ -141,10 +177,43 @@ async function main() {
     }
   }
 
+  // Build upstream payload. Defaults are empty; caller can override via flags.
+  const upstream = {
+    extraction: loadOptional(args.extraction, []),
+    contradictions: loadOptional(args.contradictions, { contradictions: [], verified_claims: [] }),
+    gaps: loadOptional(args.gaps, { missing_information: [] }),
+    redFlags: loadOptional(args.redFlags, { red_flags: [] }),
+    portfolioFit: loadOptional(args.portfolioFit, {
+      portfolio_fit: {
+        strategic_fit: { score: 0.5, rationale: '' },
+        stage_fit: { score: 0.5, rationale: '' },
+        synergy_potential: [],
+        anti_patterns: [],
+        overall_thesis_alignment: 'MEDIUM',
+        recommended_action: 'pursue',
+      },
+    }),
+  };
+
+  // Loud warning if upstream is fully zeroed out.
+  const allEmpty = (
+    upstream.extraction.length === 0 &&
+    upstream.contradictions.contradictions.length === 0 &&
+    upstream.contradictions.verified_claims.length === 0 &&
+    upstream.gaps.missing_information.length === 0 &&
+    upstream.redFlags.red_flags.length === 0
+  );
+  if (allEmpty) {
+    console.error('WARNING: upstream artifacts are all empty (no --extraction/--contradictions/--gaps/--red-flags supplied).');
+    console.error('  Evaluator criteria 2/3/4 will not be meaningfully calibrated.');
+    console.error('  Discrimination gap will reflect only criteria 1, 5, 6 plus what the Evaluator infers from the memo body.');
+    console.error('  Provide upstream fixture paths via flags for full calibration.');
+  }
+
   console.error('Running Evaluator on good fixture...');
-  const goodResult = await callEvaluator(goodMemo, systemPrompt);
+  const goodResult = await callEvaluator(goodMemo, systemPrompt, upstream);
   console.error('Running Evaluator on bad fixture...');
-  const badResult = await callEvaluator(badMemo, systemPrompt);
+  const badResult = await callEvaluator(badMemo, systemPrompt, upstream);
 
   // Validate Evaluator outputs against EvaluatorOutput schema.
   const goodValid = validator.validateDef(goodResult.parsed, 'EvaluatorOutput');
