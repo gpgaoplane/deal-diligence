@@ -11,6 +11,18 @@
 // and populate `unresolved_sources` for downstream surfacing.
 //
 // No LLM. No randomness. Pure function (memo, sourceManifest) -> result.
+//
+// Public output contract (matches schemas/agent-output-schemas.json
+// EvaluatorOutput.unresolved_sources):
+//   unresolved_sources: [{ claim, invalid_source_name }]
+//   - `claim`              = the claim text (strength / risk / claim)
+//   - `invalid_source_name` = the rejected source identifier
+//                            (extracted name when regex matched, or
+//                             the full citation when it was malformed)
+//
+// Internal diagnostic output (`dropped_claims`, `stats`, plus per-entry
+// `reason` codes inside dropped_claims._unresolved) is preserved for
+// debugging but is NOT part of the EvaluatorOutput contract.
 // ---------------------------------------------------------------------
 'use strict';
 
@@ -34,13 +46,23 @@ function extractSourceName(citation) {
 
 /**
  * Build the set of valid source names from the Coordinator's source_manifest.
- * @param {Array<{source_name: string, ...}>} sourceManifest
+ *
+ * Accepts BOTH live shapes:
+ *   - string array: ["CoreWeave S-1 Filing", "CoreWeave Press Release"]
+ *     This is what the live Coordinator emits per design plan §2.2 and
+ *     n8n/workflow.json.
+ *   - object array: [{ source_name: "...", source_type: "...", ... }]
+ *     This is what test fixtures and helper scripts may pass.
+ *
+ * @param {Array<string|{source_name: string}>} sourceManifest
  * @returns {Set<string>}
  */
 function manifestNameSet(sourceManifest) {
   const out = new Set();
   for (const entry of sourceManifest || []) {
-    if (entry && typeof entry.source_name === 'string') {
+    if (typeof entry === 'string' && entry.length > 0) {
+      out.add(entry);
+    } else if (entry && typeof entry.source_name === 'string') {
       out.add(entry.source_name);
     }
   }
@@ -50,15 +72,20 @@ function manifestNameSet(sourceManifest) {
 /**
  * Filter an array of citation strings: keep only those whose source_name
  * prefix is in the manifest. Return the kept strings AND a list of the
- * unresolved (rejected) ones with reason codes.
+ * unresolved (rejected) ones with reason codes + the rejected identifier.
  *
- * Reason codes:
+ * Reason codes (internal diagnostic):
  *   - "malformed"       — citation didn't match the canonical regex
  *   - "unknown_source"  — source_name prefix not in source_manifest
  *
+ * Returned `unresolved` shape:
+ *   { citation, reason, invalid_source_name }
+ *   where invalid_source_name is the extracted source_name when the
+ *   regex matched, or the full citation when it didn't.
+ *
  * @param {string[]} citations
  * @param {Set<string>} validSources
- * @returns {{kept: string[], unresolved: Array<{citation: string, reason: string}>}}
+ * @returns {{kept: string[], unresolved: Array<{citation: string, reason: string, invalid_source_name: string}>}}
  */
 function filterCitations(citations, validSources) {
   const kept = [];
@@ -66,11 +93,19 @@ function filterCitations(citations, validSources) {
   for (const c of citations || []) {
     const name = extractSourceName(c);
     if (name === null) {
-      unresolved.push({ citation: c, reason: 'malformed' });
+      unresolved.push({
+        citation: typeof c === 'string' ? c : String(c),
+        reason: 'malformed',
+        invalid_source_name: typeof c === 'string' ? c : String(c),
+      });
       continue;
     }
     if (!validSources.has(name)) {
-      unresolved.push({ citation: c, reason: 'unknown_source' });
+      unresolved.push({
+        citation: c,
+        reason: 'unknown_source',
+        invalid_source_name: name,
+      });
       continue;
     }
     kept.push(c);
@@ -89,31 +124,56 @@ function filterCitations(citations, validSources) {
  * @param {Array<Object>} claims  array of claim objects with a `sources` field
  * @param {Set<string>} validSources
  * @param {string} claimType  'key_strengths' | 'key_risks' | 'contradictions'
- * @returns {{kept: Array<Object>, dropped: Array<Object>, unresolved: Array<Object>}}
+ * @returns {{
+ *   kept: Array<Object>,
+ *   dropped: Array<Object>,
+ *   unresolved_pairs: Array<{claim_text: string, claim_type: string, citation: string, reason: string, invalid_source_name: string}>
+ * }}
  */
 function filterClaimArray(claims, validSources, claimType) {
   const kept = [];
   const dropped = [];
-  const unresolved = [];
+  const unresolvedPairs = [];
+
   for (const claim of claims || []) {
     if (!claim || typeof claim !== 'object') continue;
+    const claimText = claimTextOf(claim, claimType);
     const result = filterCitations(claim.sources, validSources);
+
     for (const u of result.unresolved) {
-      unresolved.push({ ...u, claim_type: claimType });
+      unresolvedPairs.push({
+        claim_text: claimText,
+        claim_type: claimType,
+        citation: u.citation,
+        reason: u.reason,
+        invalid_source_name: u.invalid_source_name,
+      });
     }
+
     if (result.kept.length === 0) {
       dropped.push({ ...claim, _drop_reason: 'all_sources_unresolved' });
       continue;
     }
     kept.push({ ...claim, sources: result.kept });
   }
-  return { kept, dropped, unresolved };
+  return { kept, dropped, unresolved_pairs: unresolvedPairs };
+}
+
+/**
+ * Extract the claim text from a claim object based on its array type.
+ */
+function claimTextOf(claim, claimType) {
+  if (claimType === 'key_strengths') return typeof claim.strength === 'string' ? claim.strength : '';
+  if (claimType === 'key_risks') return typeof claim.risk === 'string' ? claim.risk : '';
+  if (claimType === 'contradictions') return typeof claim.claim === 'string' ? claim.claim : '';
+  return '';
 }
 
 /**
  * Public entrypoint. Given a MemoGenerationOutput-shaped object and the
- * Coordinator's source_manifest, return a cleaned memo with only valid
- * citations plus the list of unresolved citations and dropped claims.
+ * Coordinator's source_manifest (string array OR object array), return
+ * a cleaned memo with only valid citations plus the list of unresolved
+ * citations and dropped claims.
  *
  * Cleaning behavior (per design plan §3.1):
  *   - For key_strengths / key_risks / contradictions: any claim whose
@@ -125,13 +185,18 @@ function filterClaimArray(claims, validSources, claimType) {
  *     filtered.
  *   - missing_information arrays carry no citations, so they pass through.
  *
- * Returned shape:
+ * Returned shape (the `unresolved_sources` field is shaped to match
+ * EvaluatorOutput.unresolved_sources in the schema):
+ *
  *   {
  *     cleanedMemo:        <memo with filtered citations / dropped claims>,
  *     unresolved_sources: [
- *       { citation: "...", reason: "malformed"|"unknown_source", claim_type: "key_strengths"|... }
+ *       { claim: "<claim text>", invalid_source_name: "<extracted name OR full citation>" }
  *     ],
- *     dropped_claims:     [ ...original claim objects that were dropped... ],
+ *     dropped_claims:     [...original claim objects that were dropped...],
+ *     diagnostic: {
+ *       unresolved_pairs: [...full per-citation entries with reason codes...]
+ *     },
  *     stats: {
  *       claims_input:  <int>,
  *       claims_kept:   <int>,
@@ -143,7 +208,7 @@ function filterClaimArray(claims, validSources, claimType) {
  *   }
  *
  * @param {Object} memo  MemoGenerationOutput
- * @param {Array<{source_name: string, source_type: string, file_id?: string}>} sourceManifest
+ * @param {Array<string|{source_name: string, source_type?: string, file_id?: string}>} sourceManifest
  */
 function validateCitations(memo, sourceManifest) {
   if (!memo || typeof memo !== 'object') {
@@ -153,7 +218,7 @@ function validateCitations(memo, sourceManifest) {
 
   const claimArrays = ['key_strengths', 'key_risks', 'contradictions'];
   const cleaned = { ...memo };
-  const unresolved = [];
+  const allUnresolvedPairs = [];
   const droppedClaims = [];
 
   let claimsInput = 0;
@@ -176,13 +241,22 @@ function validateCitations(memo, sourceManifest) {
       if (Array.isArray(c.sources)) citationsKept += c.sources.length;
     }
     droppedClaims.push(...result.dropped);
-    unresolved.push(...result.unresolved);
+    allUnresolvedPairs.push(...result.unresolved_pairs);
   }
+
+  // Public schema-compliant unresolved_sources: { claim, invalid_source_name }.
+  const unresolvedSources = allUnresolvedPairs.map((p) => ({
+    claim: p.claim_text,
+    invalid_source_name: p.invalid_source_name,
+  }));
 
   return {
     cleanedMemo: cleaned,
-    unresolved_sources: unresolved,
+    unresolved_sources: unresolvedSources,
     dropped_claims: droppedClaims,
+    diagnostic: {
+      unresolved_pairs: allUnresolvedPairs,
+    },
     stats: {
       claims_input: claimsInput,
       claims_kept: claimsKept,
@@ -202,6 +276,7 @@ module.exports = {
     manifestNameSet,
     filterCitations,
     filterClaimArray,
+    claimTextOf,
     SOURCE_NAME_PREFIX_RE,
   },
 };

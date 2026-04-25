@@ -9,8 +9,9 @@
 // Usage:
 //   node scripts/validate-memo-citations.js <memo-path> <manifest-path>
 //
-// Manifest file shape: array of { source_name, source_type, file_id? }
-// matching the Coordinator's source_manifest emission.
+// Manifest file shape: either a string array (live Coordinator emission per
+// design plan §2.2) OR an array of { source_name, source_type, file_id? }
+// (legacy / fixture shape). Both are accepted by validateCitations.
 //
 // Output:
 //   - Stats summary (claims_input/kept/dropped, citations_input/kept/unresolved).
@@ -52,7 +53,7 @@ function main() {
     process.exit(1);
   }
   if (!Array.isArray(manifest)) {
-    console.error('Manifest file must be a JSON array of { source_name, source_type, ... }');
+    console.error('Manifest file must be a JSON array (string array or { source_name, ... } objects).');
     process.exit(1);
   }
 
@@ -67,8 +68,15 @@ function main() {
 
   if (result.unresolved_sources.length > 0) {
     console.log(`\n  Unresolved citations (${result.unresolved_sources.length}):`);
-    for (const u of result.unresolved_sources) {
-      console.log(`    [${u.reason}] ${u.claim_type}: ${u.citation}`);
+    // Use diagnostic.unresolved_pairs for human-readable output (carries
+    // reason codes + claim_type); the public unresolved_sources field is
+    // schema-shaped { claim, invalid_source_name } for downstream consumers.
+    for (const u of result.diagnostic.unresolved_pairs) {
+      const claimText = u.claim_text || '<no text>';
+      const truncated = claimText.length > 60 ? `${claimText.slice(0, 60)}...` : claimText;
+      console.log(`    [${u.reason}] ${u.claim_type}: "${truncated}"`);
+      console.log(`      citation: ${u.citation}`);
+      console.log(`      invalid_source_name: ${u.invalid_source_name}`);
     }
   }
 
@@ -81,7 +89,16 @@ function main() {
   }
 
   // Write cleaned memo as sibling file.
-  const cleanedPath = memoPath.replace(/\.json$/, '.cleaned.json');
+  // Codex P3: if memoPath does not end in `.json`, the regex replace would
+  // return the original path unchanged, causing the cleaned file to overwrite
+  // the input. Guard by appending `.cleaned.json` when the suffix is absent.
+  const cleanedPath = /\.json$/i.test(memoPath)
+    ? memoPath.replace(/\.json$/i, '.cleaned.json')
+    : `${memoPath}.cleaned.json`;
+  if (cleanedPath === memoPath) {
+    console.error(`\n  Refusing to overwrite input: cleaned path equals memo path (${memoPath}). Aborting.`);
+    process.exit(1);
+  }
   fs.writeFileSync(cleanedPath, JSON.stringify(result.cleanedMemo, null, 2));
   console.log(`\n  Cleaned memo written to: ${cleanedPath}`);
 
