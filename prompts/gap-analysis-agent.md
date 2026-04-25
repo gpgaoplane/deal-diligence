@@ -2,7 +2,7 @@
 status: active
 type: prompt-draft
 owner: claude
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-25T14:50:00-04:00
 read-if: "drafting or refining the Gap Analysis Agent prompt"
 skip-if: "you are not working on Gap Analysis"
 related: [docs/project-conventions.md, docs/plans/2026-04-24-deal-diligence-design.md, schemas/agent-output-schemas.json]
@@ -134,13 +134,13 @@ Output rules:
 7. No citations on this output. This agent flags absences, not claims; citations would be definitionally empty.
 8. Do not repeat the same item across categories. If an item could fit two categories, pick the one closer to the dominant LP-diligence frame.
 9. Do not flag items already CORROBORATED or UNCONTRADICTED in contradiction_output.
-10. Do not flag items where union_chunks substantively cover the topic; partial coverage is not absence.
+10. Substantive coverage means the item's material content (the actual fact / number / disclosure the LP checklist asks for) is present in the corpus, not merely a heading or boilerplate mention. Mention without the material content does NOT count as coverage. Partial coverage of an item — where part is present but the specific missing piece is itself material — should be flagged at the missing-piece level (see edge cases below). Full substantive coverage should NOT be flagged.
 
 Edge cases:
 
 - Packet is comprehensive → return `{ "missing_information": [] }`.
-- Item implicit but not explicit (for example, CAC mentioned narratively but no exact number) → flag at MEDIUM with suggested_source noting that the management deck or CIM would normally include it.
-- Item partially present (for example, revenue reported but gross-margin breakdown by revenue line is not) → flag specifically what is missing, not the whole category.
+- Item implicit but not explicit (for example, CAC mentioned narratively but no exact number) → flag at MEDIUM. The narrative mention does not count as substantive coverage for a metric the LP checklist requires as a number; the explicit value is the material content.
+- Item partially present (for example, revenue reported but gross-margin breakdown by revenue line is not) → flag specifically the missing piece (the breakdown), at the importance level appropriate to that piece. Do NOT flag the parent category as a whole, and do NOT mark the item as covered just because the category is touched.
 - Stage cannot be inferred (deal_structure.amount_raising is null AND revenue / headcount are null) → default to MEDIUM importance for any flagged item, and note the calibration limitation in suggested_source.
 - Source documents conflict on stage (one says Series B, another implies pre-IPO) → use the highest stage signal, since LP expectations rise with stage.
 
