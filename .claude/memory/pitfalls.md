@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-24T19:00:00-04:00
+last-updated: 2026-04-24T19:45:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -139,24 +139,40 @@ When authoring any n8n Code node: grep the jsCode string for `require(` → if p
 
 Rule of thumb: **assume Node APIs are NOT available in the Code node sandbox.** Only ECMAScript language primitives + n8n's `$`-prefixed helpers are reliably accessible. Anything else, verify empirically or move outside the sandbox.
 
-## P-4 — n8n HTTP Request node REPLACES $json with response body (not merge) — 2026-04-24T19:00:00-04:00
+## P-4 — Multiple n8n node classes REPLACE $json instead of merging (HTTP Request, Extract from File, etc.) — 2026-04-24T19:45:00-04:00
 
 **Symptom:**
-A Code node immediately after an HTTP Request node sees `$input.item.json` containing ONLY the HTTP response body (e.g., `{data: [...], model: ..., usage: {...}}`). The chunk/run metadata that existed upstream (run_id, document, chunk_index, etc.) is GONE. Downstream aggregation produces items with `null` for all metadata fields despite the embedding/response being present and correct.
+A Code node immediately after one of these nodes sees `$input.item.json` containing ONLY the node's own output fields. Upstream metadata (run_id, document, chunk_index, etc.) is GONE. Downstream aggregation shows `null` for all lost fields despite the new fields being populated correctly.
+
+**Confirmed offenders on n8n 2.17.7:**
+- **HTTP Request** — $json replaced by response body (`{data, model, usage}`). Upstream fields dropped.
+- **Extract from File** (PDF mode) — $json replaced by `{text, numpages, info, version}`. Upstream fields dropped.
+- Presumably others of the same class (Read Binary File, any "ingest → transform" node).
 
 **Root cause:**
-By default, n8n 2.x HTTP Request node REPLACES `$json` with the response body per item. It does not merge. There's no obvious `includeIncomingFields` toggle in the node's parameter JSON (UI has a setting but it maps to a non-obvious JSON path, and flipping it is easy to miss).
+By default, these nodes treat their output as the new "payload" for the item, not an addition to it. The UI sometimes has a toggle to merge input (e.g., HTTP Request has an "Include Input Fields" option buried in the Options block), but the parameter paths are non-obvious and easy to miss.
 
 **Workaround:**
-In the Code node after HTTP Request, use n8n's cross-node reference expression to reach back to the ORIGINAL upstream node's output:
+In the Code node after the offending node, use n8n's cross-node reference expression to reach back to the LAST node that had the metadata you need:
 
 ```javascript
-const response = $input.item.json;              // HTTP response body
+// runOnceForEachItem mode:
+const response = $input.item.json;              // HTTP/extract output
 const original = $('Upstream Node').item.json;  // Upstream node's item at SAME position
-// merge: { ...original, embedding: response.data[0].embedding, ... }
+
+// runOnceForAllItems mode:
+const items = $input.all();
+const upstreamItems = $('Upstream Node').all(); // match by position index
+for (let i = 0; i < items.length; i++) {
+  const out = items[i].json;
+  const src = upstreamItems[i].json;
+  // merge as needed
+}
 ```
 
-`$('NodeName').item` returns the item at the current item's position from the named node's output. n8n preserves per-item order through HTTP Request in runOnceForEachItem mode, so position i after HTTP matches position i before HTTP.
+Both `$('NodeName').item` and `$('NodeName').all()` return items at their current positions. n8n preserves per-item order through these nodes, so position i after matches position i before.
+
+**Which node to reach back to:** the LAST node that had the fields you need. If there's a chain of metadata-dropping nodes (e.g., Split Per-Document → Extract from File → Text Chunker), reach back to the one BEFORE the first drop (Split Per-Document here), not the immediate predecessor.
 
 **Alternative workarounds (not used in this project):**
 - HTTP Request `options.response.response.fullResponse = true` — still replaces, but includes more response metadata. Doesn't help here.
@@ -164,8 +180,11 @@ const original = $('Upstream Node').item.json;  // Upstream node's item at SAME 
 - Embed original metadata in the REQUEST body so it's echoed back. Requires the API to echo; most don't.
 
 **Regression test:**
-For any new HTTP Request → Code-node pair in this workflow: if the Code node needs upstream metadata, it MUST use `$('Upstream Node').item.json` to reach back. Grep the workflow for patterns `$input.item.json` immediately after an HTTP Request — check if metadata is really coming from the response or needs upstream reference.
+For any new [HTTP Request | Extract from File | similar] → Code-node pair in this workflow: if the Code node needs upstream metadata, it MUST use `$('Upstream Node').item.json` (or `.all()` for runOnceForAllItems) to reach back. Grep the workflow for `$input.item.json` or `$input.all()` in Code nodes following a known-offender upstream — check if metadata is coming from the right source.
 
-**See also:** n8n/workflow.json "Extract Embedding" node — demonstrates the correct pattern.
+**See also:** `n8n/workflow.json`
+- "Extract Embedding" (after HTTP Request) — reaches back to Text Chunker
+- "Text Chunker" (after Extract from File) — reaches back to Split Per-Document
+Both demonstrate the pattern.
 
 <!-- section:entries:end -->
