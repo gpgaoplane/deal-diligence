@@ -2,7 +2,7 @@
 status: active
 type: design-plan
 owner: shared
-last-updated: 2026-04-24T15:00:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you need component internals, data contracts, failure modes, or evaluation spec — this is the authoritative design for the build phases"
 skip-if: "your question is only about project scope (CONTEXT.md) or phase sequencing (2026-04-24-deal-diligence-implementation.md)"
 related: [CONTEXT.md, DESIGN.md, IMPLEMENTATION.md, 2026-04-24-deal-diligence-implementation.md, schemas/agent-output-schemas.json]
@@ -109,7 +109,7 @@ All component designs below must satisfy these. Referenced by ID throughout. Ful
 2. **Set node — per-chunk metadata base** — establishes the parameterized LLM/embedding config consumed downstream:
    ```
    LLM_BASE_URL       = env ALICLOUD_BASE_URL
-   LLM_MODEL          = env ALICLOUD_MODEL (default qwen3.5-plus)
+   LLM_MODEL          = env ALICLOUD_MODEL (default qwen3-max-2026-01-23)
    EMBED_MODEL        = env ALICLOUD_EMBEDDING_MODEL (default text-embedding-v3)
    CHUNK_SIZE         = 1000   # tokens
    CHUNK_OVERLAP      = 100    # tokens
@@ -119,7 +119,7 @@ All component designs below must satisfy these. Referenced by ID throughout. Ful
    This single `Set` node is the swap point for I-6 (swappable components).
 3. **Recursive Character Text Splitter** — chunk_size = 1000 tokens, overlap = 100 tokens. Token counts via `tiktoken` (cl100k_base approximation — acceptable drift for Qwen3.5-Plus).
 4. **HTTP Request — embed** — POST to `${LLM_BASE_URL}/embeddings` with `model: EMBED_MODEL, input: chunk.text`. Retry policy per §6.
-5. **Simple Vector Store (insert mode)** — stores embeddings. Per-document collections: each source's chunks live in its own collection (enables per-document retrieval in §2.4).
+5. **Aggregate chunk store (Code node, hand-rolled)** — fold N embedded chunks into ONE workflow item carrying `chunks[]` with `{ text, embedding[], source_name, source_type, file_id, chunk_index, page_estimate, run_id, deal_id }`. Subsequent specialist nodes read this single item and run JS cosine ranking to retrieve the top-k by query. Per D-6, this replaces the v1 plan's n8n Simple Vector Store node — driven by spike findings P-1 / P-3 / P-4 (Code-node sandbox blocks `ajv.compile`, `require('crypto')`, and Web Crypto global; HTTP Request and Extract from File replace `$json` instead of merging) which forced the workflow into pure-JS Code nodes + raw HTTP Request throughout. Inspectable in n8n execution data; no LangChain wrapper opacity. See `.claude/memory/decisions.md` D-6 for full rationale, cost flags, and migration triggers.
 
 **Per-chunk metadata:**
 
@@ -138,7 +138,7 @@ All component designs below must satisfy these. Referenced by ID throughout. Ful
 
 **Note on `page_estimate`.** True page attribution requires PDF text extraction with per-page markers, which many n8n "Extract from File" outputs don't provide cleanly. `page_estimate` is computed from `char_offset_start / avg_chars_per_page`. Citations will use `"p. ~23"` notation when estimated; exact when extractable. The citation-validity check (§3.1) accepts both.
 
-**Scope of lifetime.** Simple Vector Store is in-memory and resets per run (invariant). This is intentional: each deal gets a fresh retrieval context. Production would migrate to Supabase pgvector.
+**Scope of lifetime.** The aggregate chunk store lives inside a single workflow item, in-process and scoped to the workflow execution. Each deal gets a fresh retrieval context — no cross-run shared state. **Cost flag (per D-6):** ~4 docs × ~350 chunks × 2048-dim × 8 bytes ≈ 23MB of embeddings sitting inside one workflow item. **Migration trigger:** if execution-data size > ~50MB or n8n UI lag becomes noticeable on chunk-store nodes, migrate to Supabase pgvector (production target). The Simple Vector Store node would have hit the same memory cost just less inspectably.
 
 ### §2.4 — Extraction Agent
 
@@ -167,7 +167,7 @@ Total: **12 retrievals per document × up to 4 documents = 48 retrievals per run
 
 **Output JSON Schema.** Authoritative definition in `schemas/agent-output-schemas.json#/$defs/ExtractionOutput` (draft-07). Shape matches original DESIGN.md §4.1; null-union encoding uses proper `"type": ["number", "null"]` (not the `"number|null"` pseudo-syntax from the original). Citation field pattern regex: `^[A-Z][A-Za-z0-9 ]+ (S-1 Filing|10-K Filing|10-Q Filing|Press Release|Analyst Report|Expert Transcript|Management Deck)( \(#\d+\))? (p\. ~?\d+|§[A-Za-z0-9\. ]+|Risk Factors p\. \d+)$` (illustrative — see the committed schema file for the exact production regex).
 
-**Per-document invocation.** Extraction runs once per document (via n8n Split In Batches or parallel AI Agent nodes in a loop).
+**Per-document invocation.** Extraction runs once per document. Per D-6, the wired path uses Split Per-Document → 12 retrieval queries (11 section + 1 union) → embed each query via HTTP Request → JS cosine rank against the aggregate chunk store → assemble per-document context → raw HTTP Request to the chat-completions endpoint → Code-node parse — not the v1 plan's parallel n8n AI Agent nodes. Section-targeted retrieval semantics are preserved; only the mechanism changed.
 
 ### §2.5 — Contradiction Agent
 
@@ -177,12 +177,12 @@ Total: **12 retrievals per document × up to 4 documents = 48 retrievals per run
 
 Two prompt variants are written (both committed to `prompts/`, selected at wire time per D-2):
 
-- **Variant A — tool-use mode** (`prompts/contradiction-agent.tool-use.md`). Agent has Simple Vector Store as an n8n AI Agent tool. Agent issues retrieval queries on demand. k per query = 5.
+- **Variant A — tool-use mode** (`prompts/contradiction-agent.tool-use.md`). Per D-6, this is implemented as a hand-rolled raw-HTTP + Code-node tool-call loop (Build Request → Call Turn 1 → Parse `tool_calls` → Embed Queries → Rank Chunks against aggregate store → Build Final Request → Call Final → Parse Response), not via an n8n AI Agent node. The model is given a `retrieve_document` function tool definition; the workflow executes the tool by running JS cosine ranking against the aggregate chunk store and feeding results back as a second turn. k per retrieval = 5. Runtime-verified on `qwen3-max-2026-01-23`; D-2 is confirmed for this hand-rolled topology specifically (the n8n AI Agent path was never wired).
 - **Variant B — stuffed-context mode** (`prompts/contradiction-agent.stuffed.md`). Agent receives the union of all documents' Extraction outputs (with their citations) as context — no retrieval calls. Sized for ~80K input tokens across 4 documents.
 
 **Input contract:**
 - All documents' Extraction Agent outputs (structured JSON).
-- In Variant A only: access to the Simple Vector Store tool (per-document or union collection).
+- In Variant A only: a `retrieve_document` function-tool that the workflow executes against the aggregate chunk store (per D-6). The tool returns top-k chunks scored by cosine similarity over the same 2048-dim embeddings used during ingestion.
 
 **Output JSON Schema.** `schemas/agent-output-schemas.json#/$defs/ContradictionOutput`. Shape matches original DESIGN.md §4.2 with null-union fixes. Classification enum: `["CORROBORATED", "UNCONTRADICTED", "DISPUTED", "UNSUPPORTED"]`.
 
@@ -266,7 +266,7 @@ All regex flags declare `i` (case-insensitive); no `g` flag (single match is suf
 
 **Unit test plan (`code/test/red-flag-detector.test.js`, Node 22 `--test` runner).** Target: ~35 tests total, 3–4 per flag covering positive assertion, primary negation variant, and one edge case (short text, ALL CAPS, adjacent punctuation). Not 100 — the marginal signal beyond ~35 is small and the timeline doesn't support it.
 
-**Invocation pattern.** Called from an n8n Code node wrapping the module. Input bound from upstream Gap Analysis output (carrying through extraction facts) + raw text retrieved from Simple Vector Store (a retrieval with k=0 returns stored metadata; we recover raw text via a separate n8n Get node pointing at the vector store's document collection).
+**Invocation pattern.** Called from an n8n Code node wrapping the module. Input bound from upstream Gap Analysis output (carrying through extraction facts) + per-document raw text. Per D-6, raw text is recovered by reading the aggregate chunk store directly (`chunks[]` already contains the full text per chunk; concatenate by `source_name` to reconstruct per-document raw text). No separate vector-store-document fetch needed since the aggregate store is a normal workflow item.
 
 **Output JSON Schema.** `schemas/agent-output-schemas.json#/$defs/RedFlagDetectorOutput`. Shape matches original DESIGN.md §4.4; every entry has `"deterministic": true` — this boolean is the governance field that distinguishes rule-based flags from LLM analysis in downstream consumers.
 
@@ -607,7 +607,7 @@ Unsupported features: `oneOf`, `$ref` external, `format`, `additionalProperties`
 | Agent | Input bundle |
 |---|---|
 | Extraction | per-document retrieved chunks + prompt |
-| Contradiction (A: tool-use) | all Extraction outputs + vector store as tool |
+| Contradiction (A: tool-use) | all Extraction outputs + aggregate chunk store accessed via `retrieve_document` function-tool (per D-6) |
 | Contradiction (B: stuffed) | all Extraction outputs (union JSON) |
 | Gap Analysis | all Extraction outputs + Contradiction output + union retrieval chunks |
 | Red Flag Detector | all Extraction outputs + per-document raw text |
@@ -715,7 +715,7 @@ Every failure mode: detection, automated response, escalation path. Expands orig
 
 **Uniqueness.** `(run_id, deal_id)` is the composite key. `run_id` alone is unique (UUID v4 collision negligible). `deal_id` alone is not unique.
 
-**Concurrent workflow runs.** Safe. Each run has its own `run_id`; the Simple Vector Store is in-process and scoped to the workflow execution. No shared state concerns.
+**Concurrent workflow runs.** Safe. Each run has its own `run_id`; the aggregate chunk store (per D-6) is in-process and scoped to the workflow execution as a single workflow item. No shared state concerns.
 
 **Local-dev idempotency.** If a human re-runs the same workflow manually during testing with the same documents: expected behavior is new `run_id`, new Supabase row. Testers who want a clean slate must delete rows manually or filter by `run_id` in their queries.
 
@@ -770,7 +770,7 @@ These become decisions (D-N entries) in `.claude/memory/decisions.md`:
 
 | # | Question | Resolution phase | Decision ID |
 |---|---|---|---|
-| 1 | Does Qwen3.5-Plus tool-use reliably work via n8n AI Agent + DashScope? | Phase 2 spike 2.0a | D-2 |
+| 1 | Does Qwen tool-use reliably work via DashScope? **Resolved (per D-6):** confirmed at API level via direct curl in spike 2.0a, then live-verified in n8n via a hand-rolled raw-HTTP + Code-node tool-call loop. The n8n AI Agent node path was never wired. | Phase 2 spike 2.0a + Phase 3 task 3.6 runtime verification | D-2 (provisional) → D-6 (live topology) |
 | 2 | Does `ajv` load in n8n Code node with `NODE_FUNCTION_ALLOW_EXTERNAL=ajv`? | Phase 2 spike 2.0b | D-3 |
 | 3 | Does the Langfuse community node reliably capture traces? | Phase 3 task 3.24 | D-4 |
 | 4 | Optimal `RETRIEVAL_K_SECTION` value (currently 5)? | Phase 4 tuning | Tracked in state.md; not a locked decision |
@@ -806,6 +806,7 @@ These become decisions (D-N entries) in `.claude/memory/decisions.md`:
 | — | §10 Source-name normalization | — | — | Entire section | — |
 | — | §11 Citation format | — | — | Entire section | — |
 | — | §13 Open design questions | — | — | Entire section | — |
+| §3.3 / §3.5 (v1 retrieval + Contradiction tool topology) | §2.3 / §2.5 / §2.7 / §3.4 / §7 (formalized 2026-04-25 per D-6) | Section-targeted retrieval (11 + 1 union); k values; per-doc + union semantics; in-process per-run scope | Mechanism rewritten: Simple Vector Store node → hand-rolled aggregate chunk store; n8n AI Agent node → raw-HTTP + Code-node tool-call loop. Cost flags (execution-data size) and migration triggers (>50MB → pgvector) added | Cross-references to D-6 throughout the affected sections | "Simple Vector Store" node references (kept in §14 diff history only); "AI Agent node" tool-binding wording |
 
 ---
 

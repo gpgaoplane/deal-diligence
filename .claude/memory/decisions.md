@@ -2,7 +2,7 @@
 status: active
 type: decisions
 owner: claude
-last-updated: 2026-04-24T19:30:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you need Claude's major design decisions"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -14,6 +14,34 @@ Major project-architecture decisions are locked in `CONTEXT.md §5` with rationa
 Claude Code's own decisions (implementation-level choices Claude made while building) go below the `<!-- section:entries:start -->` marker with the full D-n format.
 
 <!-- section:entries:start -->
+
+## D-6 — Formalize hand-rolled retrieval store + raw-HTTP tool-use loops as the repo pattern — 2026-04-25T09:14:33-04:00
+**Context:** Design plan §2.3 specified n8n's Simple Vector Store (in-memory, per-document collections) for retrieval, and §2.5 specified Variant A Contradiction via the n8n AI Agent node with the SVS as a tool. Live workflow drifted from both: retrieval is a hand-rolled aggregate chunk store (single workflow item holding `chunks[]` with text + embedding + metadata, ranked via JS cosine), and Variant A Contradiction is implemented as a raw-HTTP + Code-node tool-call loop (turn 1 → parse `tool_calls` → embed queries → rank chunks → turn 2 → parse final). Both Extraction (`3.5`) and Contradiction (`3.6`) are runtime-verified on this topology and accepted by Will at the current quality bar.
+
+**Alternatives:**
+- (A) Realign workflow to the design plan's Simple Vector Store + AI Agent node topology before specialist-agent dependency deepens further (Gap Analysis, Red Flag Detector, Portfolio Fit, Memo Generation).
+- (B) Formalize the live pattern in design docs and a Claude-owned decision; treat the original §2.3 / §2.5 wording as historical v1.
+- (C) Hybrid: realign retrieval store to SVS but keep raw-HTTP tool-use loops; or vice versa.
+
+**Choice:** (B). Formalize.
+
+**Rationale:**
+1. **The drifts were spike outcomes, not accidents.** P-1 (sandbox blocks `ajv.compile`), P-3 (sandbox blocks `require('crypto')` and Web Crypto global), and P-4 (HTTP Request and Extract from File replace `$json`) collectively forced the workflow into pure-JS Code nodes + HTTP Request nodes. Once that pattern was established for ingestion, layering the SVS + AI Agent abstractions on top would create an inconsistent debugging surface — half black-box, half explicit.
+2. **The two drifts are coupled.** Once the retrieval store is hand-rolled, the AI Agent node's Simple Vector Store tool isn't available. Reverting one without the other isn't possible.
+3. **Empirical evidence is positive.** Both specialists are working at production-acceptable quality. Extraction prompt sizes dropped from ~58.9k to ~30.4k tokens after retrieval caps (24 regular + 6 union). Contradiction's previously-leaking `Microsoft 62% CORROBORATED` false-positive disappeared on `qwen3-max-2026-01-23`.
+4. **Auditability is a governance plus.** Every request body, response, and tool call is visible in n8n execution data. Pari's evaluation lens weights governance; explicit > opaque.
+5. **D-2 nuance:** Contradiction tool-use is confirmed *for the raw-HTTP path actually built*, not for the n8n AI Agent path the design envisioned. Anyone later asking "is Qwen tool-use confirmed via the AI Agent node?" gets "we never tested it; we tested an alternative that worked."
+
+**Tradeoffs and cost flags:**
+- **Execution-data size.** ~4 docs × ~350 chunks × 2048-dim × 8 bytes ≈ 23MB of embeddings in a single workflow item. n8n UI gets sluggish and Langfuse traces inflate when 3.25 wraps long-running nodes. **Migration trigger:** if execution-data size > ~50MB or n8n UI lag becomes noticeable on chunk-store nodes, migrate to Supabase pgvector. SVS would have hit the same cost just less inspectably.
+- **Doubled-prompt surface.** Each specialist's system prompt lives in two places: `prompts/*.md` and embedded inside `n8n/workflow.json`. Memo Generation will make this three. **Mitigation (deferred to 3.11 wire-up):** add `scripts/inject-prompts.js` (~20 LOC) that reads `prompts/*.md` and injects into `workflow.json` placeholders before `import-workflow.sh` runs. Single source of truth.
+- **Manual Langfuse instrumentation.** The community node `n8n-nodes-openai-langfuse` wraps n8n's OpenAI node, not raw HTTP Request. So Langfuse traces for raw-HTTP chat-completions need explicit HTTP Request nodes posting to `/api/public/ingestion`. This is already documented in design plan §3.12 fallback path; cost ~30 min rework when 3.24 lands.
+- **Production migration path.** Moving to pgvector becomes a code rewrite (rewriting cosine ranking and metadata recovery into SQL queries) rather than an n8n config swap. Acceptable for a prototype with explicit demo scope.
+- **Demo narrative.** Pari sees raw HTTP loops not the canonical n8n pattern. Recast as: "spikes 2.0a/2.0b revealed sandbox limits → engineering call to pure-JS + raw HTTP for consistency and inspectability → working empirical baseline." That's the FDE-role narrative, stronger than "we used the LangChain wrapper."
+
+**What this implies for design plan §2.3 / §2.5:** Both sections describe v1-pre-spike architecture. Per the document authority table in `docs/project-conventions.md §7`, neither is in the scope-locked set, so Claude Code may update component-internal descriptions as implementation lands. Recommended path: short Claude Chat consultation describing the drift + rationale, then update both sections with cross-reference to D-6 here. Originals worth preserving in a §15 diff-table addendum, not silent overwrite. Awaiting Will's direction on whether to (a) request Claude Chat update, (b) authorize Claude Code direct edit, or (c) leave the plan as historical v1 with D-6 as the live reference.
+
+**Verification:** Both topologies running end-to-end in live n8n on CoreWeave press release + S-1 pair, on `qwen3-max-2026-01-23`. Codex's work log entries from `2026-04-24T22:31:01-04:00` through `2026-04-25T01:31:21-04:00` document the runtime evidence.
 
 ## D-5 — Embeddings provider: OpenRouter (nvidia/llama-nemotron-embed-vl-1b-v2:free) — 2026-04-24T19:30:00-04:00
 **Context:** Initial workflow used Alicloud DashScope `text-embedding-v4` (1024-dim). User requested switch to OpenRouter's `nvidia/llama-nemotron-embed-vl-1b-v2:free` for free-tier embeddings.

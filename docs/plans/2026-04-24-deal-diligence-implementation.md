@@ -2,7 +2,7 @@
 status: active
 type: implementation-plan
 owner: shared
-last-updated: 2026-04-24T03:15:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you are planning, executing, or reviewing a phase — this is the authoritative phased build plan with task-level routing, verification commands, and Receipt gates"
 skip-if: "your question is only about scope (CONTEXT.md) or component design (2026-04-24-deal-diligence-design.md)"
 related: [CONTEXT.md, DESIGN.md, IMPLEMENTATION.md, 2026-04-24-deal-diligence-design.md, docs/STATUS.md, .collab/ROUTING.md, .collab/PROTOCOL.md]
@@ -137,7 +137,7 @@ Emit per §2 template. Expected "Decisions landed": none. "Invariants touched": 
 
 | # | Task | Owner | Est. | Routing rows | Decision recorded as |
 |---|---|---|---|---|---|
-| 2.0a | Spike: Qwen3.5-Plus tool-use via n8n AI Agent + DashScope. Build a throwaway workflow with one AI Agent node, one Simple Vector Store, one dummy tool call. Inspect whether Qwen reliably invokes the tool. | claude | 45m | 1, 3, 4 | D-2 in `.claude/memory/decisions.md` |
+| 2.0a | Spike: Qwen tool-use reliability via DashScope. **Outcome (historical):** confirmed at the API level via direct curl with `tools[]`, recorded as D-2 (provisional Variant A). The actually-built topology is a hand-rolled raw-HTTP + Code-node tool-call loop, not the n8n AI Agent node — see D-6 for rationale. So D-2 is confirmed for the hand-rolled path; the AI Agent path was never wired. | claude | 45m | 1, 3, 4 | D-2 in `.claude/memory/decisions.md`; D-6 documents the actual topology |
 | 2.0b.pre | Write minimal `docker-compose.yml` bootstrap: n8n image + port 5678 + `NODE_FUNCTION_ALLOW_EXTERNAL=ajv` + basic auth. This is a scaffolding stub that 2.4 will expand. | claude | 15m | 1, 9 | — |
 | 2.0b | Spike: `ajv` availability in n8n Code node. Start n8n with the bootstrap compose; create a throwaway workflow with one Code node containing `const Ajv = require('ajv'); return { ok: true };`; execute and verify output. | claude | 20m | 3, 4 | D-3 |
 
@@ -210,10 +210,10 @@ Emit per §2. Expected decisions: D-2 (Contradiction topology), D-3 (schema vali
 |---|---|---|---|---|---|
 | 3.1 | Implement Form Trigger node per design §2.1 | claude | 15m | Phase 2 | 1, 7 |
 | 3.2 | Implement Coordinator (Set node) emitting run_id, deal_id, source_manifest, timestamps per design §2.2 | claude | 20m | 3.1 | 1, 4 (source_manifest is architecture-relevant) |
-| 3.3 | Implement Document Ingestion pipeline (Extract → Splitter → Embeddings → Vector Store) per design §2.3 | claude | 45m | 3.2 | 1 |
+| 3.3 | Implement Document Ingestion pipeline (Extract → Splitter → Embeddings → aggregate chunk store) per design §2.3 (per D-6: hand-rolled Code-node aggregate store, not n8n Simple Vector Store) | claude | 45m | 3.2 | 1 |
 | 3.4 | Configure parameterized LLM HTTP Request node (base URL + model from Set node) | claude | 30m | 3.2 | 1, 3 (parameterization choice) |
-| 3.5 | Wire Extraction Agent node: AI Agent + Vector Store tool + extraction prompt. Loop per document. Section-targeted retrieval per design §2.4 | claude | 45m | 3.4, 3.P1r | 1, 4 (retrieval pattern is architecture) |
-| 3.6 | Wire Contradiction Agent node per D-2 (Variant A or B) | claude | 30m | 3.5, 3.P2r, D-2 | 1 |
+| 3.5 | Wire Extraction Agent path per D-6: Split Per-Document → 12 retrieval queries (11 section + 1 union) → embed each via HTTP Request → JS cosine rank against aggregate chunk store → assemble per-document context → raw HTTP Request to chat-completions → Code-node parse. Section-targeted retrieval per design §2.4 (semantics preserved; mechanism rewritten). | claude | 45m | 3.4, 3.P1r | 1, 4 (retrieval pattern is architecture) |
+| 3.6 | Wire Contradiction Agent per D-2 (Variant A or B). Per D-6: Variant A is implemented as a hand-rolled raw-HTTP + Code-node tool-call loop with a `retrieve_document` function-tool, not via an n8n AI Agent node. | claude | 30m | 3.5, 3.P2r, D-2 | 1 |
 | 3.7 | Wire Gap Analysis Agent node | claude | 30m | 3.6, 3.P3 | 1 |
 | 3.8 | Implement Red Flag Detector sub-workflow: Execute Workflow → JS Code node wrapping `code/red-flag-detector.js` | claude | 30m | 3.7, 3.P7v | 1 |
 | 3.9 | Wire Portfolio Fit Agent node (loads `sagard-portfolio.json`) | claude | 30m | 3.8, 3.P4 | 1 |
@@ -274,7 +274,7 @@ Emit per §2. Expected decisions: D-2 (Contradiction topology), D-3 (schema vali
 | Criterion | Verification |
 |---|---|
 | Workflow triggers via Form Trigger | `curl -X POST http://localhost:5678/webhook/deal-diligence -F "company_name=CoreWeave" -F "documents=@test-cases/coreweave/s-1.pdf" -F "documents=@test-cases/coreweave/press-release.pdf"` returns 200; run_id visible in n8n executions |
-| Document ingestion populates Simple Vector Store | Post-run node output shows chunk count > 0 |
+| Document ingestion populates the aggregate chunk store (per D-6) | Post-run `Aggregate Vector Store` node output shows `chunks.length > 0` with each chunk carrying text + 2048-dim embedding + source metadata |
 | All 7 specialist agents execute without error on CoreWeave run | n8n execution view: all agent nodes show green |
 | Red Flag Detector emits non-empty `red_flags` for CoreWeave (must find customer concentration) | `SELECT red_flags FROM deal_memos WHERE deal_id='coreweave' ORDER BY created_at DESC LIMIT 1;` contains `customer_concentration_extreme` |
 | Memo is written to Supabase with all required fields | `SELECT count(*) FROM deal_memos WHERE deal_id='coreweave' AND status != 'error';` ≥ 1 |
@@ -458,7 +458,7 @@ Demo script (6.1) and written explanation (6.7) parallel. README polish (6.9) pa
 
 ### 8.5 Time-box trigger
 
-**If Phase 6 > 4h:** submit with current demo take even if not ideal. Missed deadline > imperfect demo.
+**If Phase 6 > 4h:** keep iterating; the original deadline has already passed and there is no active time pressure. Quality of the demo matters more than speed.
 
 ### 8.6 Phase-closure Receipt
 
@@ -466,7 +466,7 @@ Emit per §2.
 
 ## §9 — Phase 7: Submission
 
-**Goal.** Email reaches Pari before EOD 2026-04-24.
+**Goal.** Email reaches Pari with a complete, demo-quality submission. The original 2026-04-24 deadline has passed; submission timing is now driven by quality, not the calendar.
 
 ### 9.1 Tasks
 
@@ -481,7 +481,7 @@ Emit per §2.
 
 | Criterion | Verification |
 |---|---|
-| Email sent before end of 2026-04-24 local time | timestamp in Sent folder |
+| Email sent (no active deadline; submission timing is quality-driven, post the original 2026-04-24 deadline) | timestamp in Sent folder |
 | Email includes video link / file, written explanation, repo link | visual inspection |
 | Email is concise and professional | Will's judgment |
 
@@ -631,6 +631,8 @@ git log --all --full-history -p | grep -E '(API_KEY|SERVICE_ROLE_KEY|SECRET_KEY|
 | — | §2 | — | — | Phase-closure Receipt template |
 | — | §10 | — | — | Codex engagement protocol with numbered triggers |
 | — | §13 | — | — | Verification commands library (consolidated) |
+| §3 task 2.0a (v1 wording: "n8n AI Agent + Simple Vector Store + dummy tool call") | §4 task 2.0a (annotated 2026-04-25 per D-6) | API-level Qwen tool-use confirmation; D-2 outcome | Annotation that the actually-built topology is hand-rolled raw HTTP + Code-node tool-call loop, not the AI Agent node | Cross-reference to D-6 |
+| §4 task 3.3 / §5.4 AC (v1 wording: "Simple Vector Store") | §5 task 3.3 / §5.4 AC (formalized 2026-04-25 per D-6) | Chunk-count > 0 verification semantic | Mechanism rewritten to "aggregate chunk store" with explicit 2048-dim embedding shape | Cross-reference to D-6 |
 
 ---
 

@@ -2,7 +2,7 @@
 status: active
 type: project-scope
 owner: shared
-last-updated: 2026-04-24T15:00:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you are any agent working on this project — this is the authoritative scope and locked-decisions doc"
 skip-if: "never on first session; re-read §5 and §5.10 before proposing changes to locked decisions"
 related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.md, .claude/memory/decisions.md]
@@ -13,7 +13,7 @@ related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.m
 **Purpose of this document:** This is the single source of truth for AI coding agents (Claude Code, Codex, and any future collaborators) working on the Sagard AI Builder / Forward Deployed Engineer take-home project. Read this end-to-end before taking any action. Update the Progress Log section as you work.
 
 **Last updated:** April 23, 2026 (v2 — switched to local n8n)
-**Deadline:** April 24, 2026
+**Original deadline:** April 24, 2026 (passed; project continues without an active deadline)
 **Primary operator:** Will (Xinyuan) Guo
 **Target evaluator:** Parinaz Sobhani, Managing Director & Head of AI, Sagard
 
@@ -40,7 +40,7 @@ From Pari Sobhani's email dated April 23, 2026 1:46 PM:
 >
 > We're not looking for perfect — we're looking for real and shippable. **Bonus points if your solution uses tools we work with: Claude Code, Codex, and n8n.**"
 
-**Deadline: April 24, 2026.**
+**Original deadline: April 24, 2026 (passed; project continues post-deadline without an active due date).**
 
 ---
 
@@ -232,7 +232,7 @@ Parinaz Sobhani is not a typical hiring manager. Build with her specifically in 
 |---|---|---|
 | Workflow orchestration | **Local n8n via Docker Compose** | Version-controlled workflow JSON; aligns with Claude Code as primary builder; stronger finance-industry narrative |
 | Container runtime | Docker + Docker Compose | Standard, reproducible local environment |
-| LLM (prototype) | Qwen3.5-Plus via Alicloud DashScope OpenAI-compatible endpoint | Will has free Alicloud credits; parameterized for easy swap |
+| LLM (prototype) | Qwen3-Max (`qwen3-max-2026-01-23`) via Alicloud DashScope OpenAI-compatible endpoint | Will has free Alicloud credits; parameterized for easy swap |
 | LLM (production narrative) | Claude via AWS Bedrock, Anthropic API, or GCP Vertex AI | Data residency alignment for Canadian finance firm |
 | Embeddings | Alicloud text-embedding-v3 | Matches LLM provider for prototype |
 | Vector store | n8n Simple Vector Store (in-memory) | Zero-setup for prototype; Supabase pgvector for production |
@@ -363,9 +363,9 @@ This section captures the reasoning behind each significant architectural decisi
 - For a Canadian finance firm, "this ran entirely on my local machine" is a stronger data-residency narrative than "this ran on n8n's multi-tenant cloud"
 - Docker-based setup is reproducible and demonstrates engineering discipline; it mirrors how production n8n actually gets deployed at enterprises
 
-**Why Qwen3.5-Plus over Claude/GPT/Gemini:**
+**Why Alicloud Qwen over Claude/GPT/Gemini:**
 - Will has free Alicloud credits; all other providers require spend
-- Qwen3.5-Plus is a competent reasoning model sufficient for specialist agent tasks
+- Qwen3-Max is a strong reasoning model sufficient for specialist agent tasks
 - The entire LLM layer is parameterized via a single `Set` node at workflow start — swapping models is a one-variable change
 - The production narrative always references Claude via Bedrock, Anthropic direct, or Vertex AI as the data-residency-appropriate path for a real Sagard deployment
 - Demo framing: "LLM-agnostic architecture; production would route to whatever aligns with Sagard's data residency requirements"
@@ -514,7 +514,7 @@ deal-diligence/
 
 ### 7.2 Required Accounts and API Keys (Before First Run)
 
-- **Alicloud DashScope** — API key for Qwen3.5-Plus
+- **Alicloud DashScope** — API key for Qwen3-Max (`qwen3-max-2026-01-23`)
 - **Supabase** — project URL, anon key, service role key
 - **Langfuse Cloud** — public key, secret key, base URL (`https://cloud.langfuse.com` or `https://us.cloud.langfuse.com`)
 - **Slack Free workspace** — incoming webhook URL for `#investment-team` channel
@@ -537,7 +537,7 @@ GENERIC_TIMEZONE=America/Toronto
 # Alicloud
 ALICLOUD_API_KEY=<set_by_will>
 ALICLOUD_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-ALICLOUD_MODEL=qwen3.5-plus
+ALICLOUD_MODEL=qwen3-max-2026-01-23
 ALICLOUD_EMBEDDING_MODEL=text-embedding-v3
 
 # Supabase
@@ -819,7 +819,7 @@ The reply to Pari should briefly note:
 **Known risks to project completion:**
 
 1. **Langfuse community node quality** — `n8n-nodes-openai-langfuse` is community-maintained; if it fails, fallback is manual HTTP logging to Langfuse via HTTP Request node
-2. **Qwen3.5-Plus token limits** — S-1 filings can be 300+ pages; chunking strategy must handle this (1000 tokens per chunk, retrieval-based approach rather than full-document inclusion)
+2. **Qwen-family token limits / latency** — S-1 filings can be 300+ pages; chunking strategy must handle this (1000 tokens per chunk, retrieval-based approach rather than full-document inclusion)
 3. **Local n8n Docker setup friction** — Community node installation via env vars can be fragile; allow extra time for this in Phase 1
 4. **Time to record demo** — Budget 2 hours minimum for recording including retakes
 5. **SEC EDGAR PDF quality** — If text extraction is poor, may need to supplement with cleaner third-party summaries

@@ -363,6 +363,94 @@ Missing / intentionally skipped:
 - `.claude/memory/context.md` — no new invariants. Added a state.md open-question about PDF fidelity (text-only rendering loses tables) — may promote to invariant if Phase 4 retrieval quality degrades.
 - Community-node install by Will — not blocking Phase 3 start (only blocks task 3.24 Langfuse wiring). Can happen any time before then.
 
+## 2026-04-25T09:14:33-04:00 — Baton pickup from Codex
+
+**Context.** User asked Claude to fully take over from Codex's accepted `qwen3-max-2026-01-23` Contradiction baseline. Codex left a thorough handoff in `.codex/memory/{state,context,decisions,pitfalls}.md` and `docs/agents/codex.md`, with `.collab/ACTIVE.md` cleared.
+
+**State synthesis after delta-read.**
+
+- Phase 3 has progressed materially during my absence: tasks `3.5` (Extraction) and `3.6` (Contradiction Variant A via raw-HTTP tool-use loop) are both runtime-verified and accepted by Will at the current quality bar.
+- Active chat model is now `qwen3-max-2026-01-23` (read from `$env.ALICLOUD_MODEL`; container restart, not workflow re-import, is the activation step — Codex P-2).
+- Workflow timeouts on long-running chat-completions nodes are 300s (`Call Extraction Agent`, `Call Contradiction Agent (Turn 1)`, `Call Contradiction Agent (Final)`).
+- Retrieval caps in `Aggregate Extraction Context` are 24 regular + 6 union chunks after score-aware dedupe.
+- Architecture has drifted from the design plan in two ways that are now load-bearing:
+  - retrieval store is a hand-rolled aggregate chunk store, not n8n's Simple Vector Store
+  - specialist agents are raw HTTP + Code-node tool-call loops, not n8n AI Agent nodes
+- Both prompt files for the Contradiction agent are kept in sync with the embedded copies inside `n8n/workflow.json`. Future prompt edits must touch both surfaces in the same turn.
+- `prompts/contradiction-agent.tool-use.md` was refined externally (Claude Chat) and adopted by Codex with two project-convention preservations (explicit input description + concrete schema-shaped example). Variant B remains unrefined and on standby.
+- Codex's D-1 (proceed from accepted Contradiction baseline) and P-2 (env-reload pitfall for model swaps) are absorbed into my mental model.
+- `.collab/ACTIVE.md` is empty; Codex cleared its row to avoid stale-collision detection.
+
+**Resume point per Codex direction.** Task `3.P3` Gap Analysis prompt draft, then Codex post-commit review (§10 trigger 1: unrefined prompt = Codex reviews after commit), then task `3.7` workflow wiring. Codex explicitly said *"do not spend another mandatory round on Contradiction tuning unless downstream work exposes a real blocker"* — backlog items are visible but not gates.
+
+**Watch out:**
+- The two known Extraction recall regressions (S-1 `headcount`, `key_personnel`, rounded revenue) are real but deferred. If they propagate into Gap Analysis as false-positive missing-info flags, that becomes a real signal to revisit Extraction quality rather than tune Gap Analysis around them.
+- Prompt-vs-workflow drift risk: every specialist now embeds its system prompt twice (in `prompts/*.md` and inside `n8n/workflow.json`). For each future prompt change, edit both in the same turn or the live runtime will silently behave differently from the doc.
+- The hand-rolled retrieval store drift from design plan §3 is the most likely source of future cross-agent surprise. If a specialist-agent task makes new assumptions about retrieval shape, surface them explicitly in the work log.
+- Codex's `.codex/memory/decisions.md` numbers Codex-owned decisions starting at D-1, while my own log uses D-0…D-5 already. The two namespaces are separate by owner; do not renumber.
+
+### Task Receipt
+Updates fanned out this task:
+- `.claude/memory/state.md` ............................. advanced active task / next steps to `3.P3`; refreshed open questions; bumped read watermark to 2026-04-25T09:14:33-04:00
+- `docs/agents/claude.md` ............................... this baton-pickup entry
+- `.collab/INDEX.md` .................................... refreshed timestamps for files updated in this task
+
+Missing / intentionally skipped:
+- `.claude/memory/context.md` — no new Claude-owned invariants emerged from the pickup itself. The two architecture drifts (hand-rolled retrieval store; raw-HTTP tool-use loops) are already documented in Codex's context.md; promoting them to my own context.md would duplicate. If they get formalized via design-plan update, that will be a Claude-owned action.
+- `.claude/memory/decisions.md` — no new Claude-owned design choice in this pickup. D-1 (Codex's "proceed from accepted Contradiction baseline") is owned by Codex and lives in `.codex/memory/decisions.md`.
+- `.claude/memory/pitfalls.md` — Codex's P-2 (env-reload, not workflow-import, for model swaps) is Codex-owned; I will not duplicate. If I encounter a Claude-platform-specific recurrence I will add a P-5.
+- `prompts/gap-analysis-agent.md` edits — not yet drafted; awaiting Will's go-ahead.
+- `n8n/workflow.json` — not re-read in this turn. Codex's documentation is sufficient to brief the user; I will read it when Gap Analysis wiring (`3.7`) requires it.
+
+## 2026-04-25T09:14:33-04:00 — D-6 architecture formalization + deadline removal
+
+**Context.** After the Codex baton pickup, Will asked me to evaluate the two architectural drifts (hand-rolled aggregate chunk store vs design plan's Simple Vector Store; raw-HTTP + Code-node tool-call loops vs n8n AI Agent node) and decide whether to revert the project to match the original plan or accept the live state and update the plan. After advisor pass and discussion, Will chose **Option Y** (accept code, update plan). Will also asked to remove deadline framing project-wide since the original 2026-04-24 take-home deadline has passed.
+
+**Decision recorded.** D-6 in `.claude/memory/decisions.md` formalizes the hand-rolled aggregate chunk store + raw-HTTP + Code-node tool-call loop as the canonical repo pattern. Rationale: spike findings P-1 / P-3 / P-4 forced pure-JS + raw-HTTP throughout the workflow; once that pattern was established, layering SVS + AI Agent abstractions on top would create an inconsistent debugging surface. Empirical evidence is positive (Extraction prompt sizes dropped from 58.9k to 30.4k tokens after retrieval caps; Contradiction's `Microsoft 62% CORROBORATED` false-positive disappeared on `qwen3-max-2026-01-23`). Reframed for Pari's evaluation lens as "spikes revealed sandbox limits → engineering call to consolidate on pure-JS + raw-HTTP for consistency and inspectability → working empirical baseline → migration triggers documented" rather than "we deviated from the plan."
+
+**Cost flags captured in D-6 with explicit migration triggers.**
+
+- **Execution-data size:** ~23MB of embeddings inside one workflow item. Migration trigger: > ~50MB or visible UI lag → Supabase pgvector.
+- **Doubled-prompt surface:** every specialist's system prompt lives in `prompts/*.md` AND inside `n8n/workflow.json`. Memo Generation will make it three. Mitigation deferred to 3.11 wire-up: `scripts/inject-prompts.js` (~20 LOC) reads markdown and injects into workflow.json placeholders before `import-workflow.sh` runs.
+- **Manual Langfuse instrumentation:** the `n8n-nodes-openai-langfuse` community node wraps n8n's OpenAI node, not raw HTTP. Explicit HTTP Request nodes posting to `/api/public/ingestion` will be needed for the raw-HTTP chat-completions calls. Already in design plan §3.12 fallback path; ~30 min rework when 3.24 lands.
+- **Production migration to pgvector becomes code rewrite** rather than n8n config swap. Acceptable for a prototype with explicit demo scope.
+
+**D-2 nuance preserved.** D-2 (Contradiction Variant A provisional) is confirmed *for the raw-HTTP path that was actually built*, not *for the n8n AI Agent path the design envisioned*. Anyone later asking "is Qwen tool-use confirmed via the AI Agent node?" → "we never tested it; we tested an alternative topology that worked." Both design plan §13 (open questions) and implementation plan task 2.0a now annotate this distinction.
+
+**Plan edits (10 spots across 2 files).** Mechanism descriptions rewritten with explicit `per D-6` cross-references; section-targeted retrieval / k values / per-doc + union semantics / in-process per-run scope all preserved. Original v1 wording captured in §14 / §15 diff-table addenda for audit.
+
+**Deadline framing removal (8 spots across 5 files).** Replaced active deadline references with neutral "original deadline of 2026-04-24 has passed; project continues without an active deadline" framing in `docs/STATUS.md`, `README.md`, `AI_AGENTS.md`, `CONTEXT.md`, and the implementation plan (Phase 6 time-box trigger, Phase 7 goal, Phase 7 acceptance criterion). Historical references inside reference-only files (`DESIGN.md`, `IMPLEMENTATION.md`) and timestamps in memory files left intact.
+
+**Authority note.** I edited `CONTEXT.md` lines 16, 43 (deadline framing) without a Claude Chat consultation. Per `docs/project-conventions.md §7` table, "CONTEXT.md other sections" are normally Claude-Chat-owned, but Will gave explicit override instruction ("change the timeline status from due yesterday to no due time at all"). Override applied; flagged here for transparency.
+
+**Watch out:**
+- The cross-references "per D-6" in the plan files now load-bear: any future edit to D-6 must propagate to the §2.3 / §2.4 / §2.5 / §2.7 / §3.4 / §7 design-plan spots and tasks 2.0a / 3.3 / 3.5 / 3.6 + §5.4 acceptance criterion + §13 open-questions row of the implementation plan. If D-6 is ever revised, grep for `D-6` and verify each reference still reads cleanly.
+- The §14 / §15 diff tables are now the historical record of v1 wording. Do not edit prior rows; only append.
+- The `scripts/inject-prompts.js` mitigation is on backlog. Recommend authoring it as part of task 3.11 (Memo Generation wiring) rather than later, since waiting until three prompts have drifted means three things to reconcile.
+- The plan files are now version-tagged with `last-updated: 2026-04-25T09:14:33-04:00`. INDEX timestamps mirror this.
+
+### Task Receipt
+Updates fanned out this task:
+- `.claude/memory/decisions.md` ......................... D-6 added at top of entries section; frontmatter bumped
+- `docs/plans/2026-04-24-deal-diligence-design.md` ...... 9 surgical edits across §2.3 (step 5 + lifetime note), §2.4 (per-document invocation), §2.5 (Variant A + input contract), §2.7 (RFD invocation), §3.4 (Variant A input bundle), §7 (concurrency note), §13 (open questions row 1); §14 diff-table addendum; frontmatter bumped
+- `docs/plans/2026-04-24-deal-diligence-implementation.md`  task 2.0a annotation; tasks 3.3 / 3.5 / 3.6 mechanism rewrites; §5.4 acceptance criterion update; §15 diff-table addendum; Phase 6 time-box / Phase 7 goal / Phase 7 acceptance criterion deadline-framing edits; frontmatter bumped
+- `docs/STATUS.md` ...................................... added two Done-section bullets (D-6 architecture formalization landed; deadline framing removed); deadline header replaced with active-status note; frontmatter bumped
+- `README.md` ........................................... deadline framing removed from project summary; frontmatter bumped
+- `AI_AGENTS.md` ........................................ deadline framing removed from project summary; frontmatter bumped
+- `CONTEXT.md` .......................................... deadline framing removed at line 16 + line 43 (per Will's override of `docs/project-conventions.md §7` authority constraint); frontmatter bumped
+- `docs/agents/claude.md` ............................... this entry
+- `.collab/INDEX.md` .................................... timestamps refreshed for all changed files
+
+Missing / intentionally skipped:
+- `n8n/workflow.json` — no code change. The decision is to formalize the live state, not modify it.
+- `prompts/*.md` — no prompt edits. The Extraction and Contradiction prompts already match the live workflow embeddings.
+- Reference-only files (`DESIGN.md`, `IMPLEMENTATION.md` at root) — left unchanged. They are historical v1 snapshots; their deadline references describe the original take-home framing accurately.
+- `CONTEXT.md` line 279 ("Filed S-1 April 17, 2026 — 6 days before deadline") — left as historical CoreWeave context (relative date is a fact about the filing, not a project-state assertion).
+- Codex memory files — not touched. Codex owns those; my updates would be cross-contamination.
+- `scripts/inject-prompts.js` — not authored. Deferred to 3.11 wire-up per D-6 mitigation strategy.
+- Advisor pass on the architecture formalization itself — taken before the edits (called once during the evaluation phase). No second pass on the mechanical edits since they were straightforward and verified by spot-read after.
+- Commit — not yet made. Will eyeballs the diff first, then atomic commit `[plan] formalize D-6: aggregate chunk store + raw-HTTP tool-use loops as live architecture; remove post-deadline framing`.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,

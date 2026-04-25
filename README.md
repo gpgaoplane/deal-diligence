@@ -2,14 +2,14 @@
 status: active
 type: readme
 owner: shared
-last-updated: 2026-04-24T03:45:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you are a human or agent landing on this repo and want the quickstart"
 skip-if: "you already know this repo"
 ---
 
 # Deal Diligence
 
-**Sagard AI Deal Diligence Workspace** — take-home for Sagard's AI Builder / Forward Deployed Engineer role (deadline 2026-04-24, evaluator: Parinaz Sobhani, Head of AI).
+**Sagard AI Deal Diligence Workspace** — take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). The original deadline of 2026-04-24 has passed; development continues without an active deadline.
 
 Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
 
@@ -32,7 +32,7 @@ Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a 
 ## Stack
 
 - **Orchestration:** local n8n via Docker Compose — workflow JSON is the version-controlled source of truth.
-- **LLM:** Qwen3.5-Plus via Alicloud DashScope (parameterized for one-variable swap to Claude via Bedrock).
+- **LLM:** Qwen3-Max (`qwen3-max-2026-01-23`) via Alicloud DashScope (parameterized for one-variable swap to Claude via Bedrock).
 - **7-agent pipeline:** Coordinator → Extraction → Contradiction → Gap Analysis → Red Flag Detector (deterministic JS, not LLM) → Portfolio Fit → Memo Generation → Evaluator (LLM-as-judge with meta-eval calibration).
 - **Persistence:** Supabase (Postgres). **Notification:** Slack. **Observability:** Langfuse Cloud (traces + versioned prompts + scores).
 - **Multi-agent collaboration:** [`multi-agent-collab`](https://github.com/gpgaoplane/multi-agent-collab) v0.3.0 — Claude Code as primary builder, Codex as reviewer, Claude Chat as Will's strategist (not a framework agent).

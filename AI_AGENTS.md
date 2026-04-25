@@ -2,7 +2,7 @@
 status: active
 type: shared
 owner: shared
-last-updated: 2026-04-24T02:17:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you are any AI agent starting work in this repo"
 skip-if: "never"
 related: []
@@ -19,7 +19,7 @@ This is the single entry point for any AI agent working here (Claude, Codex, Gem
 <!-- collab:project-summary:start -->
 ## What This Project Is
 
-**Sagard AI Deal Diligence Workspace** — a take-home for Sagard's AI Builder / Forward Deployed Engineer role (deadline 2026-04-24; evaluator: Parinaz Sobhani, Head of AI).
+**Sagard AI Deal Diligence Workspace** — a take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). The original deadline of 2026-04-24 has passed; development continues without an active deadline.
 
 Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news articles) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
 

@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-24T16:15:00-04:00
+last-updated: 2026-04-25T09:14:33-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,28 +11,30 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** None — Phase 1 + Phase 2 fully complete. Awaiting Will's go-ahead to begin Phase 3.
-**Pause point:** All scaffolding, spikes, schemas, prompts, validators, test-case PDFs (8 total), meta-eval fixtures done and committed. No blockers.
+**Active task:** Picked up baton from Codex. Phase 3 task `3.P3` (Gap Analysis prompt draft) is the next concrete unit of work. After draft, Codex post-commit review per §10 trigger 1, then `3.7` wiring.
+**Pause point:** Awaiting Will's go-ahead to begin drafting Gap Analysis prompt (or alternative direction).
 **Blockers:** None.
 <!-- section:current-state:end -->
 
 <!-- section:next-steps:start -->
-1. **Will:** say "go" (or similar) to kick off Phase 3. Will can also install community nodes at any time via the n8n UI (not blocking Phase 3 start — only blocks task 3.24 Langfuse integration).
-2. **Claude Code — Phase 3 first tasks when greenlit:**
-   - Task 3.1 — Form Trigger node implementation (design plan §2.1)
-   - Task 3.2 — Coordinator Set node with run_id / deal_id / source_manifest / timestamps
-   - Task 3.3 — Document Ingestion pipeline (Extract → Splitter → Embeddings → Simple Vector Store)
-   - Task 3.4 — parameterized LLM HTTP Request node configured against Alicloud qwen3.5-plus
-3. **Phase 3 workflow-track and prompt-track can proceed in parallel** — prompts (3.P1–3.P7) have no dependency on workflow nodes until task 3.5 needs the Extraction prompt. Claude Chat refinement of Extraction / Contradiction / Memo-Gen prompts routes through Will.
+1. **Task 3.P3** — Draft Gap Analysis system prompt by filling in the `[PHASE-3]` placeholders in `prompts/gap-analysis-agent.md`. Not high-stakes per design plan — no mandatory Claude Chat refinement; Codex post-commit review only.
+2. **Task 3.7** — Wire Gap Analysis specialist into `n8n/workflow.json` after `Parse Contradiction Response`. Input: aggregated Extraction outputs + Contradiction output + union retrieval chunks. Output: `GapAnalysisOutput` (`missing_information[]`).
+3. **Tasks 3.8 → 3.13** — Red Flag Detector integration (deterministic JS, I-2), Portfolio Fit, Citation Validity, Memo Generation (high-stakes; Claude Chat refinement), schema-validation-with-retry machinery, Evaluator.
+4. **Tasks 3.14 → 3.17w** — routing IF, Supabase write, Slack, error handler.
+5. **Tasks 3.18w / 3.19w / 3.20w** — helper scripts (run-meta-eval.js, validate-memo-citations.js, validate-fixture.js).
+6. **Tasks 3.24 → 3.29** — Langfuse integration after Will installs community nodes via UI.
+7. **Backlog (carried from Codex baseline; do not gate forward progress):**
+   - Extraction recall: S-1 `headcount`, `key_personnel`, exact revenue values regressed to rounded figures (e.g. `1.9B`).
+   - Contradiction wording: narrow detail-merging caveat where `CORROBORATED` claims can still carry detail not fully shared by every citation.
 <!-- section:next-steps:end -->
 
 <!-- section:open-questions:start -->
-- D-2 confirmation deferred to Phase 3 task 3.6 (wire Contradiction Agent; confirm Qwen tool-use works in-n8n).
-- D-4 (Langfuse community node vs manual HTTP) — Phase 3 task 3.24.
-- I-9 latency implication: if Phase 4 demos stall due to reasoning-token overhead (~40s/run), may need to switch some specialists to non-reasoning `qwen-plus` or use `reasoning_effort: low` if DashScope exposes it.
-- Fidelity of S-1 PDFs — these are text-rendered from HTML (no layout/tables preserved). If retrieval quality suffers in Phase 4 due to missing tabular financials, plan to re-generate with better HTML-to-PDF tooling (weasyprint / playwright) or use the SEC's own full-document rendering.
+- **Retrieval-store architecture drift (carried from Codex):** the live `Aggregate Vector Store` node is a hand-rolled chunk store, not the design plan's "Simple Vector Store" wording. Decision deferred — either formalize the live pattern in design docs, or realign the workflow before specialist-agent dependency deepens further. Lean: formalize, since Extraction + Contradiction already build on it.
+- **Specialist-agent topology (carried from Codex):** all wired specialists (Extraction, Contradiction) use raw HTTP + Code-node tool-call loops rather than the n8n AI Agent node. Should this become the formal repo pattern? D-2 is effectively confirmed for the hand-rolled path; the question is whether to update design docs to reflect it.
+- **Community-node install (Will's task):** still pending UI install of `@langfuse/n8n-nodes-langfuse` and `n8n-nodes-openai-langfuse`. Only blocks task 3.24, not Phase 3 progress through 3.13.
+- **PDF fidelity:** S-1 PDFs are text-rendered (no tables/layout). If Phase 4 retrieval quality degrades, may need to regenerate via weasyprint/playwright. Not a current blocker — Codex's verified Extraction run shows the pipeline reads them adequately.
 <!-- section:open-questions:end -->
 
 <!-- section:read-watermark:start -->
-Last read INDEX at: 2026-04-24T16:15:00-04:00
+Last read INDEX at: 2026-04-25T09:14:33-04:00
 <!-- section:read-watermark:end -->
