@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T15:30:00-04:00
+last-updated: 2026-04-25T16:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -91,6 +91,11 @@ The remaining Core Build work now continues from Gap Analysis through Red Flag D
 - 3.13 Evaluator specialist wired (3 nodes: Build Evaluator Request → Call Evaluator Agent → Parse Evaluator Response). Parser computes `evaluator_score` as `sum(criteria_scores)` authoritatively (overrides model self-reported total when they disagree). HIGH-severity critical_issue forces `routing_decision = flagged_for_review` regardless of score.
 - 3.14/3.15/3.16w persistence + notification chain wired (4 nodes: Build Supabase Record → Insert Deal Memo → Build Slack Message → Send Slack Notification). Routing IF skipped — `routing_decision` is a column in `deal_memos` and surfaced in the Slack message; both `complete` and `flagged_for_review` paths share the same flow with status differing by enum and Slack emoji/wording.
 - Workflow at 45 connected nodes. `versionId: phase3-session2-v15`. JSON valid.
+- **First green end-to-end Memo run on CoreWeave** (`14297a4c-...`): 58/60 evaluator score, complete_high_confidence routing, 17/17 citations valid, Supabase row landed. Slack message had a P-4 data-flow bug (showed "unknown" / "n/a" defaults instead of actual content) — fixed in `c0ee968` via cross-node reference to Build Supabase Record.
+- **Second green run** (`1bd32e70-...`) confirmed the Slack fix: correct emoji, recommendation, score, and top risks rendered.
+- 3.17w Error handler wired as a 5-node sub-flow (Error Trigger → Build Error Record → Insert Error Memo → Build Error Slack → Send Error Slack). Captures node name, error message, stack trace, execution_id, and recovers run-level metadata from the Coordinator if it ran. Persists status='error' row in deal_memos and posts a `:rotating_light:` Slack alert.
+- 3.24-3.29 Langfuse instrumentation landed via the design plan §3.12 fallback path (manual /api/public/ingestion). 2-node pair (Build Langfuse Batch → Send Langfuse Ingestion) at the end of the chain emits one trace per run with: trace-create, observation-create per LLM call (GENERATION) for each Extraction (×N) + Contradiction + Gap Analysis + Portfolio Fit + Memo Gen + Evaluator, observation-create for RFD as SPAN with deterministic:true metadata, score-create with the evaluator_score as `deal-diligence-quality`. Auth via Basic auth header computed in the Code node from `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` env. Uses `LANGFUSE_HOST` env (defaults to cloud.langfuse.com).
+- **Phase 3 CLOSED.** Workflow at 52 nodes. `versionId: phase3-session2-v18`. Per-agent schema-validation-with-retry (3.12) DEFERRED — the parsers' shape projection is sufficient for the prototype scope; can retrofit if Phase 4 calibration surfaces bypass-pattern failures.
 <!-- section:done:end -->
 
 <!-- section:in-progress:start -->

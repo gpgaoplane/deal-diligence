@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T15:30:00-04:00
+last-updated: 2026-04-25T16:30:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,8 +11,9 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** Phase 3 main path complete (3.11 + 3.10b + 3.13 + 3.14 + 3.15 + 3.16w). Workflow now has 45 connected nodes from Form Trigger through Send Slack Notification: ingestion → Extraction → Contradiction → Gap Analysis → RFD → Portfolio Fit → Memo Generation → Validate Memo Citations → Evaluator → Build Supabase Record → Insert Deal Memo → Build Slack Message → Send Slack Notification. `versionId: phase3-session2-v15`. Also landed: `scripts/inject-prompts.js` (D-6 mitigation; 5 of 5 prompt nodes verified in-sync).
-**Pause point:** Will re-imports workflow + runs the FULL CoreWeave end-to-end test. Memo + Evaluator + Supabase row + Slack message should all materialize. Remaining Phase 3 work after this: 3.17w error handler (separate workflow), 3.12 schema-validation-with-retry machinery (architecture; could be retrofitted later), Langfuse 3.24-3.29.
+**Active task:** **Phase 3 CLOSED.** Workflow has 52 connected nodes: 45-node main path (Form Trigger → ingestion → 5 specialists → Citation Validity → Evaluator → Supabase → Slack → Langfuse) + 5-node error sub-flow (Error Trigger → Build Error Record → Insert Error Memo → Build Error Slack → Send Error Slack). `versionId: phase3-session2-v18`. Two live runs verified end-to-end on CoreWeave: first run achieved 58/60 evaluator score with `complete_high_confidence` routing; the P-4 Slack data-flow bug surfaced and was fixed; second run produced a correctly-formatted Slack notification.
+**Pause point:** Will re-imports workflow once more to verify 3.17w error handler fires correctly (force a failure to test) and 3.24-3.29 Langfuse trace lands in the dashboard. Then Phase 4 (CoreWeave dev iteration → meta-eval discrimination ≥ 20) begins.
+**Blockers:** None.
 **Pause point:** Natural gate at task `3.P5` (Memo Generation prompt draft) — high-stakes prompt requires Claude Chat refinement before commit per project-conventions §3.
 **Blockers:** None.
 <!-- section:current-state:end -->
