@@ -141,6 +141,305 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1980, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Prepare Extraction Queries — Phase 3 task 3.5\n// Build one retrieval query item per (document, section) plus one union query.\n// Query embeddings are scored against the hand-rolled chunk store in the next node.\n\nconst item = $input.all()[0]?.json;\nif (!item) throw new Error('Prepare Extraction Queries expected the Aggregate Vector Store item.');\n\nconst SECTION_QUERIES = [\n  { name: 'company_overview',      top_k: 5, text: 'company overview what does the company do founding year headcount headquarters geography' },\n  { name: 'investment_thesis',     top_k: 5, text: 'investment thesis bull case why win strategic rationale growth narrative' },\n  { name: 'market_opportunity',    top_k: 5, text: 'tam sam som market opportunity total addressable market growth drivers' },\n  { name: 'business_model',        top_k: 5, text: 'business model revenue streams pricing monetization how company makes money' },\n  { name: 'financial_performance', top_k: 5, text: 'financial performance revenue growth gross margin operating loss cash balance burn' },\n  { name: 'unit_economics',        top_k: 5, text: 'unit economics cac ltv payback retention unit economics efficiency' },\n  { name: 'competitive_position',  top_k: 5, text: 'competitive position competitors competition moat differentiation advantage' },\n  { name: 'management_assessment', top_k: 5, text: 'management assessment executives founder ceo cfo key personnel key person risk' },\n  { name: 'customer_profile',      top_k: 5, text: 'customer profile customer concentration top customer top 1 top 2 top 5 retention' },\n  { name: 'risk_factors',          top_k: 5, text: 'risk factors disclosed risks material weakness going concern related party debt concentration' },\n  { name: 'management_claims',     top_k: 5, text: 'management claims management states claims asserts leadership performance forward-looking' },\n  { name: 'deal_structure',        top_k: 5, text: 'deal structure valuation amount raised use of proceeds offering ipo shares' },\n];\nconst UNION_QUERY = {\n  name: 'union',\n  top_k: 8,\n  text: 'risk factors customer concentration material weaknesses related party transactions going concern debt structure'\n};\n\nconst docs = Array.from(new Map(\n  (item.chunks || []).map((c) => [\n    c.source_name,\n    {\n      file_id: c.file_id,\n      source_name: c.source_name,\n      source_type: c.source_type,\n      filename: c.filename,\n    },\n  ])\n).values());\n\nconst out = [];\nfor (const doc of docs) {\n  for (const q of SECTION_QUERIES) {\n    out.push({\n      json: {\n        run_id: item.run_id,\n        deal_id: item.deal_id,\n        company_name: item.company_name,\n        timestamp_started: item.timestamp_started,\n        source_manifest: item.source_manifest,\n        file_id: doc.file_id,\n        source_name: doc.source_name,\n        source_type: doc.source_type,\n        filename: doc.filename,\n        query_name: q.name,\n        query_text: q.text,\n        top_k: q.top_k,\n        is_union: false,\n      },\n    });\n  }\n  out.push({\n    json: {\n      run_id: item.run_id,\n      deal_id: item.deal_id,\n      company_name: item.company_name,\n      timestamp_started: item.timestamp_started,\n      source_manifest: item.source_manifest,\n      file_id: doc.file_id,\n      source_name: doc.source_name,\n      source_type: doc.source_type,\n      filename: doc.filename,\n      query_name: UNION_QUERY.name,\n      query_text: UNION_QUERY.text,\n      top_k: UNION_QUERY.top_k,\n      is_union: true,\n    },\n  });\n}\n\nconsole.log(`Prepared ${out.length} extraction retrieval queries across ${docs.length} documents.`);\nreturn out;\n"
+      },
+      "id": "c9d0e1f2-prepare-extract-0000000009",
+      "name": "Prepare Extraction Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMBEDDING_BASE_URL }}/embeddings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "HTTP-Referer",  "value": "http://localhost" },
+            { "name": "X-Title",       "value": "Deal Diligence Prototype" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.EMBEDDING_MODEL }}\",\n  \"input\": {{ JSON.stringify($json.query_text) }}\n}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "d0e1f2a3-embed-query-0000000010",
+      "name": "Embed Extraction Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2500, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Rank Extraction Chunks — Phase 3 task 3.5\n// Score document-local chunks against the query embedding and select top-k.\n\nconst response = $input.item.json;\nconst queryItem = $('Prepare Extraction Queries').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Extraction Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error(`No query embedding returned for ${queryItem.source_name} / ${queryItem.query_name}`);\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst candidates = (store.chunks || []).filter(\n  (c) => c.source_name === queryItem.source_name && Array.isArray(c.embedding) && c.embedding.length > 0\n);\nconst ranked = candidates\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n      score: cosineSimilarity(queryEmbedding, c.embedding),\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, queryItem.top_k);\n\nreturn {\n  json: {\n    run_id: queryItem.run_id,\n    deal_id: queryItem.deal_id,\n    company_name: queryItem.company_name,\n    timestamp_started: queryItem.timestamp_started,\n    source_manifest: queryItem.source_manifest,\n    file_id: queryItem.file_id,\n    source_name: queryItem.source_name,\n    source_type: queryItem.source_type,\n    filename: queryItem.filename,\n    query_name: queryItem.query_name,\n    query_text: queryItem.query_text,\n    top_k: queryItem.top_k,\n    is_union: queryItem.is_union,\n    selected_chunks: ranked.map((r) => r.chunk),\n    query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
+      },
+      "id": "e1f2a3b4-rank-query-0000000011",
+      "name": "Rank Extraction Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2760, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Aggregate Extraction Context — Phase 3 task 3.5\n// Regroup ranked query hits into one item per document with `chunks` and `union_chunks`.\n// Cap the final prompt context so large filings do not effectively stuff the whole document.\n\nconst items = $input.all();\nif (items.length === 0) throw new Error('Aggregate Extraction Context received 0 ranked query items.');\n\nconst MAX_REGULAR_CHUNKS = 24;\nconst MAX_UNION_CHUNKS = 6;\n\nfunction selectChunks(chunks, limit) {\n  const bestByKey = new Map();\n  for (const c of chunks) {\n    const key = `${c.source_name}::${c.chunk_index}`;\n    const prev = bestByKey.get(key);\n    const score = typeof c.score === 'number' ? c.score : -1;\n    const prevScore = prev && typeof prev.score === 'number' ? prev.score : -1;\n    if (!prev || score > prevScore) bestByKey.set(key, c);\n  }\n  return Array.from(bestByKey.values())\n    .sort((a, b) => {\n      const scoreA = typeof a.score === 'number' ? a.score : -1;\n      const scoreB = typeof b.score === 'number' ? b.score : -1;\n      if (scoreB !== scoreA) return scoreB - scoreA;\n      return (a.chunk_index ?? 0) - (b.chunk_index ?? 0);\n    })\n    .slice(0, limit)\n    .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))\n    .map(({ score, ...rest }) => rest);\n}\n\nconst groups = new Map();\nfor (const item of items) {\n  const j = item.json;\n  const key = j.source_name;\n  if (!groups.has(key)) {\n    groups.set(key, {\n      run_id: j.run_id,\n      deal_id: j.deal_id,\n      company_name: j.company_name,\n      timestamp_started: j.timestamp_started,\n      source_manifest: j.source_manifest,\n      file_id: j.file_id,\n      source_name: j.source_name,\n      source_type: j.source_type,\n      filename: j.filename,\n      regular: [],\n      union: [],\n      total_query_embedding_tokens: 0,\n    });\n  }\n  const g = groups.get(key);\n  g.total_query_embedding_tokens += j.query_embedding_tokens || 0;\n  if (j.is_union) g.union.push(...(j.selected_chunks || []));\n  else g.regular.push(...(j.selected_chunks || []));\n}\n\nconst out = Array.from(groups.values()).map((g) => {\n  const selectedRegular = selectChunks(g.regular, MAX_REGULAR_CHUNKS);\n  const selectedUnion = selectChunks(g.union, MAX_UNION_CHUNKS);\n  return {\n    json: {\n      run_id: g.run_id,\n      deal_id: g.deal_id,\n      company_name: g.company_name,\n      timestamp_started: g.timestamp_started,\n      source_manifest: g.source_manifest,\n      file_id: g.file_id,\n      source_name: g.source_name,\n      source_type: g.source_type,\n      filename: g.filename,\n      chunks: selectedRegular,\n      union_chunks: selectedUnion,\n      retrieval_meta: {\n        selected_chunk_count: selectedRegular.length,\n        selected_union_chunk_count: selectedUnion.length,\n        total_query_embedding_tokens: g.total_query_embedding_tokens,\n      },\n    },\n  };\n});\n\nconsole.log(`Prepared extraction context for ${out.length} documents.`);\nreturn out;\n"
+      },
+      "id": "f2a3b4c5-aggregate-extract-0000000012",
+      "name": "Aggregate Extraction Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3020, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Extraction Request — Phase 3 task 3.5\n// Keeps the prompt logic explicit in the workflow source of truth.\n\nconst item = $input.item.json;\nconst systemPrompt = `You are the first specialist agent in a multi-agent institutional investment-diligence workflow.\n\nRead ONE source document and extract only facts literally supported by retrieved passages into the fixed IC Memo Taxonomy schema below.\n\nReturn JSON only. No markdown, no prose, no explanations.\n\nNever guess, infer, calculate, normalize, or editorialize. Missing data must be null for scalars and [] for arrays. source_name and source_type must be returned exactly as given.\n\nIC Memo Taxonomy:\n\n1. company_overview — what the company does, founding year, headcount, geography\n2. investment_thesis — management’s presented bull case, not your opinion\n3. market_opportunity — TAM/SAM/SOM and growth drivers\n4. business_model — revenue streams and pricing\n5. financial_performance — revenue, growth, margins, losses, cash, burn\n6. unit_economics — CAC, LTV, payback\n7. competitive_position — competitors and moat\n8. management_assessment — key personnel and key-person risk\n9. customer_profile — customer concentration and retention\n10. risk_factors — disclosed risks\n11. management_claims — management assertions for later verification\n12. deal_structure — valuation, amount raised, use of proceeds if disclosed\n\nImportant distinction:\n\n* investment_thesis: “Management believes the company can win because its platform reduces enterprise AI deployment time and expands into a large market.”\n* management_claims: “The company states it has industry-leading inference performance.”\n  A disclosed adverse fact such as “86% of revenue came from two customers” is a risk_factor or customer_profile fact, not a management_claim.\n\nInput:\n\n* source_name: canonical document name\n* source_type: one of regulatory_filing | press_release | analyst_report | expert_transcript | management_deck\n* chunks: retrieved passages with { text, page_estimate, chunk_index, source_name }\n* union_chunks: additional cross-cutting passages on risks, customer concentration, material weaknesses, related-party transactions, going concern, and debt\n\nReturn this JSON shape exactly:\n\n{\n\"source_name\": \"<same as input>\",\n\"source_type\": \"<same as input>\",\n\"extracted_facts\": {\n\"company_overview\": {\n\"description\": <string|null>,\n\"founding_year\": <integer|null>,\n\"headcount\": <integer|null>,\n\"geography\": <string|null>,\n\"citations\": <array of citation strings>\n},\n\"investment_thesis\": {\n\"bull_case\": <string|null>,\n\"citations\": <array>\n},\n\"market_opportunity\": {\n\"tam\": <number|null>,\n\"sam\": <number|null>,\n\"som\": <number|null>,\n\"growth_drivers\": <array of strings>,\n\"citations\": <array>\n},\n\"business_model\": {\n\"revenue_streams\": <array of strings>,\n\"pricing\": <string|null>,\n\"citations\": <array>\n},\n\"financial_performance\": {\n\"revenue_latest_period\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"revenue_growth_yoy\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"gross_margin\": { \"value\": <number|null>, \"citation\": <citation|null> },\n\"operating_loss\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"cash_balance\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"monthly_burn\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> }\n},\n\"unit_economics\": {\n\"cac\": <number|null>,\n\"ltv\": <number|null>,\n\"payback_period_months\": <number|null>,\n\"citations\": <array>\n},\n\"competitive_position\": {\n\"competitors\": <array of strings>,\n\"moat\": <string|null>,\n\"citations\": <array>\n},\n\"management_assessment\": {\n\"key_personnel\": <array of strings>,\n\"key_person_risk\": <boolean|null>,\n\"citations\": <array>\n},\n\"customer_profile\": {\n\"concentration_top_1\": <number|null>,\n\"concentration_top_2\": <number|null>,\n\"concentration_top_5\": <number|null>,\n\"retention_rate\": <number|null>,\n\"citations\": <array>\n},\n\"risk_factors\": <array of { \"factor\": <string>, \"citation\": <citation> }>,\n\"management_claims\": <array of { \"claim\": <string>, \"citation\": <citation> }>,\n\"deal_structure\": {\n\"valuation\": <number|null>,\n\"amount_raising\": <number|null>,\n\"use_of_proceeds\": <string|null>,\n\"citations\": <array>\n}\n}\n}\n\nNumeric rules:\n\n* Percentages are numbers from 0–100: “86%” → 86.\n* Dollars are whole-dollar numbers when directly stated: “$136.4 million” → 136400000.\n* Customer concentration top-N means cumulative percentage of revenue from the top N customers.\n* If a number requires calculation, midpointing, currency conversion, or other derivation, return null.\n* If a value is null, its citation must be null where the schema has item-level citation fields.\n\nCitation rules:\nEvery citation string must exactly match one of these formats:\n\n<source_name> p. <N>\n<source_name> p. ~<N>\n<source_name> Risk Factors p. <N>\n\nUse source_name exactly as given. N must be a positive integer. Use “p. ~<N>” when page_estimate is estimated. Do not create any other citation format.\n\nHard constraints:\n\n1. JSON only.\n2. Every non-null fact must trace to a retrieved chunk.\n3. Do not invent values or citations.\n4. Do not normalize source_name or source_type.\n5. Include all 12 sections under extracted_facts.\n6. For empty sections, keep the section and use nulls/[] as required.\n7. For conflicting statements within the same document, extract the most specific directly stated version, usually the tabular value over narrative approximation.\n8. If a value appears in both narrative and table, prefer the table citation.\n9. If only a range is provided and the schema requires one number, return null.\n10. If currency conversion would be required, return null.\n\nBefore returning, silently verify:\n\n* JSON is valid.\n* No trailing commas.\n* No placeholders remain.\n* All citations match the required format.\n* All non-null numbers are JSON numbers, not strings.\n* All required sections are present.`;\n\nconst userPayload = {\n  source_name: item.source_name,\n  source_type: item.source_type,\n  chunks: item.chunks,\n  union_chunks: item.union_chunks,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n  },\n};\n"
+      },
+      "id": "a3b4c5d6-build-extract-0000000013",
+      "name": "Build Extraction Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    { \"role\": \"system\", \"content\": {{ JSON.stringify($json.system_prompt) }} },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.user_message) }} }\n  ]\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "b4c5d6e7-call-extract-0000000014",
+      "name": "Call Extraction Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3540, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Parse Extraction Response — Phase 3 task 3.5\n// Normalizes the OpenAI-compatible chat response into one Extraction result per document.\n// Also projects the model output back onto the exact Extraction schema shape.\n\nconst response = $input.item.json;\nconst request = $('Build Extraction Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error(`Extraction response missing message content for ${request.source_name}`);\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Extraction JSON parse failed for ${request.source_name}: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction strOrNull(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction numOrNull(v) {\n  return typeof v === 'number' && Number.isFinite(v) ? v : null;\n}\nfunction boolOrNull(v) {\n  return typeof v === 'boolean' ? v : null;\n}\nfunction stringArray(v) {\n  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];\n}\nfunction citationOrNull(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction metricWithPeriod(v) {\n  const x = obj(v);\n  return {\n    value: numOrNull(x.value),\n    period: strOrNull(x.period),\n    citation: citationOrNull(x.citation),\n  };\n}\nfunction metricNoPeriod(v) {\n  const x = obj(v);\n  return {\n    value: numOrNull(x.value),\n    citation: citationOrNull(x.citation),\n  };\n}\nfunction arrayOfClaims(v, keyName) {\n  if (!Array.isArray(v)) return [];\n  return v\n    .map((x) => obj(x))\n    .map((x) => ({ [keyName]: strOrNull(x[keyName]), citation: citationOrNull(x.citation) }))\n    .filter((x) => typeof x[keyName] === 'string' && typeof x.citation === 'string');\n}\n\nconst facts = obj(parsed.extracted_facts);\nconst sanitized = {\n  source_name: request.source_name,\n  source_type: request.source_type,\n  extracted_facts: {\n    company_overview: {\n      description: strOrNull(obj(facts.company_overview).description),\n      founding_year: numOrNull(obj(facts.company_overview).founding_year),\n      headcount: numOrNull(obj(facts.company_overview).headcount),\n      geography: strOrNull(obj(facts.company_overview).geography),\n      citations: stringArray(obj(facts.company_overview).citations),\n    },\n    investment_thesis: {\n      bull_case: strOrNull(obj(facts.investment_thesis).bull_case),\n      citations: stringArray(obj(facts.investment_thesis).citations),\n    },\n    market_opportunity: {\n      tam: numOrNull(obj(facts.market_opportunity).tam),\n      sam: numOrNull(obj(facts.market_opportunity).sam),\n      som: numOrNull(obj(facts.market_opportunity).som),\n      growth_drivers: stringArray(obj(facts.market_opportunity).growth_drivers),\n      citations: stringArray(obj(facts.market_opportunity).citations),\n    },\n    business_model: {\n      revenue_streams: stringArray(obj(facts.business_model).revenue_streams),\n      pricing: strOrNull(obj(facts.business_model).pricing),\n      citations: stringArray(obj(facts.business_model).citations),\n    },\n    financial_performance: {\n      revenue_latest_period: metricWithPeriod(obj(facts.financial_performance).revenue_latest_period),\n      revenue_growth_yoy: metricWithPeriod(obj(facts.financial_performance).revenue_growth_yoy),\n      gross_margin: metricNoPeriod(obj(facts.financial_performance).gross_margin),\n      operating_loss: metricWithPeriod(obj(facts.financial_performance).operating_loss),\n      cash_balance: metricWithPeriod(obj(facts.financial_performance).cash_balance),\n      monthly_burn: metricWithPeriod(obj(facts.financial_performance).monthly_burn),\n    },\n    unit_economics: {\n      cac: numOrNull(obj(facts.unit_economics).cac),\n      ltv: numOrNull(obj(facts.unit_economics).ltv),\n      payback_period_months: numOrNull(obj(facts.unit_economics).payback_period_months),\n      citations: stringArray(obj(facts.unit_economics).citations),\n    },\n    competitive_position: {\n      competitors: stringArray(obj(facts.competitive_position).competitors),\n      moat: strOrNull(obj(facts.competitive_position).moat),\n      citations: stringArray(obj(facts.competitive_position).citations),\n    },\n    management_assessment: {\n      key_personnel: stringArray(obj(facts.management_assessment).key_personnel),\n      key_person_risk: boolOrNull(obj(facts.management_assessment).key_person_risk),\n      citations: stringArray(obj(facts.management_assessment).citations),\n    },\n    customer_profile: {\n      concentration_top_1: numOrNull(obj(facts.customer_profile).concentration_top_1),\n      concentration_top_2: numOrNull(obj(facts.customer_profile).concentration_top_2),\n      concentration_top_5: numOrNull(obj(facts.customer_profile).concentration_top_5),\n      retention_rate: numOrNull(obj(facts.customer_profile).retention_rate),\n      citations: stringArray(obj(facts.customer_profile).citations),\n    },\n    risk_factors: arrayOfClaims(facts.risk_factors, 'factor'),\n    management_claims: arrayOfClaims(facts.management_claims, 'claim'),\n    deal_structure: {\n      valuation: numOrNull(obj(facts.deal_structure).valuation),\n      amount_raising: numOrNull(obj(facts.deal_structure).amount_raising),\n      use_of_proceeds: strOrNull(obj(facts.deal_structure).use_of_proceeds),\n      citations: stringArray(obj(facts.deal_structure).citations),\n    },\n  },\n};\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    file_id: request.file_id,\n    filename: request.filename,\n    source_name: request.source_name,\n    source_type: request.source_type,\n    extraction_output: sanitized,\n    retrieval_meta: request.retrieval_meta,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+      },
+      "id": "c5d6e7f8-parse-extract-0000000015",
+      "name": "Parse Extraction Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3800, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Aggregate Contradiction Inputs — Phase 3 task 3.6\n// Collapse per-document Extraction outputs into one item for cross-document triangulation.\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Aggregate Contradiction Inputs received 0 Extraction outputs.');\n}\n\nconst first = items[0].json;\nconst extractionOutputs = items\n  .map((item) => item.json?.extraction_output)\n  .filter((x) => x && typeof x === 'object');\n\nif (extractionOutputs.length === 0) {\n  throw new Error('No Extraction outputs found for Contradiction input.');\n}\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    extraction_outputs: extractionOutputs,\n    extraction_meta: items.map((item) => ({\n      source_name: item.json?.source_name,\n      source_type: item.json?.source_type,\n      llm_usage: item.json?.llm_usage || {},\n      retrieval_meta: item.json?.retrieval_meta || {},\n    })),\n  },\n};\n"
+      },
+      "id": "d6e7f809-aggregate-contradiction-0016",
+      "name": "Aggregate Contradiction Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4060, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Contradiction Request (Turn 1) — Phase 3 task 3.6\n// Variant A (tool-use): ask the model to issue retrieve_document calls before final classification.\n\nconst item = $input.item.json;\nconst systemPrompt = `You are the Contradiction Agent in a multi-agent institutional investment-diligence workflow.\n\nYou run after Extraction. Your job is to triangulate material claims across the deal packet and classify each as corroborated, uncontradicted, disputed, or unsupported.\n\n## Input\n\nYou receive:\n\n- all documents' ExtractionOutput objects\n- source_manifest\n- the retrieve_document tool\n\nTool signature:\n\nretrieve_document({ \"source_name\": string, \"query\": string, \"k\": number })\n\nUse it to inspect raw passages for high-value claims, especially before labeling anything DISPUTED. Typical k is 5. If a tool result is empty or irrelevant, retry once with a broader query. If Extraction and retrieved raw text disagree, trust the raw text you can cite.\n\nReturn JSON only. No markdown, no prose, no explanation.\n\n## Framework\n\nClassifications:\n\n- CORROBORATED: multiple independent sources support the same factual claim.\n- UNCONTRADICTED: one-source factual claim; no conflicting evidence found.\n- DISPUTED: citeable conflicting evidence exists across sources.\n- UNSUPPORTED: promotive, interpretive, or management-style claim remains unverified after reasonable checking.\n\nRouting:\n\n- Put CORROBORATED and UNCONTRADICTED in verified_claims.\n- Put DISPUTED and UNSUPPORTED in contradictions.\n\nBe conservative:\n\n- Do not call something DISPUTED without citeable conflicting evidence.\n- Minor wording differences are not disputes.\n- Repeated marketing language is not automatic corroboration.\n- Do not treat broad directional support as corroboration of an exact claim.\n- For exact numeric or highly specific claims, use CORROBORATED only when another source supports the same fact at comparable specificity.\n- If one source is exact and another source is only general or directional, prefer UNCONTRADICTED over CORROBORATED.\n- Every citation listed for a CORROBORATED claim must support the claim as written.\n- If sources only overlap at a looser level, either rewrite the claim to the shared looser formulation or keep the more specific claim as UNCONTRADICTED.\n- Prefer regulatory filings over promotional language when assessing contrary evidence.\n- Severity measures investment materiality, not semantic distance.\n\nSeverity:\n\n- HIGH: materially changes the investment case.\n- MEDIUM: important factual tension, but not thesis-breaking alone.\n- LOW: minor discrepancy with limited decision impact.\n\nFocus on material claims from management_claims, investment_thesis, risk_factors, customer_profile, financial_performance, market opportunity, controls, debt, competition, unit economics, and other investment-relevant extracted facts.\n\n## Output Schema\n\nReturn exactly this schema shape:\n\n{\n  \"contradictions\": [\n    {\n      \"claim\": \"The business is well diversified across customers\",\n      \"sources_making_claim\": [\"CoreWeave Press Release p. ~1\"],\n      \"contradicting_evidence\": [\n        {\n          \"source\": \"CoreWeave S-1 Filing\",\n          \"citation\": \"CoreWeave S-1 Filing Risk Factors p. 33\",\n          \"evidence\": \"A substantial portion of our revenue is driven by a limited number of our customers.\"\n        }\n      ],\n      \"nature_of_conflict\": \"Promotional diversification framing conflicts with regulatory disclosure of concentration risk.\",\n      \"severity\": \"HIGH\",\n      \"classification\": \"DISPUTED\"\n    },\n    {\n      \"claim\": \"The company has industry-leading performance\",\n      \"sources_making_claim\": [\"CoreWeave Press Release p. ~1\"],\n      \"contradicting_evidence\": [],\n      \"nature_of_conflict\": \"Management-style claim remains unverified by other sources in the packet.\",\n      \"severity\": \"MEDIUM\",\n      \"classification\": \"UNSUPPORTED\"\n    }\n  ],\n  \"verified_claims\": [\n    {\n      \"claim\": \"Two customers represented 77% of revenue.\",\n      \"sources\": [\"CoreWeave Press Release p. ~1\", \"CoreWeave S-1 Filing p. ~314\"],\n      \"classification\": \"CORROBORATED\"\n    },\n    {\n      \"claim\": \"The company reported revenue in 2024.\",\n      \"sources\": [\"CoreWeave S-1 Filing p. ~54\"],\n      \"classification\": \"UNCONTRADICTED\"\n    }\n  ]\n}\n\n## Rules\n\n1. Return valid JSON only.\n2. Do not invent claims, evidence, source names, or citations.\n3. Use only source names from source_manifest.\n4. Every DISPUTED item must include at least one sources_making_claim citation and at least one contradicting_evidence object.\n5. sources_making_claim and verified_claims.sources contain citation strings only.\n6. contradicting_evidence.source is the canonical source name.\n7. contradicting_evidence.citation is the exact citation string.\n8. Every citation must match the canonical schema citation pattern.\n9. If no contradictions are found, return contradictions: [] and populate verified_claims.\n10. For UNSUPPORTED, include the claim source in sources_making_claim; use an empty contradicting_evidence array if no contrary evidence exists.\n11. Do not treat disclosed adverse facts as management claims unless the source frames them as assertions.\n12. Do not convert an absence of evidence into a contradiction.\n13. Do not mark an exact figure as CORROBORATED if the second source only supports a looser version of the same idea.\n14. For example: a filing stating 62% and an article saying more than half is not CORROBORATED for the exact 62% claim; that exact claim is only UNCONTRADICTED unless another source also supports 62% or equivalent specificity.\n15. If a claim names a customer, counterparty, geography, percentage, or dollar figure, every citation in a CORROBORATED item must support those specifics; otherwise either rewrite the claim to the shared denominator or classify the more specific version as UNCONTRADICTED.\n\n## Final Check\n\nBefore returning, silently verify:\n\n- JSON is valid.\n- No extra top-level fields exist.\n- Classifications are routed to the correct arrays.\n- Every DISPUTED item has both claim source citations and citeable conflicting evidence.\n- No unsupported or disputed item relies only on inference.`;\n\nconst userPayload = {\n  source_manifest: item.source_manifest,\n  extraction_outputs: item.extraction_outputs,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
+      },
+      "id": "e7f8091a-build-contradiction-0017",
+      "name": "Build Contradiction Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"tool_choice\": \"auto\",\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"function\": {\n        \"name\": \"retrieve_document\",\n        \"description\": \"Retrieve semantically relevant raw passages from a named source document in the current deal packet. Use this before classifying high-value contradictions.\",\n        \"parameters\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"source_name\": {\n              \"type\": \"string\",\n              \"description\": \"Canonical source name from source_manifest\"\n            },\n            \"query\": {\n              \"type\": \"string\",\n              \"description\": \"What you want to verify in that source\"\n            },\n            \"k\": {\n              \"type\": \"integer\",\n              \"description\": \"How many passages to retrieve\",\n              \"minimum\": 1,\n              \"maximum\": 5\n            }\n          },\n          \"required\": [\"source_name\", \"query\", \"k\"]\n        }\n      }\n    }\n  ],\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "f8091a2b-call-contradiction-1-0018",
+      "name": "Call Contradiction Agent (Turn 1)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4580, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Parse Contradiction Tool Calls — Phase 3 task 3.6\n// Fan out one model response into N tool-call items.\n\nconst response = $input.all()[0]?.json;\nconst request = $('Build Contradiction Request').all()[0]?.json;\nif (!response) throw new Error('Parse Contradiction Tool Calls received 0 input items.');\nif (!request) throw new Error('Build Contradiction Request item unavailable.');\n\nconst message = response.choices?.[0]?.message || {};\nconst toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];\n\nlet assistantContent = message.content;\nif (Array.isArray(assistantContent)) {\n  assistantContent = assistantContent.map((p) => p?.text || '').join('');\n}\nif (toolCalls.length === 0) {\n  throw new Error(`Contradiction turn-1 returned no tool_calls. D-2 tool-use likely failed. Raw content: ${String(assistantContent || '').slice(0, 500)}`);\n}\n\nconst out = [];\nfor (const call of toolCalls) {\n  if (call?.type !== 'function' || call?.function?.name !== 'retrieve_document') continue;\n\n  let args;\n  try {\n    args = JSON.parse(call.function.arguments || '{}');\n  } catch (err) {\n    throw new Error(`Failed to parse retrieve_document arguments: ${err.message}\\nRaw: ${call.function.arguments || ''}`);\n  }\n\n  const sourceName = typeof args.source_name === 'string' ? args.source_name.trim() : '';\n  const query = typeof args.query === 'string' ? args.query.trim() : '';\n  const kRaw = typeof args.k === 'number' ? args.k : parseInt(args.k, 10);\n  const k = Number.isFinite(kRaw) ? Math.max(1, Math.min(5, kRaw)) : 5;\n\n  if (!sourceName) throw new Error('retrieve_document tool call missing source_name');\n  if (!query) throw new Error('retrieve_document tool call missing query');\n\n  out.push({\n    json: {\n      ...request,\n      turn1_message: {\n        role: 'assistant',\n        content: typeof assistantContent === 'string' ? assistantContent : null,\n        tool_calls: toolCalls,\n      },\n      tool_call_id: call.id,\n      source_name: sourceName,\n      query,\n      k,\n    },\n  });\n}\n\nif (out.length === 0) {\n  throw new Error('No usable retrieve_document tool calls found in turn-1 response.');\n}\n\nreturn out;\n"
+      },
+      "id": "091a2b3c-parse-contradict-tools-0019",
+      "name": "Parse Contradiction Tool Calls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4840, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMBEDDING_BASE_URL }}/embeddings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.EMBEDDING_MODEL }}\",\n  \"input\": {{ JSON.stringify($json.query) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "1a2b3c4d-embed-contradiction-query-0020",
+      "name": "Embed Contradiction Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5100, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Rank Contradiction Chunks — Phase 3 task 3.6\n// Implements the retrieve_document tool against the existing aggregate chunk store.\n\nconst response = $input.item.json;\nconst req = $('Parse Contradiction Tool Calls').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Contradiction Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error(`No contradiction query embedding returned for ${req.source_name}`);\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst ranked = (store.chunks || [])\n  .filter((c) => c.source_name === req.source_name && Array.isArray(c.embedding) && c.embedding.length > 0)\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, req.k)\n  .map((r) => r.chunk);\n\nreturn {\n  json: {\n    ...req,\n    tool_result: {\n      source_name: req.source_name,\n      query: req.query,\n      chunks: ranked,\n    },\n    query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
+      },
+      "id": "2b3c4d5e-rank-contradiction-0021",
+      "name": "Rank Contradiction Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5360, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Aggregate Contradiction Tool Results — Phase 3 task 3.6\n// Reconstruct the tool conversation messages for the final synthesis turn.\n\nconst items = $input.all();\nif (items.length === 0) throw new Error('Aggregate Contradiction Tool Results received 0 tool results.');\n\nconst first = items[0].json;\nconst toolMessages = items.map((item) => ({\n  role: 'tool',\n  tool_call_id: item.json.tool_call_id,\n  name: 'retrieve_document',\n  content: JSON.stringify(item.json.tool_result),\n}));\nconst totalQueryTokens = items.reduce((acc, item) => acc + (item.json.query_embedding_tokens || 0), 0);\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    extraction_outputs: first.extraction_outputs,\n    system_prompt: first.system_prompt,\n    user_message: first.user_message,\n    turn1_message: first.turn1_message,\n    messages: [\n      { role: 'system', content: first.system_prompt },\n      { role: 'user', content: first.user_message },\n      {\n        role: 'assistant',\n        content: first.turn1_message?.content ?? null,\n        tool_calls: first.turn1_message?.tool_calls || [],\n      },\n      ...toolMessages,\n    ],\n    contradiction_retrieval_meta: {\n      tool_call_count: items.length,\n      total_query_embedding_tokens: totalQueryTokens,\n      tool_results: items.map((item) => item.json.tool_result),\n    },\n  },\n};\n"
+      },
+      "id": "3c4d5e6f-aggregate-contradict-tools-0022",
+      "name": "Aggregate Contradiction Tool Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5620, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "4d5e6f70-call-contradiction-final-0023",
+      "name": "Call Contradiction Agent (Final)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5880, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Parse Contradiction Response — Phase 3 task 3.6\n// Normalize the final tool-use synthesis into the exact Contradiction schema shape.\n\nconst response = $input.item.json;\nconst request = $('Aggregate Contradiction Tool Results').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Contradiction final response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Contradiction JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction str(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction stringArray(v) {\n  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];\n}\nfunction validSeverity(v) {\n  return ['HIGH', 'MEDIUM', 'LOW'].includes(v) ? v : null;\n}\nfunction validContradictionClass(v) {\n  return ['DISPUTED', 'UNSUPPORTED'].includes(v) ? v : null;\n}\nfunction validVerifiedClass(v) {\n  return ['CORROBORATED', 'UNCONTRADICTED'].includes(v) ? v : null;\n}\n\nconst contradictions = Array.isArray(parsed.contradictions)\n  ? parsed.contradictions\n      .map((x) => obj(x))\n      .map((x) => ({\n        claim: str(x.claim),\n        sources_making_claim: stringArray(x.sources_making_claim),\n        contradicting_evidence: Array.isArray(x.contradicting_evidence)\n          ? x.contradicting_evidence\n              .map((e) => obj(e))\n              .map((e) => ({\n                source: str(e.source),\n                citation: str(e.citation),\n                evidence: str(e.evidence),\n              }))\n              .filter((e) => e.source && e.citation && e.evidence)\n          : [],\n        nature_of_conflict: str(x.nature_of_conflict) || '',\n        severity: validSeverity(x.severity),\n        classification: validContradictionClass(x.classification),\n      }))\n      .filter((x) => x.claim && x.sources_making_claim.length > 0 && x.severity && x.classification)\n      .filter((x) => x.classification !== 'DISPUTED' || x.contradicting_evidence.length > 0)\n  : [];\n\nconst verifiedClaims = Array.isArray(parsed.verified_claims)\n  ? parsed.verified_claims\n      .map((x) => obj(x))\n      .map((x) => ({\n        claim: str(x.claim),\n        sources: stringArray(x.sources),\n        classification: validVerifiedClass(x.classification),\n      }))\n      .filter((x) => x.claim && x.sources.length > 0 && x.classification)\n  : [];\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    contradiction_output: {\n      contradictions,\n      verified_claims: verifiedClaims,\n    },\n    contradiction_retrieval_meta: request.contradiction_retrieval_meta,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+      },
+      "id": "5e6f7081-parse-contradiction-0024",
+      "name": "Parse Contradiction Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6140, 300]
     }
   ],
   "connections": {
@@ -220,6 +519,182 @@
           }
         ]
       ]
+    },
+    "Aggregate Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Prepare Extraction Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Extraction Queries": {
+      "main": [
+        [
+          {
+            "node": "Embed Extraction Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Extraction Query": {
+      "main": [
+        [
+          {
+            "node": "Rank Extraction Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Extraction Chunks": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Extraction Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Extraction Context": {
+      "main": [
+        [
+          {
+            "node": "Build Extraction Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Extraction Request": {
+      "main": [
+        [
+          {
+            "node": "Call Extraction Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Extraction Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Extraction Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Extraction Response": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Contradiction Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Contradiction Inputs": {
+      "main": [
+        [
+          {
+            "node": "Build Contradiction Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Contradiction Request": {
+      "main": [
+        [
+          {
+            "node": "Call Contradiction Agent (Turn 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Contradiction Agent (Turn 1)": {
+      "main": [
+        [
+          {
+            "node": "Parse Contradiction Tool Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Contradiction Tool Calls": {
+      "main": [
+        [
+          {
+            "node": "Embed Contradiction Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Contradiction Query": {
+      "main": [
+        [
+          {
+            "node": "Rank Contradiction Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Contradiction Chunks": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Contradiction Tool Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Contradiction Tool Results": {
+      "main": [
+        [
+          {
+            "node": "Call Contradiction Agent (Final)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Contradiction Agent (Final)": {
+      "main": [
+        [
+          {
+            "node": "Parse Contradiction Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -229,9 +704,9 @@
     "saveExecutionProgress": true,
     "timezone": "America/Toronto"
   },
-  "versionId": "phase3-session1-v2",
+  "versionId": "phase3-session1-v6",
   "meta": {
-    "description": "Phase 3 workflow — iteration 2. Form Trigger → Coordinator → Split Per-Document → Extract from File. Each uploaded PDF becomes a separate item with extracted text. Next iteration adds Text Splitter + Embeddings (Alicloud HTTP) + Simple Vector Store."
+    "description": "Phase 3 workflow — ingestion spine plus Extraction and first-pass Contradiction wiring. Uses a hand-rolled aggregate retrieval store, query-embedding ranking, and HTTP Request calls to the Alicloud chat model, including a tool-use contradiction loop."
   },
   "id": "deal-diligence-workflow",
   "tags": []
