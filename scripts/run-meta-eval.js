@@ -11,7 +11,7 @@
 //   - Secondary: bad memo's critical_issues includes the planted defect
 //
 // Usage:
-//   ALICLOUD_API_KEY=... ALICLOUD_BASE_URL=... ALICLOUD_MODEL=qwen3-max-2026-01-23 \
+//   ALICLOUD_API_KEY=... ALICLOUD_BASE_URL=... ALICLOUD_MODEL=qwen3-max-preview \
 //     node scripts/run-meta-eval.js
 //
 // Optional flags:
@@ -92,7 +92,7 @@ function extractSystemPrompt(promptMarkdown) {
 async function callEvaluator(memo, systemPrompt, upstream) {
   const apiKey = process.env.ALICLOUD_API_KEY;
   const baseUrl = process.env.ALICLOUD_BASE_URL;
-  const model = process.env.ALICLOUD_MODEL || 'qwen3-max-2026-01-23';
+  const model = process.env.ALICLOUD_MODEL || 'qwen3-max-preview';
   if (!apiKey || !baseUrl) {
     throw new Error('ALICLOUD_API_KEY and ALICLOUD_BASE_URL must be set in env.');
   }

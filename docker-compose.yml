@@ -72,7 +72,12 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      # Both names are forwarded for env-var convention robustness.
+      # The Build Langfuse Batch node tries LANGFUSE_BASE_URL first
+      # (n8n / docker-compose default convention), then LANGFUSE_HOST
+      # (Langfuse Python SDK convention). Setting either in .env works.
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL}
+      LANGFUSE_HOST: ${LANGFUSE_HOST}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
     volumes:
       - ./n8n/n8n-data:/home/node/.n8n

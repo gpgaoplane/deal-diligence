@@ -232,7 +232,7 @@ Parinaz Sobhani is not a typical hiring manager. Build with her specifically in 
 |---|---|---|
 | Workflow orchestration | **Local n8n via Docker Compose** | Version-controlled workflow JSON; aligns with Claude Code as primary builder; stronger finance-industry narrative |
 | Container runtime | Docker + Docker Compose | Standard, reproducible local environment |
-| LLM (prototype) | Qwen3-Max (`qwen3-max-2026-01-23`) via Alicloud DashScope OpenAI-compatible endpoint | Will has free Alicloud credits; parameterized for easy swap |
+| LLM (prototype) | Qwen3-Max (`qwen3-max-preview`) via Alicloud DashScope OpenAI-compatible endpoint | Will has free Alicloud credits; parameterized for easy swap |
 | LLM (production narrative) | Claude via AWS Bedrock, Anthropic API, or GCP Vertex AI | Data residency alignment for Canadian finance firm |
 | Embeddings | Alicloud text-embedding-v3 | Matches LLM provider for prototype |
 | Vector store | n8n Simple Vector Store (in-memory) | Zero-setup for prototype; Supabase pgvector for production |
@@ -514,7 +514,7 @@ deal-diligence/
 
 ### 7.2 Required Accounts and API Keys (Before First Run)
 
-- **Alicloud DashScope** — API key for Qwen3-Max (`qwen3-max-2026-01-23`)
+- **Alicloud DashScope** — API key for Qwen3-Max (`qwen3-max-preview`)
 - **Supabase** — project URL, anon key, service role key
 - **Langfuse Cloud** — public key, secret key, base URL (`https://cloud.langfuse.com` or `https://us.cloud.langfuse.com`)
 - **Slack Free workspace** — incoming webhook URL for `#investment-team` channel
@@ -537,7 +537,7 @@ GENERIC_TIMEZONE=America/Toronto
 # Alicloud
 ALICLOUD_API_KEY=<set_by_will>
 ALICLOUD_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-ALICLOUD_MODEL=qwen3-max-2026-01-23
+ALICLOUD_MODEL=qwen3-max-preview
 ALICLOUD_EMBEDDING_MODEL=text-embedding-v3
 
 # Supabase

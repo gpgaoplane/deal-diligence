@@ -109,7 +109,7 @@ All component designs below must satisfy these. Referenced by ID throughout. Ful
 2. **Set node — per-chunk metadata base** — establishes the parameterized LLM/embedding config consumed downstream:
    ```
    LLM_BASE_URL       = env ALICLOUD_BASE_URL
-   LLM_MODEL          = env ALICLOUD_MODEL (default qwen3-max-2026-01-23)
+   LLM_MODEL          = env ALICLOUD_MODEL (default qwen3-max-preview)
    EMBED_MODEL        = env ALICLOUD_EMBEDDING_MODEL (default text-embedding-v3)
    CHUNK_SIZE         = 1000   # tokens
    CHUNK_OVERLAP      = 100    # tokens
@@ -177,7 +177,7 @@ Total: **12 retrievals per document × up to 4 documents = 48 retrievals per run
 
 Two prompt variants are written (both committed to `prompts/`, selected at wire time per D-2):
 
-- **Variant A — tool-use mode** (`prompts/contradiction-agent.tool-use.md`). Per D-6, this is implemented as a hand-rolled raw-HTTP + Code-node tool-call loop (Build Request → Call Turn 1 → Parse `tool_calls` → Embed Queries → Rank Chunks against aggregate store → Build Final Request → Call Final → Parse Response), not via an n8n AI Agent node. The model is given a `retrieve_document` function tool definition; the workflow executes the tool by running JS cosine ranking against the aggregate chunk store and feeding results back as a second turn. k per retrieval = 5. Runtime-verified on `qwen3-max-2026-01-23`; D-2 is confirmed for this hand-rolled topology specifically (the n8n AI Agent path was never wired).
+- **Variant A — tool-use mode** (`prompts/contradiction-agent.tool-use.md`). Per D-6, this is implemented as a hand-rolled raw-HTTP + Code-node tool-call loop (Build Request → Call Turn 1 → Parse `tool_calls` → Embed Queries → Rank Chunks against aggregate store → Build Final Request → Call Final → Parse Response), not via an n8n AI Agent node. The model is given a `retrieve_document` function tool definition; the workflow executes the tool by running JS cosine ranking against the aggregate chunk store and feeding results back as a second turn. k per retrieval = 5. Runtime-verified on `qwen3-max-preview`; D-2 is confirmed for this hand-rolled topology specifically (the n8n AI Agent path was never wired).
 - **Variant B — stuffed-context mode** (`prompts/contradiction-agent.stuffed.md`). Agent receives the union of all documents' Extraction outputs (with their citations) as context — no retrieval calls. Sized for ~80K input tokens across 4 documents.
 
 **Input contract:**

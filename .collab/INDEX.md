@@ -76,5 +76,5 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-25T16:30:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-25T17:00:00-04:00 |
 <!-- collab:index:end -->
