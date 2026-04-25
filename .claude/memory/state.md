@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T09:30:00-04:00
+last-updated: 2026-04-25T09:45:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,14 +11,15 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main`
-**Active task:** `3.P3` Gap Analysis prompt drafted at `prompts/gap-analysis-agent.md` (replaced the Phase 2 stub with a Phase 3 draft following the 7-part convention). Awaiting Codex post-commit review per project-conventions §10 trigger 1.
-**Pause point:** Will's eyeball + Codex review. Then `3.7` wiring (workflow nodes after `Parse Contradiction Response`).
+**Active task:** `3.7` Gap Analysis wired into `n8n/workflow.json` — 6 new nodes (Prepare Gap Analysis Inputs → Embed Gap Analysis Query → Rank Gap Analysis Chunks → Build Gap Analysis Request → Call Gap Analysis Agent → Parse Gap Analysis Response) appended after `Parse Contradiction Response`. Workflow now has 30 connected nodes from `Form Trigger` through `Parse Gap Analysis Response`. JSON valid. `versionId: phase3-session2-v7`. Pending live runtime verification.
+**Pause point:** Will's eyeball + live runtime verification on CoreWeave run. Then 3.8 (Red Flag Detector integration).
 **Blockers:** None.
 <!-- section:current-state:end -->
 
 <!-- section:next-steps:start -->
-1. **Codex post-commit review of 3.P3** per project-conventions §10 trigger 1.
-2. **Task 3.7** — Wire Gap Analysis specialist into `n8n/workflow.json` after `Parse Contradiction Response`. Input: aggregated Extraction outputs + Contradiction output + union retrieval chunks. Output: `GapAnalysisOutput` (`missing_information[]`). The wired path will follow the D-6 pattern: aggregate inputs in a Code node → Build Gap Analysis Request → Call Gap Analysis Agent (raw HTTP chat-completions) → Parse Gap Analysis Response with schema-shape projection.
+1. **Will live-runs the workflow** — re-import `n8n/workflow.json`, submit a CoreWeave run, inspect `Parse Gap Analysis Response` output for `gap_analysis_output.missing_information[]` shape conformance.
+2. **Codex post-commit review of 3.P3 + 3.7** per project-conventions §10 trigger 1 (unrefined prompt + new wiring).
+3. **Task 3.8** — Red Flag Detector integration. The detector module already exists at `code/red-flag-detector.js` (37/37 tests passing per Phase 2 Receipt). 3.8 is the n8n wiring: Execute Workflow → JS Code node wrapping the module. Per I-2: deterministic only — no LLM, no `Math.random` (Coordinator's Math.random uuidv4 is allowed elsewhere; RFD is the I-2 boundary).
 3. **Tasks 3.8 → 3.13** — Red Flag Detector integration (deterministic JS, I-2), Portfolio Fit, Citation Validity, Memo Generation (high-stakes; Claude Chat refinement), schema-validation-with-retry machinery, Evaluator.
 4. **Tasks 3.14 → 3.17w** — routing IF, Supabase write, Slack, error handler.
 5. **Tasks 3.18w / 3.19w / 3.20w** — helper scripts (run-meta-eval.js, validate-memo-citations.js, validate-fixture.js).

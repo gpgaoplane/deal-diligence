@@ -4,7 +4,7 @@
     {
       "parameters": {
         "formTitle": "Deal Diligence Submission",
-        "formDescription": "Upload 2–4 PDFs and a company name to evaluate a deal.",
+        "formDescription": "Upload 2\u20134 PDFs and a company name to evaluate a deal.",
         "formFields": {
           "values": [
             {
@@ -30,32 +30,41 @@
       "name": "Form Trigger",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
-      "position": [160, 300],
+      "position": [
+        160,
+        300
+      ],
       "webhookId": "deal-diligence-form-webhook"
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Coordinator — Phase 3 task 3.2\n// Per design plan §2.2. See P-3 in .claude/memory/pitfalls.md — n8n 2.17.7\n// Code-node sandbox blocks require('crypto') AND Web Crypto global `crypto`.\n// Math.random-based UUID v4 is acceptable here (I-2 scoped to RFD only).\n\n// ---- filename-regex source_type classifier (design plan §2.3) ----\nconst CLASSIFIER = [\n  { rx: /\\b(s-?1|10-?k|10-?q|8-?k|20-?f|prospectus)\\b/i, source_type: 'regulatory_filing',  human: 'S-1 Filing' },\n  { rx: /\\b(press[\\s\\-_]release|announce(?:ment)?|newswire)\\b/i, source_type: 'press_release',     human: 'Press Release' },\n  { rx: /\\b(teardown|analysis|report|breakdown|case[\\s\\-_]study)\\b/i, source_type: 'analyst_report',    human: 'Analyst Report' },\n  { rx: /\\b(transcript|call|interview)\\b/i,                source_type: 'expert_transcript', human: 'Expert Transcript' },\n  { rx: /\\b(deck|presentation|pitch|slide)\\b/i,            source_type: 'management_deck',   human: 'Management Deck' },\n];\nfunction classifyFilename(filename) {\n  for (const c of CLASSIFIER) {\n    if (c.rx.test(filename)) return { source_type: c.source_type, human: c.human };\n  }\n  return { source_type: 'regulatory_filing', human: 'S-1 Filing' };\n}\n\nfunction uuidv4() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {\n    const r = (Math.random() * 16) | 0;\n    const v = c === 'x' ? r : (r & 0x3) | 0x8;\n    return v.toString(16);\n  });\n}\n\nconst item = $input.item.json;\n\nconst companyName = item['Company Name'] || item.company_name || 'Unknown Company';\nconst dealId = companyName.toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-|-$/g, '');\nconst runId = uuidv4();\nconst timestampStarted = new Date().toISOString();\n\n// Form Trigger emits file metadata on item.Documents (matches form label).\n// Actual binaries are on $input.item.binary (filesystem-stored in 2.17.7).\nconst uploadedDocs = Array.isArray(item.Documents) ? item.Documents : [];\n\nconst humanCounts = {};\nconst documents = uploadedDocs.map((d, idx) => {\n  const filename = d.filename || `file-${idx}.pdf`;\n  const { source_type, human } = classifyFilename(filename);\n  humanCounts[human] = (humanCounts[human] || 0) + 1;\n  const suffix = humanCounts[human] > 1 ? ` (#${humanCounts[human]})` : '';\n  return {\n    file_id: uuidv4(),\n    filename,\n    source_name: `${companyName} ${human}${suffix}`,\n    source_type,\n    mime: d.mimetype || 'application/pdf',\n    bytes: d.size || 0,\n  };\n});\n\nconst source_manifest = documents.map(d => d.source_name);\n\nif (documents.length < 2) throw new Error(`Need at least 2 documents; received ${documents.length}.`);\nif (documents.length > 4) throw new Error(`Maximum 4 documents supported; received ${documents.length}.`);\n\nreturn {\n  json: {\n    run_id: runId,\n    deal_id: dealId,\n    company_name: companyName,\n    timestamp_started: timestampStarted,\n    documents,\n    source_manifest,\n  },\n  binary: $input.item.binary,\n};\n"
+        "jsCode": "// Coordinator \u2014 Phase 3 task 3.2\n// Per design plan \u00a72.2. See P-3 in .claude/memory/pitfalls.md \u2014 n8n 2.17.7\n// Code-node sandbox blocks require('crypto') AND Web Crypto global `crypto`.\n// Math.random-based UUID v4 is acceptable here (I-2 scoped to RFD only).\n\n// ---- filename-regex source_type classifier (design plan \u00a72.3) ----\nconst CLASSIFIER = [\n  { rx: /\\b(s-?1|10-?k|10-?q|8-?k|20-?f|prospectus)\\b/i, source_type: 'regulatory_filing',  human: 'S-1 Filing' },\n  { rx: /\\b(press[\\s\\-_]release|announce(?:ment)?|newswire)\\b/i, source_type: 'press_release',     human: 'Press Release' },\n  { rx: /\\b(teardown|analysis|report|breakdown|case[\\s\\-_]study)\\b/i, source_type: 'analyst_report',    human: 'Analyst Report' },\n  { rx: /\\b(transcript|call|interview)\\b/i,                source_type: 'expert_transcript', human: 'Expert Transcript' },\n  { rx: /\\b(deck|presentation|pitch|slide)\\b/i,            source_type: 'management_deck',   human: 'Management Deck' },\n];\nfunction classifyFilename(filename) {\n  for (const c of CLASSIFIER) {\n    if (c.rx.test(filename)) return { source_type: c.source_type, human: c.human };\n  }\n  return { source_type: 'regulatory_filing', human: 'S-1 Filing' };\n}\n\nfunction uuidv4() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {\n    const r = (Math.random() * 16) | 0;\n    const v = c === 'x' ? r : (r & 0x3) | 0x8;\n    return v.toString(16);\n  });\n}\n\nconst item = $input.item.json;\n\nconst companyName = item['Company Name'] || item.company_name || 'Unknown Company';\nconst dealId = companyName.toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-|-$/g, '');\nconst runId = uuidv4();\nconst timestampStarted = new Date().toISOString();\n\n// Form Trigger emits file metadata on item.Documents (matches form label).\n// Actual binaries are on $input.item.binary (filesystem-stored in 2.17.7).\nconst uploadedDocs = Array.isArray(item.Documents) ? item.Documents : [];\n\nconst humanCounts = {};\nconst documents = uploadedDocs.map((d, idx) => {\n  const filename = d.filename || `file-${idx}.pdf`;\n  const { source_type, human } = classifyFilename(filename);\n  humanCounts[human] = (humanCounts[human] || 0) + 1;\n  const suffix = humanCounts[human] > 1 ? ` (#${humanCounts[human]})` : '';\n  return {\n    file_id: uuidv4(),\n    filename,\n    source_name: `${companyName} ${human}${suffix}`,\n    source_type,\n    mime: d.mimetype || 'application/pdf',\n    bytes: d.size || 0,\n  };\n});\n\nconst source_manifest = documents.map(d => d.source_name);\n\nif (documents.length < 2) throw new Error(`Need at least 2 documents; received ${documents.length}.`);\nif (documents.length > 4) throw new Error(`Maximum 4 documents supported; received ${documents.length}.`);\n\nreturn {\n  json: {\n    run_id: runId,\n    deal_id: dealId,\n    company_name: companyName,\n    timestamp_started: timestampStarted,\n    documents,\n    source_manifest,\n  },\n  binary: $input.item.binary,\n};\n"
       },
       "id": "b2c3d4e5-coordinator-00000000002",
       "name": "Coordinator",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 300]
+      "position": [
+        420,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Split per-document — Phase 3 task 3.3a\n// Takes the Coordinator's single item (with N documents + N binaries)\n// and emits N items, each carrying:\n//   - json: run metadata + this document's metadata on `document` field\n//   - binary: { data: <this document's binary> }\n//\n// Binary key discovery: n8n's Form Trigger multi-file output stores each\n// upload under a binary key. The key format varies by n8n version; we\n// match binary entries to documents by filename (most robust), with an\n// index-based fallback if the binary object lacks fileName metadata.\n\nconst items = $input.all();\nif (items.length !== 1) {\n  throw new Error(`Expected 1 input item from Coordinator, got ${items.length}`);\n}\nconst item = items[0];\nconst meta = item.json;\nconst binary = item.binary || {};\nconst binaryKeys = Object.keys(binary);\n\nif (binaryKeys.length !== meta.documents.length) {\n  // Not fatal; log for diagnosis and continue with whatever we have.\n  console.log(`WARN: documents=${meta.documents.length} but binaryKeys=${binaryKeys.length}`);\n}\n\n// Build a lookup: filename → binary entry. Fallback to index order.\nfunction findBinaryForDoc(doc, idx) {\n  // Try fileName match first (most n8n versions set this).\n  for (const key of binaryKeys) {\n    const b = binary[key];\n    if (b && (b.fileName === doc.filename || b.fileName?.toLowerCase() === doc.filename.toLowerCase())) {\n      return { key, entry: b };\n    }\n  }\n  // Fallback: index-order assumption (Coordinator iterated same order).\n  const fallbackKey = binaryKeys[idx];\n  if (fallbackKey) return { key: fallbackKey, entry: binary[fallbackKey] };\n  return null;\n}\n\nconst results = meta.documents.map((doc, idx) => {\n  const match = findBinaryForDoc(doc, idx);\n  if (!match) {\n    throw new Error(`No binary found for document: ${doc.filename}`);\n  }\n  return {\n    json: {\n      run_id: meta.run_id,\n      deal_id: meta.deal_id,\n      company_name: meta.company_name,\n      timestamp_started: meta.timestamp_started,\n      source_manifest: meta.source_manifest,\n      document: doc, // {file_id, filename, source_name, source_type, mime, bytes}\n    },\n    // Copy the matched binary onto a stable property name 'data' so\n    // downstream Extract from File can reference it predictably.\n    binary: { data: match.entry },\n  };\n});\n\nreturn results;\n"
+        "jsCode": "// Split per-document \u2014 Phase 3 task 3.3a\n// Takes the Coordinator's single item (with N documents + N binaries)\n// and emits N items, each carrying:\n//   - json: run metadata + this document's metadata on `document` field\n//   - binary: { data: <this document's binary> }\n//\n// Binary key discovery: n8n's Form Trigger multi-file output stores each\n// upload under a binary key. The key format varies by n8n version; we\n// match binary entries to documents by filename (most robust), with an\n// index-based fallback if the binary object lacks fileName metadata.\n\nconst items = $input.all();\nif (items.length !== 1) {\n  throw new Error(`Expected 1 input item from Coordinator, got ${items.length}`);\n}\nconst item = items[0];\nconst meta = item.json;\nconst binary = item.binary || {};\nconst binaryKeys = Object.keys(binary);\n\nif (binaryKeys.length !== meta.documents.length) {\n  // Not fatal; log for diagnosis and continue with whatever we have.\n  console.log(`WARN: documents=${meta.documents.length} but binaryKeys=${binaryKeys.length}`);\n}\n\n// Build a lookup: filename \u2192 binary entry. Fallback to index order.\nfunction findBinaryForDoc(doc, idx) {\n  // Try fileName match first (most n8n versions set this).\n  for (const key of binaryKeys) {\n    const b = binary[key];\n    if (b && (b.fileName === doc.filename || b.fileName?.toLowerCase() === doc.filename.toLowerCase())) {\n      return { key, entry: b };\n    }\n  }\n  // Fallback: index-order assumption (Coordinator iterated same order).\n  const fallbackKey = binaryKeys[idx];\n  if (fallbackKey) return { key: fallbackKey, entry: binary[fallbackKey] };\n  return null;\n}\n\nconst results = meta.documents.map((doc, idx) => {\n  const match = findBinaryForDoc(doc, idx);\n  if (!match) {\n    throw new Error(`No binary found for document: ${doc.filename}`);\n  }\n  return {\n    json: {\n      run_id: meta.run_id,\n      deal_id: meta.deal_id,\n      company_name: meta.company_name,\n      timestamp_started: meta.timestamp_started,\n      source_manifest: meta.source_manifest,\n      document: doc, // {file_id, filename, source_name, source_type, mime, bytes}\n    },\n    // Copy the matched binary onto a stable property name 'data' so\n    // downstream Extract from File can reference it predictably.\n    binary: { data: match.entry },\n  };\n});\n\nreturn results;\n"
       },
       "id": "c3d4e5f6-split-docs-000000000003",
       "name": "Split Per-Document",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -69,19 +78,25 @@
       "name": "Extract from File",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
-      "position": [940, 300]
+      "position": [
+        940,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Text Chunker — Phase 3 task 3.3b\n// ⚠ Extract from File (upstream) REPLACES $json with {text, numpages,\n// info, version}, dropping the document metadata (file_id, source_name,\n// etc.) and run-level metadata (run_id, deal_id, ...). See P-4 in\n// pitfalls.md — same anti-pattern as HTTP Request, different node class.\n// Recovery: reach back to Split Per-Document via $('...').all(),\n// matching by position (n8n preserves item order through nodes).\n//\n// Character-based chunking: n8n Code sandbox has no tokenizer access\n// (tiktoken etc. would need require); approximate 1 token ≈ 4 chars for\n// English regulatory prose. 1000 tokens ≈ 4000 chars, 100 overlap ≈ 400.\n\nconst CHUNK_CHARS = 4000;\nconst OVERLAP_CHARS = 400;\nconst CHARS_PER_PAGE = 2000;\n\nconst items = $input.all();                         // from Extract from File\nconst splitItems = $('Split Per-Document').all();   // before Extract from File — has document meta\n\nif (items.length !== splitItems.length) {\n  console.log(`WARN: Chunker input count (${items.length}) != Split Per-Document count (${splitItems.length}); ordering match may be off.`);\n}\n\nconst chunks = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const splitItem = splitItems[i];\n  if (!splitItem) {\n    console.log(`WARN: no matching Split item at position ${i}; skipping.`);\n    continue;\n  }\n\n  const text = typeof item.json.text === 'string' ? item.json.text : '';\n  if (text.length === 0) continue; // skip empty docs (bad PDF or redacted)\n\n  // Build per-chunk metadata by pulling run-level + document-level fields\n  // from the Split Per-Document output (which still has them). PDF extract\n  // byproducts (numpages, info, version) intentionally omitted.\n  const s = splitItem.json;\n  const baseMeta = {\n    run_id: s.run_id,\n    deal_id: s.deal_id,\n    company_name: s.company_name,\n    timestamp_started: s.timestamp_started,\n    source_manifest: s.source_manifest,\n    document: s.document,\n  };\n\n  let pos = 0;\n  let chunkIndex = 0;\n  while (pos < text.length) {\n    const end = Math.min(pos + CHUNK_CHARS, text.length);\n    chunks.push({\n      json: {\n        ...baseMeta,\n        chunk_index: chunkIndex,\n        char_offset_start: pos,\n        char_offset_end: end,\n        page_estimate: Math.max(1, Math.ceil(pos / CHARS_PER_PAGE)),\n        text: text.substring(pos, end),\n      },\n    });\n    chunkIndex++;\n    if (end >= text.length) break;\n    pos = end - OVERLAP_CHARS;\n  }\n}\n\nconsole.log(`Chunker emitted ${chunks.length} chunks from ${items.length} documents.`);\nreturn chunks;\n"
+        "jsCode": "// Text Chunker \u2014 Phase 3 task 3.3b\n// \u26a0 Extract from File (upstream) REPLACES $json with {text, numpages,\n// info, version}, dropping the document metadata (file_id, source_name,\n// etc.) and run-level metadata (run_id, deal_id, ...). See P-4 in\n// pitfalls.md \u2014 same anti-pattern as HTTP Request, different node class.\n// Recovery: reach back to Split Per-Document via $('...').all(),\n// matching by position (n8n preserves item order through nodes).\n//\n// Character-based chunking: n8n Code sandbox has no tokenizer access\n// (tiktoken etc. would need require); approximate 1 token \u2248 4 chars for\n// English regulatory prose. 1000 tokens \u2248 4000 chars, 100 overlap \u2248 400.\n\nconst CHUNK_CHARS = 4000;\nconst OVERLAP_CHARS = 400;\nconst CHARS_PER_PAGE = 2000;\n\nconst items = $input.all();                         // from Extract from File\nconst splitItems = $('Split Per-Document').all();   // before Extract from File \u2014 has document meta\n\nif (items.length !== splitItems.length) {\n  console.log(`WARN: Chunker input count (${items.length}) != Split Per-Document count (${splitItems.length}); ordering match may be off.`);\n}\n\nconst chunks = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n  const splitItem = splitItems[i];\n  if (!splitItem) {\n    console.log(`WARN: no matching Split item at position ${i}; skipping.`);\n    continue;\n  }\n\n  const text = typeof item.json.text === 'string' ? item.json.text : '';\n  if (text.length === 0) continue; // skip empty docs (bad PDF or redacted)\n\n  // Build per-chunk metadata by pulling run-level + document-level fields\n  // from the Split Per-Document output (which still has them). PDF extract\n  // byproducts (numpages, info, version) intentionally omitted.\n  const s = splitItem.json;\n  const baseMeta = {\n    run_id: s.run_id,\n    deal_id: s.deal_id,\n    company_name: s.company_name,\n    timestamp_started: s.timestamp_started,\n    source_manifest: s.source_manifest,\n    document: s.document,\n  };\n\n  let pos = 0;\n  let chunkIndex = 0;\n  while (pos < text.length) {\n    const end = Math.min(pos + CHUNK_CHARS, text.length);\n    chunks.push({\n      json: {\n        ...baseMeta,\n        chunk_index: chunkIndex,\n        char_offset_start: pos,\n        char_offset_end: end,\n        page_estimate: Math.max(1, Math.ceil(pos / CHARS_PER_PAGE)),\n        text: text.substring(pos, end),\n      },\n    });\n    chunkIndex++;\n    if (end >= text.length) break;\n    pos = end - OVERLAP_CHARS;\n  }\n}\n\nconsole.log(`Chunker emitted ${chunks.length} chunks from ${items.length} documents.`);\nreturn chunks;\n"
       },
       "id": "e5f6a7b8-chunker-0000000000005",
       "name": "Text Chunker",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 300]
+      "position": [
+        1200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -90,10 +105,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "HTTP-Referer",  "value": "http://localhost" },
-            { "name": "X-Title",       "value": "Deal Diligence Prototype" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "http://localhost"
+            },
+            {
+              "name": "X-Title",
+              "value": "Deal Diligence Prototype"
+            }
           ]
         },
         "sendBody": true,
@@ -113,7 +140,10 @@
       "name": "Embed Chunk",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1460, 300],
+      "position": [
+        1460,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -122,37 +152,46 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Extract Embedding — Phase 3 task 3.3c\n// ⚠ IMPORTANT: n8n's HTTP Request node REPLACES $json with the response\n// body (not merge). So $input.item.json here is ONLY the Alicloud\n// embeddings response; the chunk metadata has been dropped.\n// We recover it by reaching back to the Text Chunker's output at the\n// same item position via $('Text Chunker').item.\n//\n// Alicloud response shape:\n//   { object: 'list',\n//     data: [{ embedding: [0.1, -0.05, ...], index: 0, object: 'embedding' }],\n//     model: 'text-embedding-v4',\n//     usage: { prompt_tokens: 900, total_tokens: 900 } }\n\nconst response = $input.item.json;\n// Reach back two nodes to get the original chunk metadata for this item.\n// n8n preserves item-position ordering through HTTP Request in runOnce\n// ForEachItem mode, so item i in Extract Embedding corresponds to\n// item i in Text Chunker.\nconst chunk = $('Text Chunker').item.json;\n\nconst data = Array.isArray(response.data) ? response.data : [];\nconst embedding = data[0] && Array.isArray(data[0].embedding) ? data[0].embedding : null;\nif (!embedding) {\n  // Non-fatal: emit the item with embedding: null. Downstream retrieval\n  // will skip chunks whose embedding is missing.\n  console.log(`WARN: no embedding in response for chunk_index=${chunk.chunk_index}`);\n}\n\n// Extract usage for token accounting (logged for cost model refinement).\nconst usage = response.usage || {};\n\nreturn {\n  json: {\n    run_id: chunk.run_id,\n    deal_id: chunk.deal_id,\n    company_name: chunk.company_name,\n    timestamp_started: chunk.timestamp_started,\n    source_manifest: chunk.source_manifest,\n    document: chunk.document,\n    chunk_index: chunk.chunk_index,\n    char_offset_start: chunk.char_offset_start,\n    char_offset_end: chunk.char_offset_end,\n    page_estimate: chunk.page_estimate,\n    text: chunk.text,\n    embedding,\n    embedding_dim: embedding ? embedding.length : 0,\n    embedding_tokens: usage.prompt_tokens || 0,\n  },\n};\n"
+        "jsCode": "// Extract Embedding \u2014 Phase 3 task 3.3c\n// \u26a0 IMPORTANT: n8n's HTTP Request node REPLACES $json with the response\n// body (not merge). So $input.item.json here is ONLY the Alicloud\n// embeddings response; the chunk metadata has been dropped.\n// We recover it by reaching back to the Text Chunker's output at the\n// same item position via $('Text Chunker').item.\n//\n// Alicloud response shape:\n//   { object: 'list',\n//     data: [{ embedding: [0.1, -0.05, ...], index: 0, object: 'embedding' }],\n//     model: 'text-embedding-v4',\n//     usage: { prompt_tokens: 900, total_tokens: 900 } }\n\nconst response = $input.item.json;\n// Reach back two nodes to get the original chunk metadata for this item.\n// n8n preserves item-position ordering through HTTP Request in runOnce\n// ForEachItem mode, so item i in Extract Embedding corresponds to\n// item i in Text Chunker.\nconst chunk = $('Text Chunker').item.json;\n\nconst data = Array.isArray(response.data) ? response.data : [];\nconst embedding = data[0] && Array.isArray(data[0].embedding) ? data[0].embedding : null;\nif (!embedding) {\n  // Non-fatal: emit the item with embedding: null. Downstream retrieval\n  // will skip chunks whose embedding is missing.\n  console.log(`WARN: no embedding in response for chunk_index=${chunk.chunk_index}`);\n}\n\n// Extract usage for token accounting (logged for cost model refinement).\nconst usage = response.usage || {};\n\nreturn {\n  json: {\n    run_id: chunk.run_id,\n    deal_id: chunk.deal_id,\n    company_name: chunk.company_name,\n    timestamp_started: chunk.timestamp_started,\n    source_manifest: chunk.source_manifest,\n    document: chunk.document,\n    chunk_index: chunk.chunk_index,\n    char_offset_start: chunk.char_offset_start,\n    char_offset_end: chunk.char_offset_end,\n    page_estimate: chunk.page_estimate,\n    text: chunk.text,\n    embedding,\n    embedding_dim: embedding ? embedding.length : 0,\n    embedding_tokens: usage.prompt_tokens || 0,\n  },\n};\n"
       },
       "id": "a7b8c9d0-extract-embed-00000000007",
       "name": "Extract Embedding",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1720, 300]
+      "position": [
+        1720,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Aggregate Vector Store — Phase 3 task 3.3d\n// Folds all per-chunk items (from Extract Embedding) into ONE item\n// carrying the full in-memory vector store. Downstream specialist\n// agents run cosine-similarity retrieval against `chunks[]`, optionally\n// filtering to a single document via chunk.file_id.\n//\n// Path A (hand-rolled retrieval, decided 2026-04-24T18:30) — we do NOT\n// use n8n's LangChain Simple Vector Store. Our store is just a JSON\n// array held in a single workflow item.\n//\n// Input: N items (one per chunk), each with run-level + per-chunk meta.\n// Output: 1 item:\n//   { run_id, deal_id, company_name, timestamp_started, source_manifest,\n//     chunks: [{ file_id, source_name, source_type, filename,\n//                chunk_index, char_offset_start, char_offset_end,\n//                page_estimate, text, embedding }],\n//     meta: { chunk_count, total_embedding_tokens, documents_ingested } }\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Aggregate Vector Store received 0 items. Ingestion broke upstream.');\n}\n\n// Run-level metadata comes from the first item; all items share it.\nconst first = items[0].json;\n\n// Flatten each chunk into a retrieval-ready shape. Nested `document`\n// object is hoisted up so retrieval filters can access .file_id etc.\n// without deep-path access.\nconst chunks = items.map((item) => {\n  const j = item.json || {};\n  const doc = j.document || {};\n  return {\n    file_id: doc.file_id || null,\n    source_name: doc.source_name || 'Unknown Source',\n    source_type: doc.source_type || 'regulatory_filing',\n    filename: doc.filename || null,\n    chunk_index: j.chunk_index ?? null,\n    char_offset_start: j.char_offset_start ?? null,\n    char_offset_end: j.char_offset_end ?? null,\n    page_estimate: j.page_estimate ?? null,\n    text: j.text || '',\n    embedding: Array.isArray(j.embedding) ? j.embedding : null,\n  };\n});\n\nconst totalTokens = items.reduce(\n  (acc, i) => acc + (i.json?.embedding_tokens || 0),\n  0\n);\nconst documentsIngested = Array.from(\n  new Set(chunks.map((c) => c.source_name))\n);\n\nconst validChunks = chunks.filter((c) => c.embedding && c.embedding.length > 0);\nif (validChunks.length === 0) {\n  throw new Error('No chunks have valid embeddings — retrieval will be impossible.');\n}\nif (validChunks.length < chunks.length) {\n  console.log(`WARN: ${chunks.length - validChunks.length} of ${chunks.length} chunks lacked embeddings; dropped.`);\n}\n\nconsole.log(`Vector store ready: ${validChunks.length} chunks across ${documentsIngested.length} documents; ${totalTokens} embedding tokens total.`);\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    chunks: validChunks,\n    meta: {\n      chunk_count: validChunks.length,\n      total_embedding_tokens: totalTokens,\n      documents_ingested: documentsIngested,\n    },\n  },\n};\n"
+        "jsCode": "// Aggregate Vector Store \u2014 Phase 3 task 3.3d\n// Folds all per-chunk items (from Extract Embedding) into ONE item\n// carrying the full in-memory vector store. Downstream specialist\n// agents run cosine-similarity retrieval against `chunks[]`, optionally\n// filtering to a single document via chunk.file_id.\n//\n// Path A (hand-rolled retrieval, decided 2026-04-24T18:30) \u2014 we do NOT\n// use n8n's LangChain Simple Vector Store. Our store is just a JSON\n// array held in a single workflow item.\n//\n// Input: N items (one per chunk), each with run-level + per-chunk meta.\n// Output: 1 item:\n//   { run_id, deal_id, company_name, timestamp_started, source_manifest,\n//     chunks: [{ file_id, source_name, source_type, filename,\n//                chunk_index, char_offset_start, char_offset_end,\n//                page_estimate, text, embedding }],\n//     meta: { chunk_count, total_embedding_tokens, documents_ingested } }\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Aggregate Vector Store received 0 items. Ingestion broke upstream.');\n}\n\n// Run-level metadata comes from the first item; all items share it.\nconst first = items[0].json;\n\n// Flatten each chunk into a retrieval-ready shape. Nested `document`\n// object is hoisted up so retrieval filters can access .file_id etc.\n// without deep-path access.\nconst chunks = items.map((item) => {\n  const j = item.json || {};\n  const doc = j.document || {};\n  return {\n    file_id: doc.file_id || null,\n    source_name: doc.source_name || 'Unknown Source',\n    source_type: doc.source_type || 'regulatory_filing',\n    filename: doc.filename || null,\n    chunk_index: j.chunk_index ?? null,\n    char_offset_start: j.char_offset_start ?? null,\n    char_offset_end: j.char_offset_end ?? null,\n    page_estimate: j.page_estimate ?? null,\n    text: j.text || '',\n    embedding: Array.isArray(j.embedding) ? j.embedding : null,\n  };\n});\n\nconst totalTokens = items.reduce(\n  (acc, i) => acc + (i.json?.embedding_tokens || 0),\n  0\n);\nconst documentsIngested = Array.from(\n  new Set(chunks.map((c) => c.source_name))\n);\n\nconst validChunks = chunks.filter((c) => c.embedding && c.embedding.length > 0);\nif (validChunks.length === 0) {\n  throw new Error('No chunks have valid embeddings \u2014 retrieval will be impossible.');\n}\nif (validChunks.length < chunks.length) {\n  console.log(`WARN: ${chunks.length - validChunks.length} of ${chunks.length} chunks lacked embeddings; dropped.`);\n}\n\nconsole.log(`Vector store ready: ${validChunks.length} chunks across ${documentsIngested.length} documents; ${totalTokens} embedding tokens total.`);\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    chunks: validChunks,\n    meta: {\n      chunk_count: validChunks.length,\n      total_embedding_tokens: totalTokens,\n      documents_ingested: documentsIngested,\n    },\n  },\n};\n"
       },
       "id": "b8c9d0e1-aggregate-vs-0000000008",
       "name": "Aggregate Vector Store",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        1980,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Prepare Extraction Queries — Phase 3 task 3.5\n// Build one retrieval query item per (document, section) plus one union query.\n// Query embeddings are scored against the hand-rolled chunk store in the next node.\n\nconst item = $input.all()[0]?.json;\nif (!item) throw new Error('Prepare Extraction Queries expected the Aggregate Vector Store item.');\n\nconst SECTION_QUERIES = [\n  { name: 'company_overview',      top_k: 5, text: 'company overview what does the company do founding year headcount headquarters geography' },\n  { name: 'investment_thesis',     top_k: 5, text: 'investment thesis bull case why win strategic rationale growth narrative' },\n  { name: 'market_opportunity',    top_k: 5, text: 'tam sam som market opportunity total addressable market growth drivers' },\n  { name: 'business_model',        top_k: 5, text: 'business model revenue streams pricing monetization how company makes money' },\n  { name: 'financial_performance', top_k: 5, text: 'financial performance revenue growth gross margin operating loss cash balance burn' },\n  { name: 'unit_economics',        top_k: 5, text: 'unit economics cac ltv payback retention unit economics efficiency' },\n  { name: 'competitive_position',  top_k: 5, text: 'competitive position competitors competition moat differentiation advantage' },\n  { name: 'management_assessment', top_k: 5, text: 'management assessment executives founder ceo cfo key personnel key person risk' },\n  { name: 'customer_profile',      top_k: 5, text: 'customer profile customer concentration top customer top 1 top 2 top 5 retention' },\n  { name: 'risk_factors',          top_k: 5, text: 'risk factors disclosed risks material weakness going concern related party debt concentration' },\n  { name: 'management_claims',     top_k: 5, text: 'management claims management states claims asserts leadership performance forward-looking' },\n  { name: 'deal_structure',        top_k: 5, text: 'deal structure valuation amount raised use of proceeds offering ipo shares' },\n];\nconst UNION_QUERY = {\n  name: 'union',\n  top_k: 8,\n  text: 'risk factors customer concentration material weaknesses related party transactions going concern debt structure'\n};\n\nconst docs = Array.from(new Map(\n  (item.chunks || []).map((c) => [\n    c.source_name,\n    {\n      file_id: c.file_id,\n      source_name: c.source_name,\n      source_type: c.source_type,\n      filename: c.filename,\n    },\n  ])\n).values());\n\nconst out = [];\nfor (const doc of docs) {\n  for (const q of SECTION_QUERIES) {\n    out.push({\n      json: {\n        run_id: item.run_id,\n        deal_id: item.deal_id,\n        company_name: item.company_name,\n        timestamp_started: item.timestamp_started,\n        source_manifest: item.source_manifest,\n        file_id: doc.file_id,\n        source_name: doc.source_name,\n        source_type: doc.source_type,\n        filename: doc.filename,\n        query_name: q.name,\n        query_text: q.text,\n        top_k: q.top_k,\n        is_union: false,\n      },\n    });\n  }\n  out.push({\n    json: {\n      run_id: item.run_id,\n      deal_id: item.deal_id,\n      company_name: item.company_name,\n      timestamp_started: item.timestamp_started,\n      source_manifest: item.source_manifest,\n      file_id: doc.file_id,\n      source_name: doc.source_name,\n      source_type: doc.source_type,\n      filename: doc.filename,\n      query_name: UNION_QUERY.name,\n      query_text: UNION_QUERY.text,\n      top_k: UNION_QUERY.top_k,\n      is_union: true,\n    },\n  });\n}\n\nconsole.log(`Prepared ${out.length} extraction retrieval queries across ${docs.length} documents.`);\nreturn out;\n"
+        "jsCode": "// Prepare Extraction Queries \u2014 Phase 3 task 3.5\n// Build one retrieval query item per (document, section) plus one union query.\n// Query embeddings are scored against the hand-rolled chunk store in the next node.\n\nconst item = $input.all()[0]?.json;\nif (!item) throw new Error('Prepare Extraction Queries expected the Aggregate Vector Store item.');\n\nconst SECTION_QUERIES = [\n  { name: 'company_overview',      top_k: 5, text: 'company overview what does the company do founding year headcount headquarters geography' },\n  { name: 'investment_thesis',     top_k: 5, text: 'investment thesis bull case why win strategic rationale growth narrative' },\n  { name: 'market_opportunity',    top_k: 5, text: 'tam sam som market opportunity total addressable market growth drivers' },\n  { name: 'business_model',        top_k: 5, text: 'business model revenue streams pricing monetization how company makes money' },\n  { name: 'financial_performance', top_k: 5, text: 'financial performance revenue growth gross margin operating loss cash balance burn' },\n  { name: 'unit_economics',        top_k: 5, text: 'unit economics cac ltv payback retention unit economics efficiency' },\n  { name: 'competitive_position',  top_k: 5, text: 'competitive position competitors competition moat differentiation advantage' },\n  { name: 'management_assessment', top_k: 5, text: 'management assessment executives founder ceo cfo key personnel key person risk' },\n  { name: 'customer_profile',      top_k: 5, text: 'customer profile customer concentration top customer top 1 top 2 top 5 retention' },\n  { name: 'risk_factors',          top_k: 5, text: 'risk factors disclosed risks material weakness going concern related party debt concentration' },\n  { name: 'management_claims',     top_k: 5, text: 'management claims management states claims asserts leadership performance forward-looking' },\n  { name: 'deal_structure',        top_k: 5, text: 'deal structure valuation amount raised use of proceeds offering ipo shares' },\n];\nconst UNION_QUERY = {\n  name: 'union',\n  top_k: 8,\n  text: 'risk factors customer concentration material weaknesses related party transactions going concern debt structure'\n};\n\nconst docs = Array.from(new Map(\n  (item.chunks || []).map((c) => [\n    c.source_name,\n    {\n      file_id: c.file_id,\n      source_name: c.source_name,\n      source_type: c.source_type,\n      filename: c.filename,\n    },\n  ])\n).values());\n\nconst out = [];\nfor (const doc of docs) {\n  for (const q of SECTION_QUERIES) {\n    out.push({\n      json: {\n        run_id: item.run_id,\n        deal_id: item.deal_id,\n        company_name: item.company_name,\n        timestamp_started: item.timestamp_started,\n        source_manifest: item.source_manifest,\n        file_id: doc.file_id,\n        source_name: doc.source_name,\n        source_type: doc.source_type,\n        filename: doc.filename,\n        query_name: q.name,\n        query_text: q.text,\n        top_k: q.top_k,\n        is_union: false,\n      },\n    });\n  }\n  out.push({\n    json: {\n      run_id: item.run_id,\n      deal_id: item.deal_id,\n      company_name: item.company_name,\n      timestamp_started: item.timestamp_started,\n      source_manifest: item.source_manifest,\n      file_id: doc.file_id,\n      source_name: doc.source_name,\n      source_type: doc.source_type,\n      filename: doc.filename,\n      query_name: UNION_QUERY.name,\n      query_text: UNION_QUERY.text,\n      top_k: UNION_QUERY.top_k,\n      is_union: true,\n    },\n  });\n}\n\nconsole.log(`Prepared ${out.length} extraction retrieval queries across ${docs.length} documents.`);\nreturn out;\n"
       },
       "id": "c9d0e1f2-prepare-extract-0000000009",
       "name": "Prepare Extraction Queries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2240, 300]
+      "position": [
+        2240,
+        300
+      ]
     },
     {
       "parameters": {
@@ -161,10 +200,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "HTTP-Referer",  "value": "http://localhost" },
-            { "name": "X-Title",       "value": "Deal Diligence Prototype" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "http://localhost"
+            },
+            {
+              "name": "X-Title",
+              "value": "Deal Diligence Prototype"
+            }
           ]
         },
         "sendBody": true,
@@ -184,7 +235,10 @@
       "name": "Embed Extraction Query",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2500, 300],
+      "position": [
+        2500,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -193,37 +247,46 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Rank Extraction Chunks — Phase 3 task 3.5\n// Score document-local chunks against the query embedding and select top-k.\n\nconst response = $input.item.json;\nconst queryItem = $('Prepare Extraction Queries').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Extraction Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error(`No query embedding returned for ${queryItem.source_name} / ${queryItem.query_name}`);\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst candidates = (store.chunks || []).filter(\n  (c) => c.source_name === queryItem.source_name && Array.isArray(c.embedding) && c.embedding.length > 0\n);\nconst ranked = candidates\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n      score: cosineSimilarity(queryEmbedding, c.embedding),\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, queryItem.top_k);\n\nreturn {\n  json: {\n    run_id: queryItem.run_id,\n    deal_id: queryItem.deal_id,\n    company_name: queryItem.company_name,\n    timestamp_started: queryItem.timestamp_started,\n    source_manifest: queryItem.source_manifest,\n    file_id: queryItem.file_id,\n    source_name: queryItem.source_name,\n    source_type: queryItem.source_type,\n    filename: queryItem.filename,\n    query_name: queryItem.query_name,\n    query_text: queryItem.query_text,\n    top_k: queryItem.top_k,\n    is_union: queryItem.is_union,\n    selected_chunks: ranked.map((r) => r.chunk),\n    query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
+        "jsCode": "// Rank Extraction Chunks \u2014 Phase 3 task 3.5\n// Score document-local chunks against the query embedding and select top-k.\n\nconst response = $input.item.json;\nconst queryItem = $('Prepare Extraction Queries').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Extraction Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error(`No query embedding returned for ${queryItem.source_name} / ${queryItem.query_name}`);\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst candidates = (store.chunks || []).filter(\n  (c) => c.source_name === queryItem.source_name && Array.isArray(c.embedding) && c.embedding.length > 0\n);\nconst ranked = candidates\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n      score: cosineSimilarity(queryEmbedding, c.embedding),\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, queryItem.top_k);\n\nreturn {\n  json: {\n    run_id: queryItem.run_id,\n    deal_id: queryItem.deal_id,\n    company_name: queryItem.company_name,\n    timestamp_started: queryItem.timestamp_started,\n    source_manifest: queryItem.source_manifest,\n    file_id: queryItem.file_id,\n    source_name: queryItem.source_name,\n    source_type: queryItem.source_type,\n    filename: queryItem.filename,\n    query_name: queryItem.query_name,\n    query_text: queryItem.query_text,\n    top_k: queryItem.top_k,\n    is_union: queryItem.is_union,\n    selected_chunks: ranked.map((r) => r.chunk),\n    query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
       },
       "id": "e1f2a3b4-rank-query-0000000011",
       "name": "Rank Extraction Chunks",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2760, 300]
+      "position": [
+        2760,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Aggregate Extraction Context — Phase 3 task 3.5\n// Regroup ranked query hits into one item per document with `chunks` and `union_chunks`.\n// Cap the final prompt context so large filings do not effectively stuff the whole document.\n\nconst items = $input.all();\nif (items.length === 0) throw new Error('Aggregate Extraction Context received 0 ranked query items.');\n\nconst MAX_REGULAR_CHUNKS = 24;\nconst MAX_UNION_CHUNKS = 6;\n\nfunction selectChunks(chunks, limit) {\n  const bestByKey = new Map();\n  for (const c of chunks) {\n    const key = `${c.source_name}::${c.chunk_index}`;\n    const prev = bestByKey.get(key);\n    const score = typeof c.score === 'number' ? c.score : -1;\n    const prevScore = prev && typeof prev.score === 'number' ? prev.score : -1;\n    if (!prev || score > prevScore) bestByKey.set(key, c);\n  }\n  return Array.from(bestByKey.values())\n    .sort((a, b) => {\n      const scoreA = typeof a.score === 'number' ? a.score : -1;\n      const scoreB = typeof b.score === 'number' ? b.score : -1;\n      if (scoreB !== scoreA) return scoreB - scoreA;\n      return (a.chunk_index ?? 0) - (b.chunk_index ?? 0);\n    })\n    .slice(0, limit)\n    .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))\n    .map(({ score, ...rest }) => rest);\n}\n\nconst groups = new Map();\nfor (const item of items) {\n  const j = item.json;\n  const key = j.source_name;\n  if (!groups.has(key)) {\n    groups.set(key, {\n      run_id: j.run_id,\n      deal_id: j.deal_id,\n      company_name: j.company_name,\n      timestamp_started: j.timestamp_started,\n      source_manifest: j.source_manifest,\n      file_id: j.file_id,\n      source_name: j.source_name,\n      source_type: j.source_type,\n      filename: j.filename,\n      regular: [],\n      union: [],\n      total_query_embedding_tokens: 0,\n    });\n  }\n  const g = groups.get(key);\n  g.total_query_embedding_tokens += j.query_embedding_tokens || 0;\n  if (j.is_union) g.union.push(...(j.selected_chunks || []));\n  else g.regular.push(...(j.selected_chunks || []));\n}\n\nconst out = Array.from(groups.values()).map((g) => {\n  const selectedRegular = selectChunks(g.regular, MAX_REGULAR_CHUNKS);\n  const selectedUnion = selectChunks(g.union, MAX_UNION_CHUNKS);\n  return {\n    json: {\n      run_id: g.run_id,\n      deal_id: g.deal_id,\n      company_name: g.company_name,\n      timestamp_started: g.timestamp_started,\n      source_manifest: g.source_manifest,\n      file_id: g.file_id,\n      source_name: g.source_name,\n      source_type: g.source_type,\n      filename: g.filename,\n      chunks: selectedRegular,\n      union_chunks: selectedUnion,\n      retrieval_meta: {\n        selected_chunk_count: selectedRegular.length,\n        selected_union_chunk_count: selectedUnion.length,\n        total_query_embedding_tokens: g.total_query_embedding_tokens,\n      },\n    },\n  };\n});\n\nconsole.log(`Prepared extraction context for ${out.length} documents.`);\nreturn out;\n"
+        "jsCode": "// Aggregate Extraction Context \u2014 Phase 3 task 3.5\n// Regroup ranked query hits into one item per document with `chunks` and `union_chunks`.\n// Cap the final prompt context so large filings do not effectively stuff the whole document.\n\nconst items = $input.all();\nif (items.length === 0) throw new Error('Aggregate Extraction Context received 0 ranked query items.');\n\nconst MAX_REGULAR_CHUNKS = 24;\nconst MAX_UNION_CHUNKS = 6;\n\nfunction selectChunks(chunks, limit) {\n  const bestByKey = new Map();\n  for (const c of chunks) {\n    const key = `${c.source_name}::${c.chunk_index}`;\n    const prev = bestByKey.get(key);\n    const score = typeof c.score === 'number' ? c.score : -1;\n    const prevScore = prev && typeof prev.score === 'number' ? prev.score : -1;\n    if (!prev || score > prevScore) bestByKey.set(key, c);\n  }\n  return Array.from(bestByKey.values())\n    .sort((a, b) => {\n      const scoreA = typeof a.score === 'number' ? a.score : -1;\n      const scoreB = typeof b.score === 'number' ? b.score : -1;\n      if (scoreB !== scoreA) return scoreB - scoreA;\n      return (a.chunk_index ?? 0) - (b.chunk_index ?? 0);\n    })\n    .slice(0, limit)\n    .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))\n    .map(({ score, ...rest }) => rest);\n}\n\nconst groups = new Map();\nfor (const item of items) {\n  const j = item.json;\n  const key = j.source_name;\n  if (!groups.has(key)) {\n    groups.set(key, {\n      run_id: j.run_id,\n      deal_id: j.deal_id,\n      company_name: j.company_name,\n      timestamp_started: j.timestamp_started,\n      source_manifest: j.source_manifest,\n      file_id: j.file_id,\n      source_name: j.source_name,\n      source_type: j.source_type,\n      filename: j.filename,\n      regular: [],\n      union: [],\n      total_query_embedding_tokens: 0,\n    });\n  }\n  const g = groups.get(key);\n  g.total_query_embedding_tokens += j.query_embedding_tokens || 0;\n  if (j.is_union) g.union.push(...(j.selected_chunks || []));\n  else g.regular.push(...(j.selected_chunks || []));\n}\n\nconst out = Array.from(groups.values()).map((g) => {\n  const selectedRegular = selectChunks(g.regular, MAX_REGULAR_CHUNKS);\n  const selectedUnion = selectChunks(g.union, MAX_UNION_CHUNKS);\n  return {\n    json: {\n      run_id: g.run_id,\n      deal_id: g.deal_id,\n      company_name: g.company_name,\n      timestamp_started: g.timestamp_started,\n      source_manifest: g.source_manifest,\n      file_id: g.file_id,\n      source_name: g.source_name,\n      source_type: g.source_type,\n      filename: g.filename,\n      chunks: selectedRegular,\n      union_chunks: selectedUnion,\n      retrieval_meta: {\n        selected_chunk_count: selectedRegular.length,\n        selected_union_chunk_count: selectedUnion.length,\n        total_query_embedding_tokens: g.total_query_embedding_tokens,\n      },\n    },\n  };\n});\n\nconsole.log(`Prepared extraction context for ${out.length} documents.`);\nreturn out;\n"
       },
       "id": "f2a3b4c5-aggregate-extract-0000000012",
       "name": "Aggregate Extraction Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3020, 300]
+      "position": [
+        3020,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Build Extraction Request — Phase 3 task 3.5\n// Keeps the prompt logic explicit in the workflow source of truth.\n\nconst item = $input.item.json;\nconst systemPrompt = `You are the first specialist agent in a multi-agent institutional investment-diligence workflow.\n\nRead ONE source document and extract only facts literally supported by retrieved passages into the fixed IC Memo Taxonomy schema below.\n\nReturn JSON only. No markdown, no prose, no explanations.\n\nNever guess, infer, calculate, normalize, or editorialize. Missing data must be null for scalars and [] for arrays. source_name and source_type must be returned exactly as given.\n\nIC Memo Taxonomy:\n\n1. company_overview — what the company does, founding year, headcount, geography\n2. investment_thesis — management’s presented bull case, not your opinion\n3. market_opportunity — TAM/SAM/SOM and growth drivers\n4. business_model — revenue streams and pricing\n5. financial_performance — revenue, growth, margins, losses, cash, burn\n6. unit_economics — CAC, LTV, payback\n7. competitive_position — competitors and moat\n8. management_assessment — key personnel and key-person risk\n9. customer_profile — customer concentration and retention\n10. risk_factors — disclosed risks\n11. management_claims — management assertions for later verification\n12. deal_structure — valuation, amount raised, use of proceeds if disclosed\n\nImportant distinction:\n\n* investment_thesis: “Management believes the company can win because its platform reduces enterprise AI deployment time and expands into a large market.”\n* management_claims: “The company states it has industry-leading inference performance.”\n  A disclosed adverse fact such as “86% of revenue came from two customers” is a risk_factor or customer_profile fact, not a management_claim.\n\nInput:\n\n* source_name: canonical document name\n* source_type: one of regulatory_filing | press_release | analyst_report | expert_transcript | management_deck\n* chunks: retrieved passages with { text, page_estimate, chunk_index, source_name }\n* union_chunks: additional cross-cutting passages on risks, customer concentration, material weaknesses, related-party transactions, going concern, and debt\n\nReturn this JSON shape exactly:\n\n{\n\"source_name\": \"<same as input>\",\n\"source_type\": \"<same as input>\",\n\"extracted_facts\": {\n\"company_overview\": {\n\"description\": <string|null>,\n\"founding_year\": <integer|null>,\n\"headcount\": <integer|null>,\n\"geography\": <string|null>,\n\"citations\": <array of citation strings>\n},\n\"investment_thesis\": {\n\"bull_case\": <string|null>,\n\"citations\": <array>\n},\n\"market_opportunity\": {\n\"tam\": <number|null>,\n\"sam\": <number|null>,\n\"som\": <number|null>,\n\"growth_drivers\": <array of strings>,\n\"citations\": <array>\n},\n\"business_model\": {\n\"revenue_streams\": <array of strings>,\n\"pricing\": <string|null>,\n\"citations\": <array>\n},\n\"financial_performance\": {\n\"revenue_latest_period\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"revenue_growth_yoy\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"gross_margin\": { \"value\": <number|null>, \"citation\": <citation|null> },\n\"operating_loss\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"cash_balance\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"monthly_burn\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> }\n},\n\"unit_economics\": {\n\"cac\": <number|null>,\n\"ltv\": <number|null>,\n\"payback_period_months\": <number|null>,\n\"citations\": <array>\n},\n\"competitive_position\": {\n\"competitors\": <array of strings>,\n\"moat\": <string|null>,\n\"citations\": <array>\n},\n\"management_assessment\": {\n\"key_personnel\": <array of strings>,\n\"key_person_risk\": <boolean|null>,\n\"citations\": <array>\n},\n\"customer_profile\": {\n\"concentration_top_1\": <number|null>,\n\"concentration_top_2\": <number|null>,\n\"concentration_top_5\": <number|null>,\n\"retention_rate\": <number|null>,\n\"citations\": <array>\n},\n\"risk_factors\": <array of { \"factor\": <string>, \"citation\": <citation> }>,\n\"management_claims\": <array of { \"claim\": <string>, \"citation\": <citation> }>,\n\"deal_structure\": {\n\"valuation\": <number|null>,\n\"amount_raising\": <number|null>,\n\"use_of_proceeds\": <string|null>,\n\"citations\": <array>\n}\n}\n}\n\nNumeric rules:\n\n* Percentages are numbers from 0–100: “86%” → 86.\n* Dollars are whole-dollar numbers when directly stated: “$136.4 million” → 136400000.\n* Customer concentration top-N means cumulative percentage of revenue from the top N customers.\n* If a number requires calculation, midpointing, currency conversion, or other derivation, return null.\n* If a value is null, its citation must be null where the schema has item-level citation fields.\n\nCitation rules:\nEvery citation string must exactly match one of these formats:\n\n<source_name> p. <N>\n<source_name> p. ~<N>\n<source_name> Risk Factors p. <N>\n\nUse source_name exactly as given. N must be a positive integer. Use “p. ~<N>” when page_estimate is estimated. Do not create any other citation format.\n\nHard constraints:\n\n1. JSON only.\n2. Every non-null fact must trace to a retrieved chunk.\n3. Do not invent values or citations.\n4. Do not normalize source_name or source_type.\n5. Include all 12 sections under extracted_facts.\n6. For empty sections, keep the section and use nulls/[] as required.\n7. For conflicting statements within the same document, extract the most specific directly stated version, usually the tabular value over narrative approximation.\n8. If a value appears in both narrative and table, prefer the table citation.\n9. If only a range is provided and the schema requires one number, return null.\n10. If currency conversion would be required, return null.\n\nBefore returning, silently verify:\n\n* JSON is valid.\n* No trailing commas.\n* No placeholders remain.\n* All citations match the required format.\n* All non-null numbers are JSON numbers, not strings.\n* All required sections are present.`;\n\nconst userPayload = {\n  source_name: item.source_name,\n  source_type: item.source_type,\n  chunks: item.chunks,\n  union_chunks: item.union_chunks,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n  },\n};\n"
+        "jsCode": "// Build Extraction Request \u2014 Phase 3 task 3.5\n// Keeps the prompt logic explicit in the workflow source of truth.\n\nconst item = $input.item.json;\nconst systemPrompt = `You are the first specialist agent in a multi-agent institutional investment-diligence workflow.\n\nRead ONE source document and extract only facts literally supported by retrieved passages into the fixed IC Memo Taxonomy schema below.\n\nReturn JSON only. No markdown, no prose, no explanations.\n\nNever guess, infer, calculate, normalize, or editorialize. Missing data must be null for scalars and [] for arrays. source_name and source_type must be returned exactly as given.\n\nIC Memo Taxonomy:\n\n1. company_overview \u2014 what the company does, founding year, headcount, geography\n2. investment_thesis \u2014 management\u2019s presented bull case, not your opinion\n3. market_opportunity \u2014 TAM/SAM/SOM and growth drivers\n4. business_model \u2014 revenue streams and pricing\n5. financial_performance \u2014 revenue, growth, margins, losses, cash, burn\n6. unit_economics \u2014 CAC, LTV, payback\n7. competitive_position \u2014 competitors and moat\n8. management_assessment \u2014 key personnel and key-person risk\n9. customer_profile \u2014 customer concentration and retention\n10. risk_factors \u2014 disclosed risks\n11. management_claims \u2014 management assertions for later verification\n12. deal_structure \u2014 valuation, amount raised, use of proceeds if disclosed\n\nImportant distinction:\n\n* investment_thesis: \u201cManagement believes the company can win because its platform reduces enterprise AI deployment time and expands into a large market.\u201d\n* management_claims: \u201cThe company states it has industry-leading inference performance.\u201d\n  A disclosed adverse fact such as \u201c86% of revenue came from two customers\u201d is a risk_factor or customer_profile fact, not a management_claim.\n\nInput:\n\n* source_name: canonical document name\n* source_type: one of regulatory_filing | press_release | analyst_report | expert_transcript | management_deck\n* chunks: retrieved passages with { text, page_estimate, chunk_index, source_name }\n* union_chunks: additional cross-cutting passages on risks, customer concentration, material weaknesses, related-party transactions, going concern, and debt\n\nReturn this JSON shape exactly:\n\n{\n\"source_name\": \"<same as input>\",\n\"source_type\": \"<same as input>\",\n\"extracted_facts\": {\n\"company_overview\": {\n\"description\": <string|null>,\n\"founding_year\": <integer|null>,\n\"headcount\": <integer|null>,\n\"geography\": <string|null>,\n\"citations\": <array of citation strings>\n},\n\"investment_thesis\": {\n\"bull_case\": <string|null>,\n\"citations\": <array>\n},\n\"market_opportunity\": {\n\"tam\": <number|null>,\n\"sam\": <number|null>,\n\"som\": <number|null>,\n\"growth_drivers\": <array of strings>,\n\"citations\": <array>\n},\n\"business_model\": {\n\"revenue_streams\": <array of strings>,\n\"pricing\": <string|null>,\n\"citations\": <array>\n},\n\"financial_performance\": {\n\"revenue_latest_period\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"revenue_growth_yoy\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"gross_margin\": { \"value\": <number|null>, \"citation\": <citation|null> },\n\"operating_loss\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"cash_balance\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> },\n\"monthly_burn\": { \"value\": <number|null>, \"period\": <string|null>, \"citation\": <citation|null> }\n},\n\"unit_economics\": {\n\"cac\": <number|null>,\n\"ltv\": <number|null>,\n\"payback_period_months\": <number|null>,\n\"citations\": <array>\n},\n\"competitive_position\": {\n\"competitors\": <array of strings>,\n\"moat\": <string|null>,\n\"citations\": <array>\n},\n\"management_assessment\": {\n\"key_personnel\": <array of strings>,\n\"key_person_risk\": <boolean|null>,\n\"citations\": <array>\n},\n\"customer_profile\": {\n\"concentration_top_1\": <number|null>,\n\"concentration_top_2\": <number|null>,\n\"concentration_top_5\": <number|null>,\n\"retention_rate\": <number|null>,\n\"citations\": <array>\n},\n\"risk_factors\": <array of { \"factor\": <string>, \"citation\": <citation> }>,\n\"management_claims\": <array of { \"claim\": <string>, \"citation\": <citation> }>,\n\"deal_structure\": {\n\"valuation\": <number|null>,\n\"amount_raising\": <number|null>,\n\"use_of_proceeds\": <string|null>,\n\"citations\": <array>\n}\n}\n}\n\nNumeric rules:\n\n* Percentages are numbers from 0\u2013100: \u201c86%\u201d \u2192 86.\n* Dollars are whole-dollar numbers when directly stated: \u201c$136.4 million\u201d \u2192 136400000.\n* Customer concentration top-N means cumulative percentage of revenue from the top N customers.\n* If a number requires calculation, midpointing, currency conversion, or other derivation, return null.\n* If a value is null, its citation must be null where the schema has item-level citation fields.\n\nCitation rules:\nEvery citation string must exactly match one of these formats:\n\n<source_name> p. <N>\n<source_name> p. ~<N>\n<source_name> Risk Factors p. <N>\n\nUse source_name exactly as given. N must be a positive integer. Use \u201cp. ~<N>\u201d when page_estimate is estimated. Do not create any other citation format.\n\nHard constraints:\n\n1. JSON only.\n2. Every non-null fact must trace to a retrieved chunk.\n3. Do not invent values or citations.\n4. Do not normalize source_name or source_type.\n5. Include all 12 sections under extracted_facts.\n6. For empty sections, keep the section and use nulls/[] as required.\n7. For conflicting statements within the same document, extract the most specific directly stated version, usually the tabular value over narrative approximation.\n8. If a value appears in both narrative and table, prefer the table citation.\n9. If only a range is provided and the schema requires one number, return null.\n10. If currency conversion would be required, return null.\n\nBefore returning, silently verify:\n\n* JSON is valid.\n* No trailing commas.\n* No placeholders remain.\n* All citations match the required format.\n* All non-null numbers are JSON numbers, not strings.\n* All required sections are present.`;\n\nconst userPayload = {\n  source_name: item.source_name,\n  source_type: item.source_type,\n  chunks: item.chunks,\n  union_chunks: item.union_chunks,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n  },\n};\n"
       },
       "id": "a3b4c5d6-build-extract-0000000013",
       "name": "Build Extraction Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3280, 300]
+      "position": [
+        3280,
+        300
+      ]
     },
     {
       "parameters": {
@@ -232,8 +295,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -253,7 +322,10 @@
       "name": "Call Extraction Agent",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3540, 300],
+      "position": [
+        3540,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -262,37 +334,46 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Parse Extraction Response — Phase 3 task 3.5\n// Normalizes the OpenAI-compatible chat response into one Extraction result per document.\n// Also projects the model output back onto the exact Extraction schema shape.\n\nconst response = $input.item.json;\nconst request = $('Build Extraction Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error(`Extraction response missing message content for ${request.source_name}`);\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Extraction JSON parse failed for ${request.source_name}: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction strOrNull(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction numOrNull(v) {\n  return typeof v === 'number' && Number.isFinite(v) ? v : null;\n}\nfunction boolOrNull(v) {\n  return typeof v === 'boolean' ? v : null;\n}\nfunction stringArray(v) {\n  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];\n}\nfunction citationOrNull(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction metricWithPeriod(v) {\n  const x = obj(v);\n  return {\n    value: numOrNull(x.value),\n    period: strOrNull(x.period),\n    citation: citationOrNull(x.citation),\n  };\n}\nfunction metricNoPeriod(v) {\n  const x = obj(v);\n  return {\n    value: numOrNull(x.value),\n    citation: citationOrNull(x.citation),\n  };\n}\nfunction arrayOfClaims(v, keyName) {\n  if (!Array.isArray(v)) return [];\n  return v\n    .map((x) => obj(x))\n    .map((x) => ({ [keyName]: strOrNull(x[keyName]), citation: citationOrNull(x.citation) }))\n    .filter((x) => typeof x[keyName] === 'string' && typeof x.citation === 'string');\n}\n\nconst facts = obj(parsed.extracted_facts);\nconst sanitized = {\n  source_name: request.source_name,\n  source_type: request.source_type,\n  extracted_facts: {\n    company_overview: {\n      description: strOrNull(obj(facts.company_overview).description),\n      founding_year: numOrNull(obj(facts.company_overview).founding_year),\n      headcount: numOrNull(obj(facts.company_overview).headcount),\n      geography: strOrNull(obj(facts.company_overview).geography),\n      citations: stringArray(obj(facts.company_overview).citations),\n    },\n    investment_thesis: {\n      bull_case: strOrNull(obj(facts.investment_thesis).bull_case),\n      citations: stringArray(obj(facts.investment_thesis).citations),\n    },\n    market_opportunity: {\n      tam: numOrNull(obj(facts.market_opportunity).tam),\n      sam: numOrNull(obj(facts.market_opportunity).sam),\n      som: numOrNull(obj(facts.market_opportunity).som),\n      growth_drivers: stringArray(obj(facts.market_opportunity).growth_drivers),\n      citations: stringArray(obj(facts.market_opportunity).citations),\n    },\n    business_model: {\n      revenue_streams: stringArray(obj(facts.business_model).revenue_streams),\n      pricing: strOrNull(obj(facts.business_model).pricing),\n      citations: stringArray(obj(facts.business_model).citations),\n    },\n    financial_performance: {\n      revenue_latest_period: metricWithPeriod(obj(facts.financial_performance).revenue_latest_period),\n      revenue_growth_yoy: metricWithPeriod(obj(facts.financial_performance).revenue_growth_yoy),\n      gross_margin: metricNoPeriod(obj(facts.financial_performance).gross_margin),\n      operating_loss: metricWithPeriod(obj(facts.financial_performance).operating_loss),\n      cash_balance: metricWithPeriod(obj(facts.financial_performance).cash_balance),\n      monthly_burn: metricWithPeriod(obj(facts.financial_performance).monthly_burn),\n    },\n    unit_economics: {\n      cac: numOrNull(obj(facts.unit_economics).cac),\n      ltv: numOrNull(obj(facts.unit_economics).ltv),\n      payback_period_months: numOrNull(obj(facts.unit_economics).payback_period_months),\n      citations: stringArray(obj(facts.unit_economics).citations),\n    },\n    competitive_position: {\n      competitors: stringArray(obj(facts.competitive_position).competitors),\n      moat: strOrNull(obj(facts.competitive_position).moat),\n      citations: stringArray(obj(facts.competitive_position).citations),\n    },\n    management_assessment: {\n      key_personnel: stringArray(obj(facts.management_assessment).key_personnel),\n      key_person_risk: boolOrNull(obj(facts.management_assessment).key_person_risk),\n      citations: stringArray(obj(facts.management_assessment).citations),\n    },\n    customer_profile: {\n      concentration_top_1: numOrNull(obj(facts.customer_profile).concentration_top_1),\n      concentration_top_2: numOrNull(obj(facts.customer_profile).concentration_top_2),\n      concentration_top_5: numOrNull(obj(facts.customer_profile).concentration_top_5),\n      retention_rate: numOrNull(obj(facts.customer_profile).retention_rate),\n      citations: stringArray(obj(facts.customer_profile).citations),\n    },\n    risk_factors: arrayOfClaims(facts.risk_factors, 'factor'),\n    management_claims: arrayOfClaims(facts.management_claims, 'claim'),\n    deal_structure: {\n      valuation: numOrNull(obj(facts.deal_structure).valuation),\n      amount_raising: numOrNull(obj(facts.deal_structure).amount_raising),\n      use_of_proceeds: strOrNull(obj(facts.deal_structure).use_of_proceeds),\n      citations: stringArray(obj(facts.deal_structure).citations),\n    },\n  },\n};\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    file_id: request.file_id,\n    filename: request.filename,\n    source_name: request.source_name,\n    source_type: request.source_type,\n    extraction_output: sanitized,\n    retrieval_meta: request.retrieval_meta,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+        "jsCode": "// Parse Extraction Response \u2014 Phase 3 task 3.5\n// Normalizes the OpenAI-compatible chat response into one Extraction result per document.\n// Also projects the model output back onto the exact Extraction schema shape.\n\nconst response = $input.item.json;\nconst request = $('Build Extraction Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error(`Extraction response missing message content for ${request.source_name}`);\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Extraction JSON parse failed for ${request.source_name}: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction strOrNull(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction numOrNull(v) {\n  return typeof v === 'number' && Number.isFinite(v) ? v : null;\n}\nfunction boolOrNull(v) {\n  return typeof v === 'boolean' ? v : null;\n}\nfunction stringArray(v) {\n  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];\n}\nfunction citationOrNull(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction metricWithPeriod(v) {\n  const x = obj(v);\n  return {\n    value: numOrNull(x.value),\n    period: strOrNull(x.period),\n    citation: citationOrNull(x.citation),\n  };\n}\nfunction metricNoPeriod(v) {\n  const x = obj(v);\n  return {\n    value: numOrNull(x.value),\n    citation: citationOrNull(x.citation),\n  };\n}\nfunction arrayOfClaims(v, keyName) {\n  if (!Array.isArray(v)) return [];\n  return v\n    .map((x) => obj(x))\n    .map((x) => ({ [keyName]: strOrNull(x[keyName]), citation: citationOrNull(x.citation) }))\n    .filter((x) => typeof x[keyName] === 'string' && typeof x.citation === 'string');\n}\n\nconst facts = obj(parsed.extracted_facts);\nconst sanitized = {\n  source_name: request.source_name,\n  source_type: request.source_type,\n  extracted_facts: {\n    company_overview: {\n      description: strOrNull(obj(facts.company_overview).description),\n      founding_year: numOrNull(obj(facts.company_overview).founding_year),\n      headcount: numOrNull(obj(facts.company_overview).headcount),\n      geography: strOrNull(obj(facts.company_overview).geography),\n      citations: stringArray(obj(facts.company_overview).citations),\n    },\n    investment_thesis: {\n      bull_case: strOrNull(obj(facts.investment_thesis).bull_case),\n      citations: stringArray(obj(facts.investment_thesis).citations),\n    },\n    market_opportunity: {\n      tam: numOrNull(obj(facts.market_opportunity).tam),\n      sam: numOrNull(obj(facts.market_opportunity).sam),\n      som: numOrNull(obj(facts.market_opportunity).som),\n      growth_drivers: stringArray(obj(facts.market_opportunity).growth_drivers),\n      citations: stringArray(obj(facts.market_opportunity).citations),\n    },\n    business_model: {\n      revenue_streams: stringArray(obj(facts.business_model).revenue_streams),\n      pricing: strOrNull(obj(facts.business_model).pricing),\n      citations: stringArray(obj(facts.business_model).citations),\n    },\n    financial_performance: {\n      revenue_latest_period: metricWithPeriod(obj(facts.financial_performance).revenue_latest_period),\n      revenue_growth_yoy: metricWithPeriod(obj(facts.financial_performance).revenue_growth_yoy),\n      gross_margin: metricNoPeriod(obj(facts.financial_performance).gross_margin),\n      operating_loss: metricWithPeriod(obj(facts.financial_performance).operating_loss),\n      cash_balance: metricWithPeriod(obj(facts.financial_performance).cash_balance),\n      monthly_burn: metricWithPeriod(obj(facts.financial_performance).monthly_burn),\n    },\n    unit_economics: {\n      cac: numOrNull(obj(facts.unit_economics).cac),\n      ltv: numOrNull(obj(facts.unit_economics).ltv),\n      payback_period_months: numOrNull(obj(facts.unit_economics).payback_period_months),\n      citations: stringArray(obj(facts.unit_economics).citations),\n    },\n    competitive_position: {\n      competitors: stringArray(obj(facts.competitive_position).competitors),\n      moat: strOrNull(obj(facts.competitive_position).moat),\n      citations: stringArray(obj(facts.competitive_position).citations),\n    },\n    management_assessment: {\n      key_personnel: stringArray(obj(facts.management_assessment).key_personnel),\n      key_person_risk: boolOrNull(obj(facts.management_assessment).key_person_risk),\n      citations: stringArray(obj(facts.management_assessment).citations),\n    },\n    customer_profile: {\n      concentration_top_1: numOrNull(obj(facts.customer_profile).concentration_top_1),\n      concentration_top_2: numOrNull(obj(facts.customer_profile).concentration_top_2),\n      concentration_top_5: numOrNull(obj(facts.customer_profile).concentration_top_5),\n      retention_rate: numOrNull(obj(facts.customer_profile).retention_rate),\n      citations: stringArray(obj(facts.customer_profile).citations),\n    },\n    risk_factors: arrayOfClaims(facts.risk_factors, 'factor'),\n    management_claims: arrayOfClaims(facts.management_claims, 'claim'),\n    deal_structure: {\n      valuation: numOrNull(obj(facts.deal_structure).valuation),\n      amount_raising: numOrNull(obj(facts.deal_structure).amount_raising),\n      use_of_proceeds: strOrNull(obj(facts.deal_structure).use_of_proceeds),\n      citations: stringArray(obj(facts.deal_structure).citations),\n    },\n  },\n};\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    file_id: request.file_id,\n    filename: request.filename,\n    source_name: request.source_name,\n    source_type: request.source_type,\n    extraction_output: sanitized,\n    retrieval_meta: request.retrieval_meta,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
       },
       "id": "c5d6e7f8-parse-extract-0000000015",
       "name": "Parse Extraction Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3800, 300]
+      "position": [
+        3800,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Aggregate Contradiction Inputs — Phase 3 task 3.6\n// Collapse per-document Extraction outputs into one item for cross-document triangulation.\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Aggregate Contradiction Inputs received 0 Extraction outputs.');\n}\n\nconst first = items[0].json;\nconst extractionOutputs = items\n  .map((item) => item.json?.extraction_output)\n  .filter((x) => x && typeof x === 'object');\n\nif (extractionOutputs.length === 0) {\n  throw new Error('No Extraction outputs found for Contradiction input.');\n}\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    extraction_outputs: extractionOutputs,\n    extraction_meta: items.map((item) => ({\n      source_name: item.json?.source_name,\n      source_type: item.json?.source_type,\n      llm_usage: item.json?.llm_usage || {},\n      retrieval_meta: item.json?.retrieval_meta || {},\n    })),\n  },\n};\n"
+        "jsCode": "// Aggregate Contradiction Inputs \u2014 Phase 3 task 3.6\n// Collapse per-document Extraction outputs into one item for cross-document triangulation.\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Aggregate Contradiction Inputs received 0 Extraction outputs.');\n}\n\nconst first = items[0].json;\nconst extractionOutputs = items\n  .map((item) => item.json?.extraction_output)\n  .filter((x) => x && typeof x === 'object');\n\nif (extractionOutputs.length === 0) {\n  throw new Error('No Extraction outputs found for Contradiction input.');\n}\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    extraction_outputs: extractionOutputs,\n    extraction_meta: items.map((item) => ({\n      source_name: item.json?.source_name,\n      source_type: item.json?.source_type,\n      llm_usage: item.json?.llm_usage || {},\n      retrieval_meta: item.json?.retrieval_meta || {},\n    })),\n  },\n};\n"
       },
       "id": "d6e7f809-aggregate-contradiction-0016",
       "name": "Aggregate Contradiction Inputs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4060, 300]
+      "position": [
+        4060,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Build Contradiction Request (Turn 1) — Phase 3 task 3.6\n// Variant A (tool-use): ask the model to issue retrieve_document calls before final classification.\n\nconst item = $input.item.json;\nconst systemPrompt = `You are the Contradiction Agent in a multi-agent institutional investment-diligence workflow.\n\nYou run after Extraction. Your job is to triangulate material claims across the deal packet and classify each as corroborated, uncontradicted, disputed, or unsupported.\n\n## Input\n\nYou receive:\n\n- all documents' ExtractionOutput objects\n- source_manifest\n- the retrieve_document tool\n\nTool signature:\n\nretrieve_document({ \"source_name\": string, \"query\": string, \"k\": number })\n\nUse it to inspect raw passages for high-value claims, especially before labeling anything DISPUTED. Typical k is 5. If a tool result is empty or irrelevant, retry once with a broader query. If Extraction and retrieved raw text disagree, trust the raw text you can cite.\n\nReturn JSON only. No markdown, no prose, no explanation.\n\n## Framework\n\nClassifications:\n\n- CORROBORATED: multiple independent sources support the same factual claim.\n- UNCONTRADICTED: one-source factual claim; no conflicting evidence found.\n- DISPUTED: citeable conflicting evidence exists across sources.\n- UNSUPPORTED: promotive, interpretive, or management-style claim remains unverified after reasonable checking.\n\nRouting:\n\n- Put CORROBORATED and UNCONTRADICTED in verified_claims.\n- Put DISPUTED and UNSUPPORTED in contradictions.\n\nBe conservative:\n\n- Do not call something DISPUTED without citeable conflicting evidence.\n- Minor wording differences are not disputes.\n- Repeated marketing language is not automatic corroboration.\n- Do not treat broad directional support as corroboration of an exact claim.\n- For exact numeric or highly specific claims, use CORROBORATED only when another source supports the same fact at comparable specificity.\n- If one source is exact and another source is only general or directional, prefer UNCONTRADICTED over CORROBORATED.\n- Every citation listed for a CORROBORATED claim must support the claim as written.\n- If sources only overlap at a looser level, either rewrite the claim to the shared looser formulation or keep the more specific claim as UNCONTRADICTED.\n- Prefer regulatory filings over promotional language when assessing contrary evidence.\n- Severity measures investment materiality, not semantic distance.\n\nSeverity:\n\n- HIGH: materially changes the investment case.\n- MEDIUM: important factual tension, but not thesis-breaking alone.\n- LOW: minor discrepancy with limited decision impact.\n\nFocus on material claims from management_claims, investment_thesis, risk_factors, customer_profile, financial_performance, market opportunity, controls, debt, competition, unit economics, and other investment-relevant extracted facts.\n\n## Output Schema\n\nReturn exactly this schema shape:\n\n{\n  \"contradictions\": [\n    {\n      \"claim\": \"The business is well diversified across customers\",\n      \"sources_making_claim\": [\"CoreWeave Press Release p. ~1\"],\n      \"contradicting_evidence\": [\n        {\n          \"source\": \"CoreWeave S-1 Filing\",\n          \"citation\": \"CoreWeave S-1 Filing Risk Factors p. 33\",\n          \"evidence\": \"A substantial portion of our revenue is driven by a limited number of our customers.\"\n        }\n      ],\n      \"nature_of_conflict\": \"Promotional diversification framing conflicts with regulatory disclosure of concentration risk.\",\n      \"severity\": \"HIGH\",\n      \"classification\": \"DISPUTED\"\n    },\n    {\n      \"claim\": \"The company has industry-leading performance\",\n      \"sources_making_claim\": [\"CoreWeave Press Release p. ~1\"],\n      \"contradicting_evidence\": [],\n      \"nature_of_conflict\": \"Management-style claim remains unverified by other sources in the packet.\",\n      \"severity\": \"MEDIUM\",\n      \"classification\": \"UNSUPPORTED\"\n    }\n  ],\n  \"verified_claims\": [\n    {\n      \"claim\": \"Two customers represented 77% of revenue.\",\n      \"sources\": [\"CoreWeave Press Release p. ~1\", \"CoreWeave S-1 Filing p. ~314\"],\n      \"classification\": \"CORROBORATED\"\n    },\n    {\n      \"claim\": \"The company reported revenue in 2024.\",\n      \"sources\": [\"CoreWeave S-1 Filing p. ~54\"],\n      \"classification\": \"UNCONTRADICTED\"\n    }\n  ]\n}\n\n## Rules\n\n1. Return valid JSON only.\n2. Do not invent claims, evidence, source names, or citations.\n3. Use only source names from source_manifest.\n4. Every DISPUTED item must include at least one sources_making_claim citation and at least one contradicting_evidence object.\n5. sources_making_claim and verified_claims.sources contain citation strings only.\n6. contradicting_evidence.source is the canonical source name.\n7. contradicting_evidence.citation is the exact citation string.\n8. Every citation must match the canonical schema citation pattern.\n9. If no contradictions are found, return contradictions: [] and populate verified_claims.\n10. For UNSUPPORTED, include the claim source in sources_making_claim; use an empty contradicting_evidence array if no contrary evidence exists.\n11. Do not treat disclosed adverse facts as management claims unless the source frames them as assertions.\n12. Do not convert an absence of evidence into a contradiction.\n13. Do not mark an exact figure as CORROBORATED if the second source only supports a looser version of the same idea.\n14. For example: a filing stating 62% and an article saying more than half is not CORROBORATED for the exact 62% claim; that exact claim is only UNCONTRADICTED unless another source also supports 62% or equivalent specificity.\n15. If a claim names a customer, counterparty, geography, percentage, or dollar figure, every citation in a CORROBORATED item must support those specifics; otherwise either rewrite the claim to the shared denominator or classify the more specific version as UNCONTRADICTED.\n\n## Final Check\n\nBefore returning, silently verify:\n\n- JSON is valid.\n- No extra top-level fields exist.\n- Classifications are routed to the correct arrays.\n- Every DISPUTED item has both claim source citations and citeable conflicting evidence.\n- No unsupported or disputed item relies only on inference.`;\n\nconst userPayload = {\n  source_manifest: item.source_manifest,\n  extraction_outputs: item.extraction_outputs,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
+        "jsCode": "// Build Contradiction Request (Turn 1) \u2014 Phase 3 task 3.6\n// Variant A (tool-use): ask the model to issue retrieve_document calls before final classification.\n\nconst item = $input.item.json;\nconst systemPrompt = `You are the Contradiction Agent in a multi-agent institutional investment-diligence workflow.\n\nYou run after Extraction. Your job is to triangulate material claims across the deal packet and classify each as corroborated, uncontradicted, disputed, or unsupported.\n\n## Input\n\nYou receive:\n\n- all documents' ExtractionOutput objects\n- source_manifest\n- the retrieve_document tool\n\nTool signature:\n\nretrieve_document({ \"source_name\": string, \"query\": string, \"k\": number })\n\nUse it to inspect raw passages for high-value claims, especially before labeling anything DISPUTED. Typical k is 5. If a tool result is empty or irrelevant, retry once with a broader query. If Extraction and retrieved raw text disagree, trust the raw text you can cite.\n\nReturn JSON only. No markdown, no prose, no explanation.\n\n## Framework\n\nClassifications:\n\n- CORROBORATED: multiple independent sources support the same factual claim.\n- UNCONTRADICTED: one-source factual claim; no conflicting evidence found.\n- DISPUTED: citeable conflicting evidence exists across sources.\n- UNSUPPORTED: promotive, interpretive, or management-style claim remains unverified after reasonable checking.\n\nRouting:\n\n- Put CORROBORATED and UNCONTRADICTED in verified_claims.\n- Put DISPUTED and UNSUPPORTED in contradictions.\n\nBe conservative:\n\n- Do not call something DISPUTED without citeable conflicting evidence.\n- Minor wording differences are not disputes.\n- Repeated marketing language is not automatic corroboration.\n- Do not treat broad directional support as corroboration of an exact claim.\n- For exact numeric or highly specific claims, use CORROBORATED only when another source supports the same fact at comparable specificity.\n- If one source is exact and another source is only general or directional, prefer UNCONTRADICTED over CORROBORATED.\n- Every citation listed for a CORROBORATED claim must support the claim as written.\n- If sources only overlap at a looser level, either rewrite the claim to the shared looser formulation or keep the more specific claim as UNCONTRADICTED.\n- Prefer regulatory filings over promotional language when assessing contrary evidence.\n- Severity measures investment materiality, not semantic distance.\n\nSeverity:\n\n- HIGH: materially changes the investment case.\n- MEDIUM: important factual tension, but not thesis-breaking alone.\n- LOW: minor discrepancy with limited decision impact.\n\nFocus on material claims from management_claims, investment_thesis, risk_factors, customer_profile, financial_performance, market opportunity, controls, debt, competition, unit economics, and other investment-relevant extracted facts.\n\n## Output Schema\n\nReturn exactly this schema shape:\n\n{\n  \"contradictions\": [\n    {\n      \"claim\": \"The business is well diversified across customers\",\n      \"sources_making_claim\": [\"CoreWeave Press Release p. ~1\"],\n      \"contradicting_evidence\": [\n        {\n          \"source\": \"CoreWeave S-1 Filing\",\n          \"citation\": \"CoreWeave S-1 Filing Risk Factors p. 33\",\n          \"evidence\": \"A substantial portion of our revenue is driven by a limited number of our customers.\"\n        }\n      ],\n      \"nature_of_conflict\": \"Promotional diversification framing conflicts with regulatory disclosure of concentration risk.\",\n      \"severity\": \"HIGH\",\n      \"classification\": \"DISPUTED\"\n    },\n    {\n      \"claim\": \"The company has industry-leading performance\",\n      \"sources_making_claim\": [\"CoreWeave Press Release p. ~1\"],\n      \"contradicting_evidence\": [],\n      \"nature_of_conflict\": \"Management-style claim remains unverified by other sources in the packet.\",\n      \"severity\": \"MEDIUM\",\n      \"classification\": \"UNSUPPORTED\"\n    }\n  ],\n  \"verified_claims\": [\n    {\n      \"claim\": \"Two customers represented 77% of revenue.\",\n      \"sources\": [\"CoreWeave Press Release p. ~1\", \"CoreWeave S-1 Filing p. ~314\"],\n      \"classification\": \"CORROBORATED\"\n    },\n    {\n      \"claim\": \"The company reported revenue in 2024.\",\n      \"sources\": [\"CoreWeave S-1 Filing p. ~54\"],\n      \"classification\": \"UNCONTRADICTED\"\n    }\n  ]\n}\n\n## Rules\n\n1. Return valid JSON only.\n2. Do not invent claims, evidence, source names, or citations.\n3. Use only source names from source_manifest.\n4. Every DISPUTED item must include at least one sources_making_claim citation and at least one contradicting_evidence object.\n5. sources_making_claim and verified_claims.sources contain citation strings only.\n6. contradicting_evidence.source is the canonical source name.\n7. contradicting_evidence.citation is the exact citation string.\n8. Every citation must match the canonical schema citation pattern.\n9. If no contradictions are found, return contradictions: [] and populate verified_claims.\n10. For UNSUPPORTED, include the claim source in sources_making_claim; use an empty contradicting_evidence array if no contrary evidence exists.\n11. Do not treat disclosed adverse facts as management claims unless the source frames them as assertions.\n12. Do not convert an absence of evidence into a contradiction.\n13. Do not mark an exact figure as CORROBORATED if the second source only supports a looser version of the same idea.\n14. For example: a filing stating 62% and an article saying more than half is not CORROBORATED for the exact 62% claim; that exact claim is only UNCONTRADICTED unless another source also supports 62% or equivalent specificity.\n15. If a claim names a customer, counterparty, geography, percentage, or dollar figure, every citation in a CORROBORATED item must support those specifics; otherwise either rewrite the claim to the shared denominator or classify the more specific version as UNCONTRADICTED.\n\n## Final Check\n\nBefore returning, silently verify:\n\n- JSON is valid.\n- No extra top-level fields exist.\n- Classifications are routed to the correct arrays.\n- Every DISPUTED item has both claim source citations and citeable conflicting evidence.\n- No unsupported or disputed item relies only on inference.`;\n\nconst userPayload = {\n  source_manifest: item.source_manifest,\n  extraction_outputs: item.extraction_outputs,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
       },
       "id": "e7f8091a-build-contradiction-0017",
       "name": "Build Contradiction Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4320, 300]
+      "position": [
+        4320,
+        300
+      ]
     },
     {
       "parameters": {
@@ -301,8 +382,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -322,7 +409,10 @@
       "name": "Call Contradiction Agent (Turn 1)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4580, 300],
+      "position": [
+        4580,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -331,13 +421,16 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Parse Contradiction Tool Calls — Phase 3 task 3.6\n// Fan out one model response into N tool-call items.\n\nconst response = $input.all()[0]?.json;\nconst request = $('Build Contradiction Request').all()[0]?.json;\nif (!response) throw new Error('Parse Contradiction Tool Calls received 0 input items.');\nif (!request) throw new Error('Build Contradiction Request item unavailable.');\n\nconst message = response.choices?.[0]?.message || {};\nconst toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];\n\nlet assistantContent = message.content;\nif (Array.isArray(assistantContent)) {\n  assistantContent = assistantContent.map((p) => p?.text || '').join('');\n}\nif (toolCalls.length === 0) {\n  throw new Error(`Contradiction turn-1 returned no tool_calls. D-2 tool-use likely failed. Raw content: ${String(assistantContent || '').slice(0, 500)}`);\n}\n\nconst out = [];\nfor (const call of toolCalls) {\n  if (call?.type !== 'function' || call?.function?.name !== 'retrieve_document') continue;\n\n  let args;\n  try {\n    args = JSON.parse(call.function.arguments || '{}');\n  } catch (err) {\n    throw new Error(`Failed to parse retrieve_document arguments: ${err.message}\\nRaw: ${call.function.arguments || ''}`);\n  }\n\n  const sourceName = typeof args.source_name === 'string' ? args.source_name.trim() : '';\n  const query = typeof args.query === 'string' ? args.query.trim() : '';\n  const kRaw = typeof args.k === 'number' ? args.k : parseInt(args.k, 10);\n  const k = Number.isFinite(kRaw) ? Math.max(1, Math.min(5, kRaw)) : 5;\n\n  if (!sourceName) throw new Error('retrieve_document tool call missing source_name');\n  if (!query) throw new Error('retrieve_document tool call missing query');\n\n  out.push({\n    json: {\n      ...request,\n      turn1_message: {\n        role: 'assistant',\n        content: typeof assistantContent === 'string' ? assistantContent : null,\n        tool_calls: toolCalls,\n      },\n      tool_call_id: call.id,\n      source_name: sourceName,\n      query,\n      k,\n    },\n  });\n}\n\nif (out.length === 0) {\n  throw new Error('No usable retrieve_document tool calls found in turn-1 response.');\n}\n\nreturn out;\n"
+        "jsCode": "// Parse Contradiction Tool Calls \u2014 Phase 3 task 3.6\n// Fan out one model response into N tool-call items.\n\nconst response = $input.all()[0]?.json;\nconst request = $('Build Contradiction Request').all()[0]?.json;\nif (!response) throw new Error('Parse Contradiction Tool Calls received 0 input items.');\nif (!request) throw new Error('Build Contradiction Request item unavailable.');\n\nconst message = response.choices?.[0]?.message || {};\nconst toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];\n\nlet assistantContent = message.content;\nif (Array.isArray(assistantContent)) {\n  assistantContent = assistantContent.map((p) => p?.text || '').join('');\n}\nif (toolCalls.length === 0) {\n  throw new Error(`Contradiction turn-1 returned no tool_calls. D-2 tool-use likely failed. Raw content: ${String(assistantContent || '').slice(0, 500)}`);\n}\n\nconst out = [];\nfor (const call of toolCalls) {\n  if (call?.type !== 'function' || call?.function?.name !== 'retrieve_document') continue;\n\n  let args;\n  try {\n    args = JSON.parse(call.function.arguments || '{}');\n  } catch (err) {\n    throw new Error(`Failed to parse retrieve_document arguments: ${err.message}\\nRaw: ${call.function.arguments || ''}`);\n  }\n\n  const sourceName = typeof args.source_name === 'string' ? args.source_name.trim() : '';\n  const query = typeof args.query === 'string' ? args.query.trim() : '';\n  const kRaw = typeof args.k === 'number' ? args.k : parseInt(args.k, 10);\n  const k = Number.isFinite(kRaw) ? Math.max(1, Math.min(5, kRaw)) : 5;\n\n  if (!sourceName) throw new Error('retrieve_document tool call missing source_name');\n  if (!query) throw new Error('retrieve_document tool call missing query');\n\n  out.push({\n    json: {\n      ...request,\n      turn1_message: {\n        role: 'assistant',\n        content: typeof assistantContent === 'string' ? assistantContent : null,\n        tool_calls: toolCalls,\n      },\n      tool_call_id: call.id,\n      source_name: sourceName,\n      query,\n      k,\n    },\n  });\n}\n\nif (out.length === 0) {\n  throw new Error('No usable retrieve_document tool calls found in turn-1 response.');\n}\n\nreturn out;\n"
       },
       "id": "091a2b3c-parse-contradict-tools-0019",
       "name": "Parse Contradiction Tool Calls",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4840, 300]
+      "position": [
+        4840,
+        300
+      ]
     },
     {
       "parameters": {
@@ -346,8 +439,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -367,7 +466,10 @@
       "name": "Embed Contradiction Query",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5100, 300],
+      "position": [
+        5100,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -376,25 +478,31 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Rank Contradiction Chunks — Phase 3 task 3.6\n// Implements the retrieve_document tool against the existing aggregate chunk store.\n\nconst response = $input.item.json;\nconst req = $('Parse Contradiction Tool Calls').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Contradiction Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error(`No contradiction query embedding returned for ${req.source_name}`);\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst ranked = (store.chunks || [])\n  .filter((c) => c.source_name === req.source_name && Array.isArray(c.embedding) && c.embedding.length > 0)\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, req.k)\n  .map((r) => r.chunk);\n\nreturn {\n  json: {\n    ...req,\n    tool_result: {\n      source_name: req.source_name,\n      query: req.query,\n      chunks: ranked,\n    },\n    query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
+        "jsCode": "// Rank Contradiction Chunks \u2014 Phase 3 task 3.6\n// Implements the retrieve_document tool against the existing aggregate chunk store.\n\nconst response = $input.item.json;\nconst req = $('Parse Contradiction Tool Calls').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Contradiction Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error(`No contradiction query embedding returned for ${req.source_name}`);\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst ranked = (store.chunks || [])\n  .filter((c) => c.source_name === req.source_name && Array.isArray(c.embedding) && c.embedding.length > 0)\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, req.k)\n  .map((r) => r.chunk);\n\nreturn {\n  json: {\n    ...req,\n    tool_result: {\n      source_name: req.source_name,\n      query: req.query,\n      chunks: ranked,\n    },\n    query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
       },
       "id": "2b3c4d5e-rank-contradiction-0021",
       "name": "Rank Contradiction Chunks",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5360, 300]
+      "position": [
+        5360,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Aggregate Contradiction Tool Results — Phase 3 task 3.6\n// Reconstruct the tool conversation messages for the final synthesis turn.\n\nconst items = $input.all();\nif (items.length === 0) throw new Error('Aggregate Contradiction Tool Results received 0 tool results.');\n\nconst first = items[0].json;\nconst toolMessages = items.map((item) => ({\n  role: 'tool',\n  tool_call_id: item.json.tool_call_id,\n  name: 'retrieve_document',\n  content: JSON.stringify(item.json.tool_result),\n}));\nconst totalQueryTokens = items.reduce((acc, item) => acc + (item.json.query_embedding_tokens || 0), 0);\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    extraction_outputs: first.extraction_outputs,\n    system_prompt: first.system_prompt,\n    user_message: first.user_message,\n    turn1_message: first.turn1_message,\n    messages: [\n      { role: 'system', content: first.system_prompt },\n      { role: 'user', content: first.user_message },\n      {\n        role: 'assistant',\n        content: first.turn1_message?.content ?? null,\n        tool_calls: first.turn1_message?.tool_calls || [],\n      },\n      ...toolMessages,\n    ],\n    contradiction_retrieval_meta: {\n      tool_call_count: items.length,\n      total_query_embedding_tokens: totalQueryTokens,\n      tool_results: items.map((item) => item.json.tool_result),\n    },\n  },\n};\n"
+        "jsCode": "// Aggregate Contradiction Tool Results \u2014 Phase 3 task 3.6\n// Reconstruct the tool conversation messages for the final synthesis turn.\n\nconst items = $input.all();\nif (items.length === 0) throw new Error('Aggregate Contradiction Tool Results received 0 tool results.');\n\nconst first = items[0].json;\nconst toolMessages = items.map((item) => ({\n  role: 'tool',\n  tool_call_id: item.json.tool_call_id,\n  name: 'retrieve_document',\n  content: JSON.stringify(item.json.tool_result),\n}));\nconst totalQueryTokens = items.reduce((acc, item) => acc + (item.json.query_embedding_tokens || 0), 0);\n\nreturn {\n  json: {\n    run_id: first.run_id,\n    deal_id: first.deal_id,\n    company_name: first.company_name,\n    timestamp_started: first.timestamp_started,\n    source_manifest: first.source_manifest,\n    extraction_outputs: first.extraction_outputs,\n    system_prompt: first.system_prompt,\n    user_message: first.user_message,\n    turn1_message: first.turn1_message,\n    messages: [\n      { role: 'system', content: first.system_prompt },\n      { role: 'user', content: first.user_message },\n      {\n        role: 'assistant',\n        content: first.turn1_message?.content ?? null,\n        tool_calls: first.turn1_message?.tool_calls || [],\n      },\n      ...toolMessages,\n    ],\n    contradiction_retrieval_meta: {\n      tool_call_count: items.length,\n      total_query_embedding_tokens: totalQueryTokens,\n      tool_results: items.map((item) => item.json.tool_result),\n    },\n  },\n};\n"
       },
       "id": "3c4d5e6f-aggregate-contradict-tools-0022",
       "name": "Aggregate Contradiction Tool Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5620, 300]
+      "position": [
+        5620,
+        300
+      ]
     },
     {
       "parameters": {
@@ -403,8 +511,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -424,7 +538,10 @@
       "name": "Call Contradiction Agent (Final)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5880, 300],
+      "position": [
+        5880,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -433,13 +550,160 @@
       "parameters": {
         "mode": "runOnceForEachItem",
         "language": "javaScript",
-        "jsCode": "// Parse Contradiction Response — Phase 3 task 3.6\n// Normalize the final tool-use synthesis into the exact Contradiction schema shape.\n\nconst response = $input.item.json;\nconst request = $('Aggregate Contradiction Tool Results').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Contradiction final response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Contradiction JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction str(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction stringArray(v) {\n  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];\n}\nfunction validSeverity(v) {\n  return ['HIGH', 'MEDIUM', 'LOW'].includes(v) ? v : null;\n}\nfunction validContradictionClass(v) {\n  return ['DISPUTED', 'UNSUPPORTED'].includes(v) ? v : null;\n}\nfunction validVerifiedClass(v) {\n  return ['CORROBORATED', 'UNCONTRADICTED'].includes(v) ? v : null;\n}\n\nconst contradictions = Array.isArray(parsed.contradictions)\n  ? parsed.contradictions\n      .map((x) => obj(x))\n      .map((x) => ({\n        claim: str(x.claim),\n        sources_making_claim: stringArray(x.sources_making_claim),\n        contradicting_evidence: Array.isArray(x.contradicting_evidence)\n          ? x.contradicting_evidence\n              .map((e) => obj(e))\n              .map((e) => ({\n                source: str(e.source),\n                citation: str(e.citation),\n                evidence: str(e.evidence),\n              }))\n              .filter((e) => e.source && e.citation && e.evidence)\n          : [],\n        nature_of_conflict: str(x.nature_of_conflict) || '',\n        severity: validSeverity(x.severity),\n        classification: validContradictionClass(x.classification),\n      }))\n      .filter((x) => x.claim && x.sources_making_claim.length > 0 && x.severity && x.classification)\n      .filter((x) => x.classification !== 'DISPUTED' || x.contradicting_evidence.length > 0)\n  : [];\n\nconst verifiedClaims = Array.isArray(parsed.verified_claims)\n  ? parsed.verified_claims\n      .map((x) => obj(x))\n      .map((x) => ({\n        claim: str(x.claim),\n        sources: stringArray(x.sources),\n        classification: validVerifiedClass(x.classification),\n      }))\n      .filter((x) => x.claim && x.sources.length > 0 && x.classification)\n  : [];\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    contradiction_output: {\n      contradictions,\n      verified_claims: verifiedClaims,\n    },\n    contradiction_retrieval_meta: request.contradiction_retrieval_meta,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+        "jsCode": "// Parse Contradiction Response \u2014 Phase 3 task 3.6\n// Normalize the final tool-use synthesis into the exact Contradiction schema shape.\n\nconst response = $input.item.json;\nconst request = $('Aggregate Contradiction Tool Results').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Contradiction final response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Contradiction JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction str(v) {\n  return typeof v === 'string' ? v : null;\n}\nfunction stringArray(v) {\n  return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];\n}\nfunction validSeverity(v) {\n  return ['HIGH', 'MEDIUM', 'LOW'].includes(v) ? v : null;\n}\nfunction validContradictionClass(v) {\n  return ['DISPUTED', 'UNSUPPORTED'].includes(v) ? v : null;\n}\nfunction validVerifiedClass(v) {\n  return ['CORROBORATED', 'UNCONTRADICTED'].includes(v) ? v : null;\n}\n\nconst contradictions = Array.isArray(parsed.contradictions)\n  ? parsed.contradictions\n      .map((x) => obj(x))\n      .map((x) => ({\n        claim: str(x.claim),\n        sources_making_claim: stringArray(x.sources_making_claim),\n        contradicting_evidence: Array.isArray(x.contradicting_evidence)\n          ? x.contradicting_evidence\n              .map((e) => obj(e))\n              .map((e) => ({\n                source: str(e.source),\n                citation: str(e.citation),\n                evidence: str(e.evidence),\n              }))\n              .filter((e) => e.source && e.citation && e.evidence)\n          : [],\n        nature_of_conflict: str(x.nature_of_conflict) || '',\n        severity: validSeverity(x.severity),\n        classification: validContradictionClass(x.classification),\n      }))\n      .filter((x) => x.claim && x.sources_making_claim.length > 0 && x.severity && x.classification)\n      .filter((x) => x.classification !== 'DISPUTED' || x.contradicting_evidence.length > 0)\n  : [];\n\nconst verifiedClaims = Array.isArray(parsed.verified_claims)\n  ? parsed.verified_claims\n      .map((x) => obj(x))\n      .map((x) => ({\n        claim: str(x.claim),\n        sources: stringArray(x.sources),\n        classification: validVerifiedClass(x.classification),\n      }))\n      .filter((x) => x.claim && x.sources.length > 0 && x.classification)\n  : [];\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    contradiction_output: {\n      contradictions,\n      verified_claims: verifiedClaims,\n    },\n    contradiction_retrieval_meta: request.contradiction_retrieval_meta,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
       },
       "id": "5e6f7081-parse-contradiction-0024",
       "name": "Parse Contradiction Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [6140, 300]
+      "position": [
+        6140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Prepare Gap Analysis Inputs \u2014 Phase 3 task 3.7\n// Aggregate inputs for the Gap Analysis agent: per-document extraction outputs,\n// the contradiction output, and a union retrieval query for LP-checklist coverage.\n\nconst items = $input.all();\nif (items.length === 0) {\n  throw new Error('Prepare Gap Analysis Inputs received 0 contradiction outputs.');\n}\n\nconst contradictionItem = items[0].json;\nif (!contradictionItem.contradiction_output) {\n  throw new Error('Parse Contradiction Response did not emit contradiction_output.');\n}\n\nconst aggregated = $('Aggregate Contradiction Inputs').all()[0]?.json;\nif (!aggregated) {\n  throw new Error('Aggregate Contradiction Inputs item unavailable for Gap Analysis.');\n}\n\nconst extractionOutputs = aggregated.extraction_outputs || [];\nif (extractionOutputs.length === 0) {\n  throw new Error('No extraction_outputs available for Gap Analysis.');\n}\n\nreturn {\n  json: {\n    run_id: contradictionItem.run_id,\n    deal_id: contradictionItem.deal_id,\n    company_name: contradictionItem.company_name,\n    timestamp_started: contradictionItem.timestamp_started,\n    source_manifest: contradictionItem.source_manifest,\n    extraction_outputs: extractionOutputs,\n    contradiction_output: contradictionItem.contradiction_output,\n    query: 'audited financials unit economics customer concentration cohort retention covenants related party transactions litigation board composition customer references intellectual property',\n    k: 6,\n  },\n};\n"
+      },
+      "id": "6f708192-prepare-gap-inputs-0025",
+      "name": "Prepare Gap Analysis Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EMBEDDING_BASE_URL }}/embeddings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.EMBEDDING_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.EMBEDDING_MODEL }}\",\n  \"input\": {{ JSON.stringify($json.query) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "70819203-embed-gap-query-0026",
+      "name": "Embed Gap Analysis Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6660,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Rank Gap Analysis Chunks \u2014 Phase 3 task 3.7\n// Union retrieval across ALL documents (no source_name filter), top-k chunks for\n// the LP-checklist coverage query. Per design plan \u00a72.6.\n\nconst response = $input.item.json;\nconst req = $('Prepare Gap Analysis Inputs').item.json;\nconst store = $('Aggregate Vector Store').all()[0]?.json;\nif (!store) throw new Error('Aggregate Vector Store item unavailable in Rank Gap Analysis Chunks.');\n\nconst queryEmbedding = response.data?.[0]?.embedding;\nif (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {\n  throw new Error('No Gap Analysis query embedding returned.');\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0;\n  let normA = 0;\n  let normB = 0;\n  const len = Math.min(a.length, b.length);\n  for (let i = 0; i < len; i++) {\n    dot += a[i] * b[i];\n    normA += a[i] * a[i];\n    normB += b[i] * b[i];\n  }\n  if (normA === 0 || normB === 0) return -1;\n  return dot / (Math.sqrt(normA) * Math.sqrt(normB));\n}\n\nconst k = req.k || 6;\nconst ranked = (store.chunks || [])\n  .filter((c) => Array.isArray(c.embedding) && c.embedding.length > 0)\n  .map((c) => ({\n    score: cosineSimilarity(queryEmbedding, c.embedding),\n    chunk: {\n      source_name: c.source_name,\n      page_estimate: c.page_estimate,\n      chunk_index: c.chunk_index,\n      text: c.text,\n    },\n  }))\n  .sort((a, b) => b.score - a.score)\n  .slice(0, k)\n  .map((r) => r.chunk);\n\nreturn {\n  json: {\n    ...req,\n    union_chunks: ranked,\n    gap_query_embedding_tokens: response.usage?.prompt_tokens || 0,\n  },\n};\n"
+      },
+      "id": "81920314-rank-gap-chunks-0027",
+      "name": "Rank Gap Analysis Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Gap Analysis Request \u2014 Phase 3 task 3.7\n// Single-turn synthesis with system prompt + user message containing\n// extracted_facts_per_document, contradiction_output, union_chunks.\n\nconst item = $input.item.json;\nconst systemPrompt = \"You are an institutional LP diligence lead reviewing a deal packet. Your job is to identify what information is MISSING from the packet that an investment-committee-grade review would expect to see.\\n\\nYou compare what the packet contains against the Institutional LP Diligence Checklist below. You DO NOT extract facts (that is done upstream by the Extraction Agent). You DO NOT detect contradictions (that is done upstream by the Contradiction Agent). You flag gaps in coverage.\\n\\nReturn JSON only. No markdown, no prose, no explanations.\\n\\nInstitutional LP Diligence Checklist:\\n\\nFinancial Diligence (category: \\\"financial_diligence\\\"):\\n- Audited financial statements (latest 3 fiscal years)\\n- Gross margin breakdown by revenue line\\n- Unit economics (CAC, LTV, payback period)\\n- Cohort retention by customer vintage\\n- Customer concentration (top 1, top 5, top 10 as % of revenue)\\n- Cash runway and monthly burn rate\\n- Debt structure and covenants\\n- Auditor history and recent auditor changes\\n\\nCommercial Diligence (category: \\\"commercial_diligence\\\"):\\n- Market sizing methodology (TAM / SAM / SOM derivation)\\n- Competitive moat and differentiation evidence\\n- Customer references or NPS data\\n- Pricing power evidence (price increases sustained without churn)\\n- Go-to-market strategy and sales-efficiency metrics\\n- Sales cycle length and win rates\\n\\nOperational Diligence (category: \\\"operational_diligence\\\"):\\n- Management background and track record\\n- Organizational structure and key-person risk\\n- Governance structure (board composition, independent directors)\\n- Internal controls and audit findings\\n- Technology stack and scalability assessment\\n\\nLegal / Regulatory Diligence (category: \\\"legal_regulatory\\\"):\\n- Regulatory licenses and compliance status\\n- Pending or threatened litigation\\n- Related-party transactions\\n- IP ownership, licenses, and assignments\\n- Jurisdictional exposure (foreign operations, sanctions risk)\\n\\nImportance calibration rule:\\n\\nImportance is calibrated to the inferred deal stage and sector, not absolute. Use the Extraction outputs' deal_structure.amount_raising, company_overview.founding_year, company_overview.headcount, and financial_performance.revenue_latest_period to infer stage.\\n\\n- Public offering / late-stage / Series C+ (typical signals: revenue greater than 50M USD, headcount greater than 200, raise greater than 50M USD): missing audited financials = HIGH; missing cohort retention = HIGH; missing customer concentration = HIGH.\\n- Series A or B (typical signals: revenue 5M to 50M USD, raise 5M to 50M USD): missing audited financials = MEDIUM; missing cohort retention = MEDIUM; missing CAC / LTV = MEDIUM.\\n- Pre-seed or seed (typical signals: minimal revenue, raise less than 5M USD): missing audited financials = LOW (expected at stage); missing CAC / LTV = LOW (immature).\\n\\nApply analogous stage-aware calibration to all items. Examples: customer references are HIGH for enterprise B2B at any stage, LOW for self-serve consumer; cohort retention is HIGH for SaaS at Series A and beyond, LOW for capital-intensive deep-tech where unit economics maturity is not expected yet.\\n\\nInput:\\n\\nYou receive three artifacts in the user message:\\n\\n- extracted_facts_per_document: array of ExtractionOutput JSONs (one per source document), each containing the 12 IC Memo Taxonomy sections with their citations.\\n- contradiction_output: ContradictionOutput JSON containing verified_claims (CORROBORATED or UNCONTRADICTED) and contradictions (DISPUTED or UNSUPPORTED).\\n- union_chunks: array of retrieved passages with { text, page_estimate, source_name } covering cross-cutting LP-checklist topics (audited financials, unit economics, customer concentration, cohort retention, covenants, related-party, litigation).\\n\\nCoverage rule:\\n\\nA checklist item is PRESENT (do NOT flag) if any of these hold:\\n- The corresponding Extraction field is populated with a non-null scalar or a non-empty array in any document.\\n- The item appears as a verified_claim in contradiction_output (CORROBORATED or UNCONTRADICTED).\\n- The item is substantively addressed in union_chunks. Substantive means a full sentence containing the actual fact, not just a heading, table-of-contents entry, or boilerplate disclaimer.\\n\\nA checklist item is MISSING (flag it) if all of these hold:\\n- No Extraction field captures it.\\n- It does not appear in verified_claims.\\n- union_chunks does not substantively address it.\\n\\nOutput schema:\\n\\n{\\n  \\\"missing_information\\\": [\\n    {\\n      \\\"category\\\": \\\"financial_diligence\\\" | \\\"commercial_diligence\\\" | \\\"operational_diligence\\\" | \\\"legal_regulatory\\\",\\n      \\\"item\\\": \\\"<one-sentence description of the missing item, specific enough to action>\\\",\\n      \\\"importance\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\",\\n      \\\"suggested_source\\\": \\\"<actionable note on where this would normally be obtained>\\\"\\n    }\\n  ]\\n}\\n\\nConcrete example output (for a Series B SaaS deal where customer concentration and cohort retention are not in the packet):\\n\\n{\\n  \\\"missing_information\\\": [\\n    {\\n      \\\"category\\\": \\\"financial_diligence\\\",\\n      \\\"item\\\": \\\"Cohort retention by customer vintage (gross dollar retention and net dollar retention by signing year)\\\",\\n      \\\"importance\\\": \\\"HIGH\\\",\\n      \\\"suggested_source\\\": \\\"Request from management as part of follow-up diligence; would normally appear in the management data room or CIM appendix.\\\"\\n    },\\n    {\\n      \\\"category\\\": \\\"financial_diligence\\\",\\n      \\\"item\\\": \\\"Customer concentration disclosure (top 1, top 5, top 10 as percent of revenue)\\\",\\n      \\\"importance\\\": \\\"HIGH\\\",\\n      \\\"suggested_source\\\": \\\"Request from management; required for IC presentation.\\\"\\n    },\\n    {\\n      \\\"category\\\": \\\"operational_diligence\\\",\\n      \\\"item\\\": \\\"Board composition with names and independence status of each director\\\",\\n      \\\"importance\\\": \\\"MEDIUM\\\",\\n      \\\"suggested_source\\\": \\\"Management deck appendix; typically also in the latest investor update.\\\"\\n    }\\n  ]\\n}\\n\\nOutput rules:\\n\\n1. JSON only. No markdown, no prose, no commentary.\\n2. Use exactly one of the four category enum values per item.\\n3. Use exactly one of HIGH / MEDIUM / LOW for importance.\\n4. item must be a one-sentence description specific enough to action (\\\"Cohort retention by customer vintage\\\"), not generic (\\\"more financial detail\\\").\\n5. suggested_source is optional but recommended. Use phrases like \\\"Request from management as part of follow-up diligence\\\", \\\"Audited financial statements (latest three years)\\\", \\\"Customer reference calls\\\", or \\\"Counsel-led legal data-room review\\\".\\n6. An empty array `[]` is valid output if the packet is comprehensive.\\n7. No citations on this output. This agent flags absences, not claims; citations would be definitionally empty.\\n8. Do not repeat the same item across categories. If an item could fit two categories, pick the one closer to the dominant LP-diligence frame.\\n9. Do not flag items already CORROBORATED or UNCONTRADICTED in contradiction_output.\\n10. Do not flag items where union_chunks substantively cover the topic; partial coverage is not absence.\\n\\nEdge cases:\\n\\n- Packet is comprehensive \\u2192 return `{ \\\"missing_information\\\": [] }`.\\n- Item implicit but not explicit (for example, CAC mentioned narratively but no exact number) \\u2192 flag at MEDIUM with suggested_source noting that the management deck or CIM would normally include it.\\n- Item partially present (for example, revenue reported but gross-margin breakdown by revenue line is not) \\u2192 flag specifically what is missing, not the whole category.\\n- Stage cannot be inferred (deal_structure.amount_raising is null AND revenue / headcount are null) \\u2192 default to MEDIUM importance for any flagged item, and note the calibration limitation in suggested_source.\\n- Source documents conflict on stage (one says Series B, another implies pre-IPO) \\u2192 use the highest stage signal, since LP expectations rise with stage.\\n\\nBefore returning, silently verify:\\n\\n- JSON is valid.\\n- No trailing commas.\\n- missing_information is an array (possibly empty).\\n- Every item has category, item, importance (required); suggested_source may be present or omitted.\\n- No item duplicates another within the same category.\\n- No item flags something present in verified_claims or substantively in union_chunks.\\n\\nReturn ONLY the JSON object matching this schema.\";\n\nconst userPayload = {\n  extracted_facts_per_document: item.extraction_outputs,\n  contradiction_output: item.contradiction_output,\n  union_chunks: item.union_chunks,\n};\n\nreturn {\n  json: {\n    ...item,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
+      },
+      "id": "92031425-build-gap-request-0028",
+      "name": "Build Gap Analysis Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "03142536-call-gap-agent-0029",
+      "name": "Call Gap Analysis Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7440,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Parse Gap Analysis Response \u2014 Phase 3 task 3.7\n// Normalize the model output into the exact GapAnalysisOutput schema shape.\n\nconst response = $input.item.json;\nconst request = $('Build Gap Analysis Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Gap Analysis response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Gap Analysis JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nconst VALID_CATEGORIES = ['financial_diligence', 'commercial_diligence', 'operational_diligence', 'legal_regulatory'];\nconst VALID_IMPORTANCE = ['HIGH', 'MEDIUM', 'LOW'];\n\nfunction obj(v) {\n  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};\n}\nfunction str(v) {\n  return typeof v === 'string' ? v : null;\n}\n\nconst items = Array.isArray(parsed.missing_information) ? parsed.missing_information : [];\nconst missing = items\n  .map((x) => obj(x))\n  .map((x) => ({\n    category: VALID_CATEGORIES.includes(x.category) ? x.category : null,\n    item: str(x.item),\n    importance: VALID_IMPORTANCE.includes(x.importance) ? x.importance : null,\n    suggested_source: typeof x.suggested_source === 'string' ? x.suggested_source : undefined,\n  }))\n  .filter((x) => x.category && x.item && x.item.trim().length > 0 && x.importance)\n  .map((x) => {\n    const out = { category: x.category, item: x.item, importance: x.importance };\n    if (x.suggested_source !== undefined) out.suggested_source = x.suggested_source;\n    return out;\n  });\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    gap_analysis_output: { missing_information: missing },\n    gap_retrieval_meta: {\n      union_chunk_count: (request.union_chunks || []).length,\n      query_embedding_tokens: request.gap_query_embedding_tokens || 0,\n    },\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+      },
+      "id": "14253647-parse-gap-response-0030",
+      "name": "Parse Gap Analysis Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7700,
+        300
+      ]
     }
   ],
   "connections": {
@@ -695,6 +959,72 @@
           }
         ]
       ]
+    },
+    "Parse Contradiction Response": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gap Analysis Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gap Analysis Inputs": {
+      "main": [
+        [
+          {
+            "node": "Embed Gap Analysis Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Gap Analysis Query": {
+      "main": [
+        [
+          {
+            "node": "Rank Gap Analysis Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Gap Analysis Chunks": {
+      "main": [
+        [
+          {
+            "node": "Build Gap Analysis Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gap Analysis Request": {
+      "main": [
+        [
+          {
+            "node": "Call Gap Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Gap Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Gap Analysis Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -704,9 +1034,9 @@
     "saveExecutionProgress": true,
     "timezone": "America/Toronto"
   },
-  "versionId": "phase3-session1-v6",
+  "versionId": "phase3-session2-v7",
   "meta": {
-    "description": "Phase 3 workflow — ingestion spine plus Extraction and first-pass Contradiction wiring. Uses a hand-rolled aggregate retrieval store, query-embedding ranking, and HTTP Request calls to the Alicloud chat model, including a tool-use contradiction loop."
+    "description": "Phase 3 workflow \u2014 ingestion spine plus Extraction, Contradiction (Variant A tool-use), and Gap Analysis specialist paths. Uses a hand-rolled aggregate retrieval store (D-6), query-embedding ranking, and HTTP Request calls to the Alicloud chat model."
   },
   "id": "deal-diligence-workflow",
   "tags": []

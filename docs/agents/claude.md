@@ -499,6 +499,52 @@ Missing / intentionally skipped:
 - Advisor pass on the prompt — not called. Medium-stakes prompt; one architecture-level advisor pass already happened earlier this session. Codex review per §10 trigger 1 is the operative gate.
 - Commit — not yet made. Surface diff for Will eyeball; commit after sign-off.
 
+## 2026-04-25T09:45:00-04:00 — Task 3.7: Wire Gap Analysis specialist into n8n/workflow.json
+
+**Context.** With 3.P3 prompt drafted and committed (`7f7a0ac`), Will gave the green light to proceed with task 3.7: wire Gap Analysis into the live workflow following the D-6 pattern (raw HTTP + Code-node tool-call style, no n8n AI Agent node, no Simple Vector Store).
+
+**Action.** Appended 6 nodes after `Parse Contradiction Response`:
+
+1. **Prepare Gap Analysis Inputs** (Code node, runOnceForAllItems) — pulls `contradiction_output` from the prior node, reaches back to `$('Aggregate Contradiction Inputs')` for `extraction_outputs[]`, and emits one item with the union retrieval query (LP-checklist coverage keywords from design plan §2.6 expanded slightly: "audited financials unit economics customer concentration cohort retention covenants related party transactions litigation board composition customer references intellectual property") plus k=6.
+2. **Embed Gap Analysis Query** (HTTP Request) — POST to `/embeddings` for the union query. 300s timeout, 3 retries, 2s backoff.
+3. **Rank Gap Analysis Chunks** (Code node, runOnceForEachItem) — cosine ranks against ALL chunks in the aggregate vector store (no `source_name` filter, since this is union retrieval per §2.6). Takes top-6.
+4. **Build Gap Analysis Request** (Code node, runOnceForEachItem) — embeds the full system prompt from `prompts/gap-analysis-agent.md` and assembles the user message with `extracted_facts_per_document`, `contradiction_output`, `union_chunks`. Single-turn (no tool-use loop, unlike Contradiction).
+5. **Call Gap Analysis Agent** (HTTP Request) — POST to `/chat/completions` with `response_format: { type: 'json_object' }`. 300s timeout.
+6. **Parse Gap Analysis Response** (Code node, runOnceForEachItem) — schema-shape projection per `GapAnalysisOutput`. Validates category enum (4 values), importance enum (HIGH/MEDIUM/LOW), filters items missing required fields, preserves optional `suggested_source` only when present.
+
+**Wiring helper.** Used a one-shot Python helper (`_tmp_wire_gap.py`) to load the workflow + prompt, construct the 6 node objects with correct JSON escaping (the system prompt becomes a `JSON.stringify`-safe string literal embedded in the Code node's jsCode), and write back. Helper deleted after successful run; idempotency guard included in case it's ever re-run.
+
+**Verification.**
+- `python -c "import json; json.load(open('n8n/workflow.json', encoding='utf-8'))"` → JSON valid.
+- Total nodes: 30 (was 24). Total connection entries: 29 (was 23). versionId bumped to `phase3-session2-v7`. Meta description updated to mention Gap Analysis.
+
+**Watch out:**
+- **Doubled-prompt surface (per D-6) is now also live for Gap Analysis.** The system prompt lives in `prompts/gap-analysis-agent.md` AND inside the `Build Gap Analysis Request` node's jsCode in `n8n/workflow.json`. Future edits to the prompt must touch both surfaces in the same turn, OR (preferred) trigger the D-6 mitigation: author `scripts/inject-prompts.js` so the prompt is injected at workflow-import time. Memo Generation will be the third occurrence; recommend doing the mitigation when 3.11 lands rather than waiting longer.
+- **Union retrieval is across all docs, no source_name filter.** This is intentional per design plan §2.6 — Gap Analysis is a coverage check, not a per-document fact extraction. If Codex review or first-run output suggests the model is missing items because relevant chunks live in only one document and didn't make the top-6, consider raising k or per-document retrieval splits.
+- **The "substantively addressed in union_chunks" coverage rule in the prompt is qualitative.** First-run quality may surface either over-inclusion (heading-only mentions counted as "covered" → too few flags) or under-inclusion (boilerplate-only counted as "absent" → too many flags). If issues surface, tighten the rule operationally before changing wiring.
+- **Stage inference depends on Extraction recall.** The known Extraction regression on S-1 `headcount` (came back null on CoreWeave) means stage may not always infer cleanly. The prompt's edge-case rule for that ("default to MEDIUM importance") is the safety net. Watch the first-run output for whether items are actually getting reasonable importance labels.
+
+**Open question / refinement target.** The `Prepare Gap Analysis Inputs` node assumes `Aggregate Contradiction Inputs` is reachable via cross-node reference. This works because that node is upstream in the same execution path. If the workflow ever introduces parallel branches that bypass `Aggregate Contradiction Inputs`, this will break — but that's not currently planned.
+
+### Task Receipt
+Updates fanned out this task:
+- `n8n/workflow.json` ................................... 6 new nodes appended after Parse Contradiction Response; 6 new connection entries; versionId bumped; meta description updated
+- `.claude/memory/state.md` ............................. active task advanced to 3.7 wired / awaiting runtime verification; next steps re-pointed to 3.8 Red Flag Detector integration
+- `docs/STATUS.md` ...................................... 3.7 added to Done section
+- `docs/agents/claude.md` ............................... this entry
+- `.collab/INDEX.md` .................................... timestamps refreshed for n8n/workflow.json, state.md, STATUS.md, INDEX itself
+
+Missing / intentionally skipped:
+- `prompts/gap-analysis-agent.md` — no edit. The prompt is unchanged from the 3.P3 commit; it just has a second copy embedded in the workflow now.
+- `_tmp_wire_gap.py` — written, run, deleted. Should not appear in git.
+- `scripts/inject-prompts.js` — D-6 mitigation deferred to 3.11. The Gap Analysis wiring uses the same direct-embed pattern as Extraction and Contradiction.
+- `.claude/memory/decisions.md` — no new Claude-owned design choice; 3.7 is implementation per the existing plan.
+- `.claude/memory/context.md` — no new durable invariants.
+- `.claude/memory/pitfalls.md` — no new pitfalls encountered. The watch-outs above will graduate to P-entries only if they materialize during runtime verification.
+- Codex memory files — not touched. Codex owns those.
+- Live runtime verification — Will runs the workflow.
+- Commit — not yet made. Surface diff for Will eyeball; commit after sign-off.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,
