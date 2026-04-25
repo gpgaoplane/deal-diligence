@@ -55,6 +55,7 @@ skip-if: "never"
 | scripts/validate-fixture.js | script | claude | active | 2026-04-25T11:00:00-04:00 |
 | scripts/validate-memo-citations.js | script | claude | active | 2026-04-25T14:55:00-04:00 |
 | scripts/run-meta-eval.js | script | claude | active | 2026-04-25T14:55:00-04:00 |
+| scripts/inject-prompts.js | script | claude | active | 2026-04-25T15:10:00-04:00 |
 | schemas/supabase-schema.sql | schema-sql | shared | active | 2026-04-24T13:30:00-04:00 |
 | schemas/agent-output-schemas.json | schema-json | shared | active | 2026-04-24T13:30:00-04:00 |
 | code/red-flag-detector.js | code | claude | active | 2026-04-24T16:45:00-04:00 |
@@ -75,5 +76,5 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-25T14:50:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-25T15:10:00-04:00 |
 <!-- collab:index:end -->

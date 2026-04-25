@@ -791,6 +791,78 @@
         8740,
         300
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Build Memo Request \u2014 Phase 3 task 3.11\n// Single-turn synthesis. Reaches back to upstream specialists via cross-\n// node references for the seven-input contract per\n// prompts/memo-generation-agent.md. Sandbox-safe: uses $('NodeName').all()\n// pattern (allowed in runOnceForEachItem) plus $input.item for the\n// immediate Portfolio Fit upstream.\n\nconst upstream = $input.item.json;\nif (!upstream) throw new Error('Build Memo Request received empty input.');\n\nconst aggregated = $('Aggregate Contradiction Inputs').all()[0]?.json;\nif (!aggregated) throw new Error('Aggregate Contradiction Inputs unavailable for Memo Generation.');\n\nconst contradictionItem = $('Parse Contradiction Response').all()[0]?.json;\nif (!contradictionItem) throw new Error('Parse Contradiction Response unavailable for Memo Generation.');\n\nconst gapItem = $('Parse Gap Analysis Response').all()[0]?.json;\nif (!gapItem) throw new Error('Parse Gap Analysis Response unavailable for Memo Generation.');\n\nconst rfdItem = $('Run Red Flag Detector').all()[0]?.json;\nif (!rfdItem) throw new Error('Run Red Flag Detector unavailable for Memo Generation.');\n\nconst systemPrompt = \"You are the Memo Generation Agent in a multi-agent institutional investment-diligence workflow. You synthesize the outputs of every upstream specialist (Extraction, Contradiction, Gap Analysis, Red Flag Detector, Portfolio Fit) into a single audit-grade IC memo for an institutional reviewer at Sagard.\\n\\nYou DO NOT make the advance / pass decision. Per project invariant I-1, the human reviewer makes that call. You produce a directional recommendation that the reviewer weights alongside the rest of the memo.\\n\\nReturn JSON only. No markdown, no prose, no explanations.\\n\\nNon-negotiable rules \\u2014 these define memo integrity:\\n\\n1. EVERY claim in key_strengths, key_risks, and contradictions MUST have at least one source citation. No exceptions.\\n2. EVERY citation MUST match the canonical format and use a source_name that exists in source_manifest. If you cannot cite a claim with a manifest source, OMIT the claim. Never invent citations.\\n3. Recommendation is DIRECTIONAL ONLY. The text must read as a signal for the human reviewer, never as a final decision.\\n4. Do not exceed what upstream evidence supports. If Extraction did not surface a fact, you cannot assert that fact. If Contradiction marked a claim DISPUTED, you must surface that contradiction, not paper over it.\\n5. Severity inheritance rule: if a claim appears in both Contradiction output and Red Flag output, use the higher severity unless they refer to distinct underlying issues, in which case represent separately.\\n6. Maintain strict separation between extracted facts and synthesized judgment. Do not blur management claims with verified evidence.\\n7. If evidence is insufficient, prefer omission over speculation.\\n\\nInput:\\n\\nYou receive seven artifacts in the user message:\\n\\n- source_manifest: authoritative array of { source_name, source_type, file_id }. Every citation source_name MUST be one of these.\\n- extracted_facts_per_document: array of ExtractionOutput JSONs (one per source document) with the 12 IC Memo Taxonomy sections.\\n- contradiction_output: { contradictions[], verified_claims[] } from the Contradiction Agent.\\n- gap_analysis_output: { missing_information[] } from the Gap Analysis Agent.\\n- red_flag_detector_output: { red_flags[] } from the deterministic Red Flag Detector. Every red flag has deterministic: true.\\n- portfolio_fit_output: { portfolio_fit: { strategic_fit, stage_fit, synergy_potential, anti_patterns, overall_thesis_alignment, recommended_action } } from the Portfolio Fit Agent.\\n- bypassed_agents (optional): array of agent names whose schema validation failed twice and bypassed with empty output.\\n\\nMemo construction rules:\\n\\nexecutive_summary (3\\u20135 sentences):\\n- State company, sector, stage.\\n- Include recommendation as a directional signal for the reviewer.\\n- Identify the single most material driver (top risk or strength).\\n- Optionally include one gating uncertainty.\\n\\nrecommendation (pass | pursue | advance_to_deep_diligence):\\n- Default to portfolio_fit_output.portfolio_fit.recommended_action.\\n- Override downward only if HIGH-severity risks or DISPUTED contradictions dominate.\\n- Never override upward. The Portfolio Fit signal is the ceiling.\\n\\nrecommendation_rationale (2\\u20133 sentences):\\n- Provide evidence-based reasoning as a directional signal for the reviewer's consideration.\\n- Explicitly reference overriding risks or contradictions if applicable.\\n- If multiple agents were bypassed, state recommendation is provisional.\\n\\ncompany_snapshot:\\n- Extract description, stage, sector, geography.\\n- Prefer regulatory_filing sources when conflicts exist.\\n\\ninvestment_thesis (1\\u20132 sentences or null):\\n- Reflect management's stated bull case only.\\n- Do not editorialize.\\n\\nkey_strengths (0\\u20135):\\n- Source from corroborated claims or strong extracted positives.\\n- Each: { strength (\\u226430 words), severity, sources[], confidence }.\\n- Focus on institutionally material strengths (e.g., moat, unit economics).\\n\\nkey_risks (0\\u20137):\\n- Source from DISPUTED/UNSUPPORTED contradictions, red flags, and high-severity extracted risks.\\n- Each: { risk (\\u226430 words), severity, sources[], confidence }.\\n- Red flag risks must cite original underlying sources.\\n- Prioritize HIGH risks; include MEDIUM selectively.\\n\\ncontradictions:\\n- Pass through DISPUTED claims.\\n- Format: { claim, severity, sources[] }.\\n- Omit if sources are invalid or missing.\\n\\nmissing_information:\\n- Project gap_analysis_output into { item, importance }.\\n- Order: HIGH \\u2192 MEDIUM \\u2192 LOW.\\n\\nred_flags:\\n- Pass through as { flag_type, severity } only.\\n\\nportfolio_fit:\\n- overall_alignment from portfolio_fit_output.portfolio_fit.overall_thesis_alignment.\\n- rationale (2\\u20133 sentences) combining strategic fit, stage fit, and key synergy or anti-pattern.\\n\\nopen_diligence_questions (\\u22648):\\n- Convert HIGH/MEDIUM missing items into substantive investor-grade questions.\\n- Include questions that resolve DISPUTED contradictions.\\n- Avoid trivial or already-answered questions.\\n\\nconfidence_scores (0.0\\u20131.0 each):\\n- overall: reflect evidence completeness, contradiction load, and agent reliability.\\n  - Start high only if evidence is complete and consistent.\\n  - Reduce meaningfully for HIGH-severity risks, contradictions, or missing data.\\n  - If bypassed_agents present: reduce proportionally (e.g., moderate reduction per agent; severe if multiple).\\n- financial_analysis: based on completeness and consistency of financial data.\\n- competitive_positioning: based on depth and corroboration of competitive evidence.\\n- management_assessment: based on coverage and contradiction presence.\\n- portfolio_fit: reflects confidence in the fit signal (not desirability).\\n\\nOutput schema (exact shape required):\\n\\n{\\n  \\\"executive_summary\\\": \\\"<3-5 sentence opening>\\\",\\n  \\\"recommendation\\\": \\\"pass\\\" | \\\"pursue\\\" | \\\"advance_to_deep_diligence\\\",\\n  \\\"recommendation_rationale\\\": \\\"<2-3 sentences>\\\",\\n  \\\"company_snapshot\\\": {\\n    \\\"description\\\": \\\"<from Extraction company_overview.description>\\\",\\n    \\\"stage\\\": \\\"<inferred or extracted>\\\",\\n    \\\"sector\\\": \\\"<from Extraction>\\\",\\n    \\\"geography\\\": \\\"<from Extraction>\\\"\\n  },\\n  \\\"investment_thesis\\\": \\\"<management bull case from Extraction or null>\\\",\\n  \\\"key_strengths\\\": [\\n    {\\n      \\\"strength\\\": \\\"<one-line strength>\\\",\\n      \\\"severity\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\",\\n      \\\"sources\\\": [\\\"<canonical citation>\\\", ...],\\n      \\\"confidence\\\": <0.0-1.0>\\n    }\\n  ],\\n  \\\"key_risks\\\": [\\n    {\\n      \\\"risk\\\": \\\"<one-line risk>\\\",\\n      \\\"severity\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\",\\n      \\\"sources\\\": [\\\"<canonical citation>\\\", ...],\\n      \\\"confidence\\\": <0.0-1.0>\\n    }\\n  ],\\n  \\\"contradictions\\\": [\\n    { \\\"claim\\\": \\\"<text>\\\", \\\"severity\\\": \\\"...\\\", \\\"sources\\\": [\\\"...\\\"] }\\n  ],\\n  \\\"missing_information\\\": [\\n    { \\\"item\\\": \\\"<one-line gap>\\\", \\\"importance\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\" }\\n  ],\\n  \\\"red_flags\\\": [\\n    { \\\"flag_type\\\": \\\"<from RFD enum>\\\", \\\"severity\\\": \\\"...\\\" }\\n  ],\\n  \\\"portfolio_fit\\\": {\\n    \\\"overall_alignment\\\": \\\"HIGH\\\" | \\\"MEDIUM\\\" | \\\"LOW\\\",\\n    \\\"rationale\\\": \\\"<2-3 sentences>\\\"\\n  },\\n  \\\"open_diligence_questions\\\": [ \\\"<question>\\\", ... ],\\n  \\\"confidence_scores\\\": {\\n    \\\"overall\\\": <0.0-1.0>,\\n    \\\"financial_analysis\\\": <0.0-1.0>,\\n    \\\"competitive_positioning\\\": <0.0-1.0>,\\n    \\\"management_assessment\\\": <0.0-1.0>,\\n    \\\"portfolio_fit\\\": <0.0-1.0>\\n  }\\n}\\n\\nCitation format (canonical, MUST match exactly):\\n\\n<source_name> p. <N>\\n<source_name> p. ~<N>\\n<source_name> Risk Factors p. <N>\\n\\nWhere <source_name> is from source_manifest. N is a positive integer.\\n\\nFinal checks (silent):\\n\\n- Valid JSON, no extra fields.\\n- All required fields present.\\n- All claims in strengths, risks, contradictions have valid citations.\\n- All source_name values exist in source_manifest.\\n- Recommendation never upgrades Portfolio Fit signal.\\n- confidence_scores reflect evidence quality and bypassed_agents impact.\\n- contradictions[] strictly matches required shape.\\n\\nReturn ONLY the JSON object.\";\n\nconst userPayload = {\n  source_manifest: upstream.source_manifest || aggregated.source_manifest || [],\n  extracted_facts_per_document: aggregated.extraction_outputs || [],\n  contradiction_output: contradictionItem.contradiction_output || { contradictions: [], verified_claims: [] },\n  gap_analysis_output: gapItem.gap_analysis_output || { missing_information: [] },\n  red_flag_detector_output: rfdItem.red_flag_detector_output || { red_flags: [] },\n  portfolio_fit_output: upstream.portfolio_fit_output || { portfolio_fit: null },\n  bypassed_agents: [],\n};\n\nreturn {\n  json: {\n    run_id: upstream.run_id,\n    deal_id: upstream.deal_id,\n    company_name: upstream.company_name,\n    timestamp_started: upstream.timestamp_started,\n    source_manifest: upstream.source_manifest,\n    extraction_outputs: aggregated.extraction_outputs,\n    contradiction_output: contradictionItem.contradiction_output,\n    gap_analysis_output: gapItem.gap_analysis_output,\n    red_flag_detector_output: rfdItem.red_flag_detector_output,\n    portfolio_fit_output: upstream.portfolio_fit_output,\n    system_prompt: systemPrompt,\n    user_message: JSON.stringify(userPayload, null, 2),\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: JSON.stringify(userPayload, null, 2) },\n    ],\n  },\n};\n"
+      },
+      "id": "697a8b9c-build-memo-0035",
+      "name": "Build Memo Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALICLOUD_BASE_URL }}/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.ALICLOUD_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $env.ALICLOUD_MODEL }}\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "7a8b9cad-call-memo-0036",
+      "name": "Call Memo Generation Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9260,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Parse Memo Response \u2014 Phase 3 task 3.11\n// Schema-shape projection per MemoGenerationOutput. Strips unknown\n// top-level fields, validates enums, filters claims missing required\n// fields. The downstream Citation Validity Check (3.10b) does the\n// source_manifest validation pass.\n\nconst response = $input.item.json;\nconst request = $('Build Memo Request').item.json;\n\nlet content = response.choices?.[0]?.message?.content;\nif (Array.isArray(content)) {\n  content = content.map((p) => p?.text || '').join('');\n}\nif (typeof content !== 'string' || !content.trim()) {\n  throw new Error('Memo Generation response missing message content.');\n}\n\ncontent = content.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (err) {\n  throw new Error(`Memo Generation JSON parse failed: ${err.message}\\nRaw content: ${content.slice(0, 500)}`);\n}\n\nconst VALID_RECOMMENDATION = ['pass', 'pursue', 'advance_to_deep_diligence'];\nconst VALID_SEVERITY = ['HIGH', 'MEDIUM', 'LOW'];\nconst VALID_IMPORTANCE = ['HIGH', 'MEDIUM', 'LOW'];\nconst VALID_ALIGNMENT = ['HIGH', 'MEDIUM', 'LOW'];\n\nfunction obj(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : null; }\nfunction str(v) { return typeof v === 'string' ? v : null; }\nfunction strArr(v) { return Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.length > 0) : []; }\nfunction num01(v) {\n  if (typeof v !== 'number' || Number.isNaN(v)) return null;\n  if (v < 0) return 0;\n  if (v > 1) return 1;\n  return v;\n}\n\nfunction projectClaim(x, textKey) {\n  const o = obj(x);\n  if (!o) return null;\n  const text = str(o[textKey]);\n  const sources = strArr(o.sources);\n  const severity = VALID_SEVERITY.includes(o.severity) ? o.severity : null;\n  const confidence = num01(o.confidence);\n  if (!text || sources.length === 0 || !severity || confidence == null) return null;\n  return { [textKey]: text, severity, sources, confidence };\n}\n\nfunction projectContradiction(x) {\n  const o = obj(x);\n  if (!o) return null;\n  const claim = str(o.claim);\n  const sources = strArr(o.sources);\n  const severity = VALID_SEVERITY.includes(o.severity) ? o.severity : null;\n  if (!claim || sources.length === 0 || !severity) return null;\n  return { claim, severity, sources };\n}\n\nfunction projectMissing(x) {\n  const o = obj(x);\n  if (!o) return null;\n  const item = str(o.item);\n  const importance = VALID_IMPORTANCE.includes(o.importance) ? o.importance : null;\n  if (!item || !importance) return null;\n  return { item, importance };\n}\n\nfunction projectRedFlag(x) {\n  const o = obj(x);\n  if (!o) return null;\n  const flag_type = str(o.flag_type);\n  const severity = VALID_SEVERITY.includes(o.severity) ? o.severity : null;\n  if (!flag_type || !severity) return null;\n  return { flag_type, severity };\n}\n\nconst memo = {\n  executive_summary: str(parsed.executive_summary),\n  recommendation: VALID_RECOMMENDATION.includes(parsed.recommendation) ? parsed.recommendation : null,\n  recommendation_rationale: str(parsed.recommendation_rationale),\n  company_snapshot: obj(parsed.company_snapshot)\n    ? {\n        description: str(parsed.company_snapshot.description),\n        stage: str(parsed.company_snapshot.stage),\n        sector: str(parsed.company_snapshot.sector),\n        geography: str(parsed.company_snapshot.geography),\n      }\n    : null,\n  investment_thesis: str(parsed.investment_thesis),\n  key_strengths: Array.isArray(parsed.key_strengths)\n    ? parsed.key_strengths.map((x) => projectClaim(x, 'strength')).filter(Boolean)\n    : [],\n  key_risks: Array.isArray(parsed.key_risks)\n    ? parsed.key_risks.map((x) => projectClaim(x, 'risk')).filter(Boolean)\n    : [],\n  contradictions: Array.isArray(parsed.contradictions)\n    ? parsed.contradictions.map(projectContradiction).filter(Boolean)\n    : [],\n  missing_information: Array.isArray(parsed.missing_information)\n    ? parsed.missing_information.map(projectMissing).filter(Boolean)\n    : [],\n  red_flags: Array.isArray(parsed.red_flags)\n    ? parsed.red_flags.map(projectRedFlag).filter(Boolean)\n    : [],\n  portfolio_fit: obj(parsed.portfolio_fit)\n    ? {\n        overall_alignment: VALID_ALIGNMENT.includes(parsed.portfolio_fit.overall_alignment) ? parsed.portfolio_fit.overall_alignment : null,\n        rationale: str(parsed.portfolio_fit.rationale) || '',\n      }\n    : null,\n  open_diligence_questions: Array.isArray(parsed.open_diligence_questions)\n    ? parsed.open_diligence_questions.filter((x) => typeof x === 'string' && x.length > 0)\n    : [],\n  confidence_scores: obj(parsed.confidence_scores)\n    ? {\n        overall: num01(parsed.confidence_scores.overall) ?? 0,\n        financial_analysis: num01(parsed.confidence_scores.financial_analysis),\n        competitive_positioning: num01(parsed.confidence_scores.competitive_positioning),\n        management_assessment: num01(parsed.confidence_scores.management_assessment),\n        portfolio_fit: num01(parsed.confidence_scores.portfolio_fit),\n      }\n    : { overall: 0 },\n};\n\nreturn {\n  json: {\n    run_id: request.run_id,\n    deal_id: request.deal_id,\n    company_name: request.company_name,\n    timestamp_started: request.timestamp_started,\n    source_manifest: request.source_manifest,\n    extraction_outputs: request.extraction_outputs,\n    contradiction_output: request.contradiction_output,\n    gap_analysis_output: request.gap_analysis_output,\n    red_flag_detector_output: request.red_flag_detector_output,\n    portfolio_fit_output: request.portfolio_fit_output,\n    memo_output: memo,\n    llm_usage: response.usage || {},\n    llm_model: response.model || $env.ALICLOUD_MODEL,\n  },\n};\n"
+      },
+      "id": "8b9cadbe-parse-memo-0037",
+      "name": "Parse Memo Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9520,
+        300
+      ]
     }
   ],
   "connections": {
@@ -1156,6 +1228,39 @@
           }
         ]
       ]
+    },
+    "Parse Portfolio Fit Response": {
+      "main": [
+        [
+          {
+            "node": "Build Memo Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Memo Request": {
+      "main": [
+        [
+          {
+            "node": "Call Memo Generation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Memo Generation Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Memo Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1165,9 +1270,9 @@
     "saveExecutionProgress": true,
     "timezone": "America/Toronto"
   },
-  "versionId": "phase3-session2-v11",
+  "versionId": "phase3-session2-v12",
   "meta": {
-    "description": "Phase 3 workflow \u2014 ingestion spine plus Extraction, Contradiction, Gap Analysis, deterministic Red Flag Detector (I-2), and Portfolio Fit. Uses a hand-rolled aggregate retrieval store (D-6), query-embedding ranking, and HTTP Request calls to the Alicloud chat model."
+    "description": "Phase 3 workflow \u2014 full specialist chain: ingestion + Extraction + Contradiction (Variant A tool-use) + Gap Analysis + deterministic Red Flag Detector (I-2) + Portfolio Fit + Memo Generation. Per D-6: hand-rolled aggregate retrieval store; raw HTTP + Code-node tool-call loops; embedded prompts kept in sync via scripts/inject-prompts.js."
   },
   "id": "deal-diligence-workflow",
   "tags": []
