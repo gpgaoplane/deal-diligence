@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-26T01:50:00-04:00
+last-updated: 2026-04-26T01:07:01-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -21,7 +21,7 @@ skip-if: "never"
 | .gitignore | config | shared | active | 2026-04-24T03:45:00-04:00 |
 | docs/STATUS.md | status | shared | active | 2026-04-26T01:50:00-04:00 |
 | docs/project-conventions.md | conventions | shared | active | 2026-04-24T02:30:00-04:00 |
-| .collab/ACTIVE.md | active-board | shared | active | 2026-04-25T01:31:21-04:00 |
+| .collab/ACTIVE.md | active-board | shared | active | 2026-04-26T01:07:00-04:00 |
 | .collab/INDEX.md | index | shared | active | 2026-04-26T01:50:00-04:00 |
 | .collab/ROUTING.md | routing | shared | active | 2026-04-24T02:07:00-04:00 |
 | .collab/PROTOCOL.md | protocol | shared | active | 2026-04-24T02:07:00-04:00 |

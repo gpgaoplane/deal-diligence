@@ -1204,3 +1204,27 @@ Missing / intentionally skipped:
 When you finish a substantive chunk of work and want another agent to take over,
 run `npx @gpgaoplane/multi-agent-collab handoff <to-agent> --from claude --message "..." --files "a b c"`.
 It appends a structured block at the end of this log with a stable id, what you did, files touched, and the branch state.
+
+<!-- collab:handoff:start id=20260426-010700-b33e -->
+## Handoff → claude
+
+- **handoff-id:** `20260426-010700-b33e`
+- **parent-id:** `none`
+- **from:** claude
+- **to:** claude
+- **branch:** main
+- **at:** 2026-04-26T01:07:00-04:00
+- **status:** open
+
+### What I did
+Phase 4 (Dev Iteration) all entry steps complete. Workflow at versionId phase4-step3a-v25, active model qwen3-max-2025-09-23. Pipeline runs end-to-end on CoreWeave producing 5 red_flags, substantive memo, evaluator score with proper discrimination. Phase 5 (Cerebras generalization) is the next step — re-run the same workflow against test-cases/cerebras/ (4 PDFs), no code changes expected. Pick up via .claude/memory/state.md current-state and next-steps; full Phase 4 closure receipt is the latest entry in docs/agents/claude.md (2026-04-26T01:50). All P-5 (qwen3-max-preview eager-bypass) + P-6 (RFD wrapper source_type lookup) pitfalls documented. Open backlog: tighten related_party_above_threshold to require numeric context; extract RFD wrapper to code/rfd-wrapper.js with unit tests; audit other workflow.json source_manifest consumers; consider proactive empty-shell audit of Gap Analysis + Portfolio Fit prompts.
+
+### Files touched
+n8n/workflow.json prompts/memo-generation-agent.md prompts/evaluator-agent.md prompts/extraction-agent.md code/red-flag-detector.js code/test/red-flag-detector.test.js scripts/run-meta-eval.js test-cases/meta-eval/upstream/extraction.json test-cases/meta-eval/upstream/contradiction.json test-cases/meta-eval/upstream/gap-analysis.json test-cases/meta-eval/upstream/red-flags.json test-cases/meta-eval/upstream/portfolio-fit.json .claude/memory/state.md .claude/memory/pitfalls.md .claude/memory/decisions.md docs/STATUS.md docs/agents/claude.md .env.example README.md
+
+### What needs validation
+(fill in during handoff; default: diff the commits listed above)
+
+### Open questions
+(none stated)
+<!-- collab:handoff:end -->

@@ -2,7 +2,7 @@
 status: active
 type: active-board
 owner: shared
-last-updated: 2026-04-25T01:31:21-04:00
+last-updated: 2026-04-26T01:07:00-04:00
 read-if: "session start, or you suspect another agent is running"
 skip-if: "never"
 ---
@@ -12,5 +12,4 @@ skip-if: "never"
 <!-- collab:active:start -->
 | agent | session-id | branch | started-at |
 |-------|------------|--------|------------|
-| claude | phase4-entry | main | 2026-04-25T19:45:00-04:00 |
 <!-- collab:active:end -->
