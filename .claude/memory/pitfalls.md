@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-25T20:45:00-04:00
+last-updated: 2026-04-26T01:30:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -237,5 +237,52 @@ If empty-shell or all-zero pattern reappears: tighten abstain rule scoping in th
 - `prompts/evaluator-agent.md` "Empty-upstream handling" section + tightened all-zero edge case + silent verification (commit immediately following this entry)
 - D-6 in `decisions.md` for the `scripts/inject-prompts.js` mitigation that lets us iterate on both md and workflow.json copies in lockstep
 - I-9 in `context.md` for the qwen3-max family reasoning-model behavior + model-swap watch-out
+
+## P-6 — Shape changes to a contract field must be propagated to every consumer (D-6 source_manifest tail) — 2026-04-26T01:30:00-04:00
+
+**Symptom:**
+RFD output reports `regulatory_filing_count: 0` in `rfd_meta` even though the deal packet contains an S-1 with `source_type: "regulatory_filing"` everywhere upstream (Extraction outputs prove this). All 6 regex-based regulatory-only detectors (`material_weakness`, `going_concern`, `related_party_above_threshold`, `auditor_change_recent`, `dual_class_structure`, `s1_previously_withdrawn`) silently produce zero hits even when their text patterns are clearly present in the source documents. Only the 4 `extractedFactsPerDoc`-based detectors (customer_concentration_high/extreme, revenue_growth_anomalous, burn_rate_runway_short) ever fire.
+
+**Root cause:**
+The Run Red Flag Detector node's wrapper jsCode was originally written assuming `aggregated.source_manifest` was an array of `{ source_name, source_type }` objects. When source_manifest was redefined as a **string array** (per D-6 architecture formalization, the canonical shape became `["CoreWeave Press Release", "CoreWeave Analyst Report", ...]`), the RFD wrapper was not updated. The loop `for (const entry of source_manifest) { if (entry && entry.source_name && entry.source_type) { ... } }` iterates strings, finds neither `.source_name` nor `.source_type` on a string primitive, never adds anything to `sourceTypeBySource`, leaves the lookup empty, and thus every document gets `source_type: 'unknown'` in `documentsRaw`. The `firstRegulatoryMatch()` helper then filters everything out via `if (d.source_type !== 'regulatory_filing') continue;`. Result: 6 of 10 RFD detectors are dead code.
+
+This bug shipped in Phase 3 closure and survived undetected through Phase 4 step 1, step 2 (meta-eval calibration), and step 3a (regex extension). It was discovered only when Phase 4 step 3 verification tried to confirm the regex change worked — the new "Material weaknesses exist..." pattern was being matched by the regex (we have unit tests proving this), but the wrapper never gave it any regulatory text to scan.
+
+The deeper lesson: when D-6 formalized the architecture and changed source_manifest to a string array, we updated DOWNSTREAM consumers that used the new shape (Memo prompt, Coordinator) but didn't audit OTHER consumers that quietly used the OLD shape. The RFD wrapper was the silent victim.
+
+**Workaround:**
+The fix is one block: replace the source_manifest-iteration with extraction_outputs-iteration in `n8n/workflow.json`'s Run Red Flag Detector node. Each ExtractionOutput already carries both `source_name` and `source_type`, and `extractionOutputs` is already defined right above the broken block.
+
+```js
+// BEFORE (broken — strings have no .source_name / .source_type):
+const sourceTypeBySource = {};
+for (const entry of (aggregated.source_manifest || [])) {
+  if (entry && entry.source_name && entry.source_type) {
+    sourceTypeBySource[entry.source_name] = entry.source_type;
+  }
+}
+
+// AFTER (correct — extractionOutputs entries have both fields):
+const sourceTypeBySource = {};
+for (const eo of extractionOutputs) {
+  if (eo && eo.source_name && eo.source_type) {
+    sourceTypeBySource[eo.source_name] = eo.source_type;
+  }
+}
+```
+
+**Regression test:**
+Live workflow run on CoreWeave (or any deal packet with at least one regulatory_filing) → check `rfd_meta.regulatory_filing_count`. It should equal the number of regulatory_filing source_types in the packet (1 for CoreWeave: the S-1). If it reports 0 despite the packet containing a regulatory_filing, the wrapper is broken.
+
+For Phase 4 step 3 closure specifically: after this fix, the CoreWeave run should produce **3** red_flags (not 2): customer_concentration_extreme HIGH + revenue_growth_anomalous LOW + the new material_weakness HIGH (whose POS regex was extended in P-4.A). The S-1's "Material weaknesses exist in internal control over financial reporting..." sentence is the canonical trigger.
+
+**General lesson (not just RFD):**
+Every time a contract field's SHAPE changes (string → object, array element type, etc.), grep for every consumer of that field and audit each one. The framework has no static type-checking on jsCode strings inside workflow.json — the only safety net is empirical observation, which means silent breakage can survive multiple phases. Add a `.collab/INDEX.md`-class "schema-shape contract" registry if this pattern recurs.
+
+**See also:**
+- D-6 in `decisions.md` for the source_manifest shape formalization (string array)
+- `n8n/workflow.json` Run Red Flag Detector node (the fixed wrapper)
+- `code/red-flag-detector.js` (the canonical detector module — unaffected by this bug, only the wrapper was broken)
+- The `scripts/inject-prompts.js` mitigation pattern for the doubled-prompt-surface problem; an analogous mitigation for the RFD wrapper would be to extract the wrapper into a `code/rfd-wrapper.js` file with its own unit tests (currently backlog)
 
 <!-- section:entries:end -->

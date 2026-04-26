@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T21:30:00-04:00
+last-updated: 2026-04-26T01:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -14,13 +14,16 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:current-phase:start -->
 ## Current phase
 
-**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase3-session2-v21` runs end-to-end on CoreWeave: Form Trigger → ingestion → Extraction → Contradiction → Gap Analysis → Red Flag Detector → Portfolio Fit → Memo Generation → Citation Validity → Evaluator → Supabase persistence → Slack notification → Langfuse trace, with a parallel Error Trigger sub-flow handling failures. 52 total nodes. Active chat model: `qwen3-max-preview`. Both Memo Generation and Evaluator prompts have been hardened (commits `60c4cc2`, `077b9b2`) against P-5 (qwen3-max-preview eager-bypass on prompts with strong abstain rules).
+**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase4-step3a-v25` runs end-to-end on CoreWeave: Form Trigger → ingestion → Extraction → Contradiction → Gap Analysis → Red Flag Detector → Portfolio Fit → Memo Generation → Citation Validity → Evaluator → Supabase persistence → Slack notification → Langfuse trace, with a parallel Error Trigger sub-flow handling failures. 52 total nodes. **Active chat model: `qwen3-max-2025-09-23`** (swapped from qwen3-max-preview 2026-04-26).
 
-**Phase 4 (Dev Iteration) entry steps 1+2 COMPLETE.**
-- Step 1: `evaluator_score: 0` anomaly debugged → root-cause was Memo prompt's global-bypass interpretation on qwen3-max-preview → fixed → 58/60 live behavior restored.
-- Step 2: meta-eval discrimination calibrated against real CoreWeave upstream — **good=53, bad=28, gap=25 (target ≥ 20 ✓ PASS)**, bad routes to flagged_for_review, all 4 textbook defects detected as HIGH critical_issues. Per-criterion breakdown shows reasoning_coherence carries 8 of the 25 gap points, validating the strategic-incoherence detection design intent.
+Both Memo Generation and Evaluator prompts have been hardened (commits `60c4cc2`, `077b9b2`) against P-5 (qwen3-max-preview eager-bypass on prompts with strong abstain rules); the same prompt fixes should generalize to qwen3-max-2025-09-23 since they're per-element scoping rules rather than model-specific.
 
-**Phase 4 step 3 (next): CoreWeave quality backlog** — RFD verb-form regex gap, Memo HIGH-on-strength miscalibration, Extraction S-1 recall regressions.
+**Phase 4 (Dev Iteration) — steps 1+2 COMPLETE; step 3 in progress.**
+- Step 1: `evaluator_score: 0` anomaly debugged → Memo prompt anti-empty-shell rules (`60c4cc2`) → 58/60 live behavior restored.
+- Step 2: meta-eval discrimination calibrated against real CoreWeave upstream — **good=53, bad=28, gap=25 (target ≥ 20 ✓ PASS)**, bad routes to flagged_for_review, all 4 textbook defects detected as HIGH critical_issues. Reasoning_coherence carries 8 of the 25 gap points.
+- Step 3 progress: RFD MATERIAL_WEAKNESS regex extended for phrase-first verb forms (`43f6d28`, 43/43 unit tests passing); Memo severity semantics added with key_strengths anti-pattern call-out (`5e775a5`); Extraction S-1 retrieval queries broadened for headcount + key_personnel S-1 phrasings (`5e775a5`). First live verification surfaced a DEEPER pre-existing bug: the RFD wrapper jsCode iterated `aggregated.source_manifest` expecting `{source_name, source_type}` objects, but per D-6 it's a string array — `sourceTypeBySource` was always empty, all 6 regulatory-only detectors (material_weakness, going_concern, dual_class, etc.) silently no-opped from Phase 3 closure forward. **Fixed (P-6, commit pending)** by switching to `extractionOutputs`-iteration. Items B (Memo severity) and C (S-1 Extraction recall) verified working in the same first-verification run.
+
+**Phase 4 step 3 final verification (Will):** re-import workflow + re-run on CoreWeave with new model. Acceptance: `rfd_meta.regulatory_filing_count: 1` AND `red_flags[]` contains `material_weakness HIGH` from the S-1.
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->

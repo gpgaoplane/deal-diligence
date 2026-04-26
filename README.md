@@ -32,7 +32,7 @@ Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a 
 ## Stack
 
 - **Orchestration:** local n8n via Docker Compose — workflow JSON is the version-controlled source of truth.
-- **LLM:** Qwen3-Max (`qwen3-max-preview`) via Alicloud DashScope (parameterized for one-variable swap to Claude via Bedrock).
+- **LLM:** Qwen3-Max (`qwen3-max-2025-09-23`) via Alicloud DashScope (parameterized for one-variable swap to Claude via Bedrock).
 - **7-agent pipeline:** Coordinator → Extraction → Contradiction → Gap Analysis → Red Flag Detector (deterministic JS, not LLM) → Portfolio Fit → Memo Generation → Evaluator (LLM-as-judge with meta-eval calibration).
 - **Persistence:** Supabase (Postgres). **Notification:** Slack. **Observability:** Langfuse Cloud (traces + versioned prompts + scores).
 - **Multi-agent collaboration:** [`multi-agent-collab`](https://github.com/gpgaoplane/multi-agent-collab) v0.3.0 — Claude Code as primary builder, Codex as reviewer, Claude Chat as Will's strategist (not a framework agent).
@@ -55,6 +55,6 @@ Trigger a run via the Form Trigger node in the n8n UI, uploading the test-case P
 
 ## Status
 
-**Phases 0 – 3 complete.** End-to-end pipeline runs on CoreWeave producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. 52-node workflow (45-node main path + 5-node error sub-flow + 2-node Langfuse pair). Active model: `qwen3-max-preview`.
+**Phases 0 – 3 complete.** End-to-end pipeline runs on CoreWeave producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. 52-node workflow (45-node main path + 5-node error sub-flow + 2-node Langfuse pair). Active model: `qwen3-max-2025-09-23`.
 
-**Phase 4 (CoreWeave dev iteration → meta-eval discrimination ≥ 20)** is the next phase. See [`docs/STATUS.md`](docs/STATUS.md) for current phase, recent runs, and Phase 4 entry points.
+**Phase 4 (CoreWeave dev iteration)** is in progress. Step 1 (debug `evaluator_score: 0`) and step 2 (meta-eval discrimination — achieved 25-point gap, target ≥ 20) are complete. Step 3 (CoreWeave quality backlog: RFD verb-form regex, Memo HIGH-on-strength severity, S-1 Extraction recall) is in flight. See [`docs/STATUS.md`](docs/STATUS.md) for the live progress.

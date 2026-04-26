@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T00:55:00-04:00
+last-updated: 2026-04-26T01:30:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -1035,6 +1035,103 @@ Missing / intentionally skipped:
 - Codex memory files — owned by Codex.
 - Live verification — required before Phase 4 step 3 can be marked closed; documented in state.md next-steps as the immediate next-action for Will.
 - Claude Chat refinement of the Memo severity semantics block — explicit user override per project-conventions §3 high-stakes routing exception (precedent established for tactical bugfix path).
+
+## 2026-04-26T01:30:00-04:00 — Model swap to qwen3-max-2025-09-23 + Phase 4 step 3 verification + P-6 RFD wrapper fix
+
+**Context.** Will requested two things in one turn: (1) swap LLM provider from `qwen3-max-preview` to `qwen3-max-2025-09-23`, (2) apply the proposed P-6 RFD wrapper fix discovered during Phase 4 step 3 verification. Updates documentation comprehensively after both changes land.
+
+**Phase 4 step 3 first-verification result (Will's CoreWeave re-run on workflow v24).**
+
+Will pasted (a) the Run Red Flag Detector node output, (b) a fragment of Parse Memo Response showing key_strengths, and (c) the full Parse Extraction Response for all 4 source documents. Findings:
+
+- **Item B ✅ verified working.** Memo `key_strengths[0]` = "737% YoY revenue growth in 2024 driven by surging AI demand" → `severity: MEDIUM` (was HIGH on prior runs). The severity-semantics block + anti-pattern call-out from `5e775a5` triggered correctly: the model recognized 737% as "magnitude" and tagged it MEDIUM rather than HIGH.
+
+- **Item C ✅ verified working.** S-1 ExtractionOutput on `coreweave-s1.pdf`:
+  - `company_overview.headcount: 881` (was `null` on prior runs)
+  - `management_assessment.key_personnel: ["Michael Intrator (CEO, President, Chairman)", "Brian Venturo (Chief Strategy Officer)", "Brannin McBee (Chief Development Officer)"]` (was `[]`)
+  - `financial_performance.revenue_latest_period.value: 1915426000` (exact, with citation to S-1 p. 229)
+  - `risk_factors[1].factor: "Material weaknesses exist in internal control over financial reporting related to IT general controls, segregation of duties, and insufficient qualified personnel."`
+  - The retrieval-query refinements bridged the embedding gap to S-1 phrasings ("approximately employees", "directors and executive officers"). Three new chunks made the top-N for the S-1 specifically.
+
+- **Item A ❌ failed verification — but not because of the regex.** `red_flag_detector_output.red_flags` returned only 2 entries (customer_concentration_extreme HIGH + revenue_growth_anomalous LOW) — the new `material_weakness HIGH` was missing despite the S-1 risk_factors clearly containing the exact phrasing the new regex catches. Inspection of `rfd_meta`:
+  ```json
+  { "doc_count": 4, "regulatory_filing_count": 0, "total_chunks": 361 }
+  ```
+  Zero regulatory filings detected even though the S-1 is in the packet. This was the smoking gun.
+
+**P-6 root cause analysis.**
+
+Read the Run Red Flag Detector node's wrapper jsCode and traced the bug:
+```js
+const sourceTypeBySource = {};
+for (const entry of (aggregated.source_manifest || [])) {
+  if (entry && entry.source_name && entry.source_type) {  // ← always false for strings
+    sourceTypeBySource[entry.source_name] = entry.source_type;
+  }
+}
+```
+The wrapper was written assuming `aggregated.source_manifest` was an array of `{source_name, source_type}` objects. When source_manifest was redefined as a STRING array per D-6 (`["CoreWeave Press Release", ...]`), the wrapper wasn't updated. Strings have no `.source_name` or `.source_type`, so the if-check always fails, `sourceTypeBySource` stays empty, every doc gets `source_type: 'unknown'` in `documentsRaw`, and `firstRegulatoryMatch()` filters everything out via its `if (d.source_type !== 'regulatory_filing') continue;` guard.
+
+**Six dead detectors since Phase 3 closure.** The bug silently disabled `material_weakness`, `going_concern`, `related_party_above_threshold`, `auditor_change_recent`, `dual_class_structure`, `s1_previously_withdrawn`. Only the 4 `extractedFactsPerDoc`-based detectors (`customer_concentration_high`, `customer_concentration_extreme`, `revenue_growth_anomalous`, `burn_rate_runway_short`) ever fired. Hidden because we only ever looked at what fired, not at what should have fired but didn't. Phase 3 closure was actually 4-of-10 RFD detectors functional, not 10-of-10.
+
+**P-6 fix.** Replace the source_manifest-iteration with extraction_outputs-iteration. `extractionOutputs` is already defined right above the broken block (`const extractionOutputs = aggregated.extraction_outputs || [];`) and each ExtractionOutput carries both fields natively:
+
+```js
+const sourceTypeBySource = {};
+for (const eo of extractionOutputs) {
+  if (eo && eo.source_name && eo.source_type) {
+    sourceTypeBySource[eo.source_name] = eo.source_type;
+  }
+}
+```
+
+Added a comment block above the new loop explaining why the change. Pitfall added at `pitfalls.md` P-6 with full symptom + root cause + workaround + regression test + general lesson for future shape-change consumers.
+
+**LLM provider swap.**
+
+`.env.example` updated: `ALICLOUD_MODEL=qwen3-max-2025-09-23` (was `qwen3-max-preview`). Per Codex P-2, this is env-driven; only `.env` needs updating (not in git) plus a docker-compose container restart. Workflow nodes already read `$env.ALICLOUD_MODEL` everywhere.
+
+Cleaned the one hard-coded fallback in workflow.json's Build Langfuse Batch jsCode: `'qwen3-max-preview' → 'qwen3-max-2025-09-23'`. README.md updated in two places (Stack section + Status section). Historical model references in memory files (decisions.md D-6, pitfalls.md P-5, etc.) deliberately preserved — they accurately describe the model that was in use at the time of those events.
+
+P-5 watch-out applies to this swap: every model swap requires re-validating that the Memo + Evaluator prompt fixes still produce substantive output. The fixes (rule scoping, anti-bypass guards) are per-element rules that should generalize across models, but empirical re-run is the gate.
+
+**Workflow versionId:** `phase4-step3c-v24 → phase4-step3a-v25` (the "step3a" tag reflects this is extending the step-3-A regex fix with the deeper wrapper bug discovery).
+
+**Verification needed (Will's next run).** Re-import workflow + re-run on CoreWeave with the new model. Acceptance:
+- `rfd_meta.regulatory_filing_count: 1` (was 0)
+- `red_flags[]` contains a third entry: `material_weakness HIGH` from the S-1, with `evidence.source: "CoreWeave S-1 Filing"` and `evidence.raw_text` containing "Material weaknesses exist..."
+- Memo + Evaluator continue to produce substantive output (no empty shells, no all-zeros) — confirming P-5 fixes generalize to qwen3-max-2025-09-23
+- Items B + C remain verified working
+
+**Watch out:**
+- The RFD wrapper jsCode is still NOT covered by unit tests. The unit tests at `code/test/red-flag-detector.test.js` cover the canonical detector module (`code/red-flag-detector.js`) but not the workflow.json embedded wrapper. P-6 mitigation backlog: extract the wrapper to `code/rfd-wrapper.js` with its own tests covering the source_type-lookup behavior.
+- Other workflow.json jsCode consumers of `aggregated.source_manifest` could have the same shape-confusion bug (P-6 general lesson). Quick grep target for backlog: `grep -n "source_manifest" n8n/workflow.json` and audit each consumer's contract assumption.
+- Per P-5 regression test, confirm the qwen3-max-2025-09-23 swap doesn't reintroduce eager-bypass on Memo or Evaluator. If it does, both prompts would need re-tightening for the new model — but the fixes are per-element scoping rules so they're expected to generalize.
+- Workflow re-import is REQUIRED this time (RFD wrapper is jsCode in workflow.json, not env-driven). Container restart alone won't pick up the wrapper fix.
+
+**Process flag.** P-6 is not a HIGH-stakes prompt edit — it's a code bugfix in workflow.json's wrapper jsCode. No project-conventions §3 routing required. The model swap is a config change, also not subject to §3 prompt routing.
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed code: workflow.json), 5 (discovered durable truth → P-6 lesson about contract-shape changes propagating to consumers), 6 (recurring-class gotcha → added P-6), 7 (state changed), 8 (project task status — Phase 4 step 3 partial verification + new sub-fix), 10 (cross-agent risk: P-6 implies an audit-pattern for any future contract-field-shape change).
+
+Updates fanned out this task:
+- `n8n/workflow.json` ......................... Run Red Flag Detector wrapper source_type lookup fixed (P-6); Build Langfuse Batch fallback model updated to qwen3-max-2025-09-23; versionId phase4-step3c-v24 → phase4-step3a-v25
+- `.env.example` ............................ ALICLOUD_MODEL=qwen3-max-2025-09-23
+- `README.md` ................................ Stack section + Status section model name updated; Phase 4 progress note added
+- `.claude/memory/pitfalls.md` ............... P-6 added (full entry: symptom, root cause, workaround, regression test, general lesson)
+- `.claude/memory/state.md` .................. Phase 4 step 3 verification round 1 result captured (B+C verified, A surfaced P-6); model swap reflected; next-steps updated; frontmatter bumped
+- `docs/STATUS.md` ........................... current-phase rewritten — model swap noted, Phase 4 step 3 progress detailed; frontmatter bumped
+- `docs/agents/claude.md` .................... this entry; frontmatter bumped to 01:30
+- `.collab/INDEX.md` ......................... timestamps refreshed for changed files
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no architectural decision; both changes are bugfix + config swap. The qwen3-max model-family choice was already locked (D-2 / D-6 framing); this swap is just picking a fresh tag within the family.
+- `.claude/memory/context.md` — I-9 (qwen3-max family is reasoning model) still applies generically; the model-swap watch-out from earlier already covers the re-validation requirement. No new invariant.
+- `code/red-flag-detector.js` — the canonical detector module is unaffected by this bug (the wrapper was the broken layer). No source change needed.
+- `code/test/red-flag-detector.test.js` — RFD module tests unchanged (43/43 passing). Wrapper-level test is on backlog.
+- Historical model references in CONTEXT.md, decisions.md D-6, pitfalls.md P-5, work-log earlier entries — deliberately preserved as accurate to the time of those events.
+- Codex memory files — owned by Codex.
+- Live verification — required before Phase 4 step 3 can close; documented in state.md next-steps as the immediate next-action for Will.
 
 ## Handoff blocks
 
