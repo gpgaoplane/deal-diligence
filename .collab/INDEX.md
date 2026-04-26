@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-26T00:30:00-04:00
+last-updated: 2026-04-26T00:55:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -22,7 +22,7 @@ skip-if: "never"
 | docs/STATUS.md | status | shared | active | 2026-04-25T21:30:00-04:00 |
 | docs/project-conventions.md | conventions | shared | active | 2026-04-24T02:30:00-04:00 |
 | .collab/ACTIVE.md | active-board | shared | active | 2026-04-25T01:31:21-04:00 |
-| .collab/INDEX.md | index | shared | active | 2026-04-26T00:30:00-04:00 |
+| .collab/INDEX.md | index | shared | active | 2026-04-26T00:55:00-04:00 |
 | .collab/ROUTING.md | routing | shared | active | 2026-04-24T02:07:00-04:00 |
 | .collab/PROTOCOL.md | protocol | shared | active | 2026-04-24T02:07:00-04:00 |
 | .claude/CLAUDE.md | adapter | claude | active | 2026-04-24T02:15:00-04:00 |
@@ -44,7 +44,7 @@ skip-if: "never"
 | prompts/contradiction-agent.stuffed.md | prompt-draft | claude | active | 2026-04-24T23:39:35-04:00 |
 | prompts/gap-analysis-agent.md | prompt-draft | claude | active | 2026-04-25T14:50:00-04:00 |
 | prompts/portfolio-fit-agent.md | prompt-draft | claude | active | 2026-04-25T10:15:00-04:00 |
-| prompts/memo-generation-agent.md | prompt-draft | claude | active | 2026-04-25T14:55:00-04:00 |
+| prompts/memo-generation-agent.md | prompt-draft | claude | active | 2026-04-26T00:55:00-04:00 |
 | prompts/evaluator-agent.md | prompt-draft | claude | active | 2026-04-25T20:45:00-04:00 |
 | docker-compose.yml | compose-config | shared | active | 2026-04-25T18:45:00-04:00 |
 | .env.example | config-template | shared | active | 2026-04-25T18:45:00-04:00 |
@@ -81,5 +81,5 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-26T00:30:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-26T00:55:00-04:00 |
 <!-- collab:index:end -->

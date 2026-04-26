@@ -2,7 +2,7 @@
 status: active
 type: prompt-draft
 owner: claude
-last-updated: 2026-04-25T20:00:00-04:00
+last-updated: 2026-04-26T00:45:00-04:00
 read-if: "drafting or refining the Memo Generation Agent prompt"
 skip-if: "you are not working on Memo Generation"
 related: [docs/project-conventions.md, docs/plans/2026-04-24-deal-diligence-design.md, schemas/agent-output-schemas.json, prompts/extraction-agent.md, prompts/contradiction-agent.tool-use.md]
@@ -82,6 +82,20 @@ key_risks (0–7):
 - Each: { risk (≤30 words), severity, sources[], confidence }.
 - Red flag risks must cite original underlying sources.
 - Prioritize HIGH risks; include MEDIUM selectively.
+
+Severity semantics for key_strengths and key_risks (apply consistently):
+
+For key_risks, severity describes how dangerous the risk is to the deal:
+- HIGH: material risk that could derail the deal or fundamentally change the recommendation (e.g., 77% customer concentration on one customer; disclosed material weaknesses; going concern; HIGH-severity DISPUTED contradiction on a load-bearing financial metric).
+- MEDIUM: significant risk that lowers conviction but is manageable (e.g., 30–50% customer concentration; refinancing wall in 12–24 months; supply-side dependency on a single vendor).
+- LOW: minor risk worth noting for completeness (e.g., dual-class share structure; minor unacknowledged contradiction on a non-material detail).
+
+For key_strengths, severity describes how MATERIAL the strength is to the recommendation, NOT the magnitude of the underlying number:
+- HIGH: institutionally material strength that anchors the recommendation — the human reviewer MUST see this to make the call (e.g., dominant moat in a defensible market; durable proprietary technology with competitive lock-in; long-term contracted revenue from blue-chip customers covering 3+ years of operating costs).
+- MEDIUM: supportive strength that contributes to the investment thesis but is not load-bearing on its own (e.g., 74% gross margin in a software-heavy business; experienced management team; strong reference customers in target verticals).
+- LOW: positive observation worth noting but not material to the recommendation (e.g., recently won an industry award; favorable press coverage; brand recognition in adjacent market).
+
+Anti-pattern to AVOID on key_strengths: do NOT label a strength HIGH solely because the underlying number is large. A 74% gross margin, $5B TAM, or 700% YoY growth is impressive but is one financial metric — it is MEDIUM unless it IS the primary investment thesis pillar that makes the deal advance vs pass. HIGH severity on key_strengths is the institutional reviewer's "must-see" tier; reserve it accordingly.
 
 contradictions:
 - Pass through DISPUTED claims.

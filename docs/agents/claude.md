@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T00:30:00-04:00
+last-updated: 2026-04-26T00:55:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -976,6 +976,65 @@ Missing / intentionally skipped:
 - `scripts/inject-prompts.js` extension to handle RFD — backlog item, out of scope for this fix.
 - Live workflow re-run — not required (deterministic regex change, unit-tested).
 - Codex memory — owned by Codex.
+
+## 2026-04-26T00:55:00-04:00 — Phase 4 step 3b+3c: Memo severity semantics + Extraction retrieval refinements
+
+**Context.** Phase 4 step 3 quality backlog continues. Item B addresses the prior-run miscalibration where "74% gross margin" was tagged severity HIGH in `key_strengths` (HIGH should describe materiality to recommendation, not magnitude of underlying number). Item C addresses S-1 Extraction recall regressions where the most recent CoreWeave run produced `headcount: null` and `key_personnel: []` for the S-1 Filing despite the data being present in the document.
+
+**Item B fix — Memo prompt severity semantics.**
+
+Added explicit per-context severity semantics block to `prompts/memo-generation-agent.md` between the key_strengths/key_risks construction rules and the contradictions construction rules. The existing prompt allowed severity HIGH/MEDIUM/LOW on both key_strengths and key_risks but provided no guidance on what severity MEANS in each context — so qwen3-max-preview defaulted to "HIGH = big number" on strengths.
+
+New rules:
+- **For key_risks** (existing intuition codified): HIGH = material risk that could derail the deal; MEDIUM = significant but manageable; LOW = minor risk.
+- **For key_strengths** (the new discriminator): HIGH = institutionally material strength that anchors the recommendation — the human reviewer MUST see this; MEDIUM = supportive strength contributing to thesis; LOW = positive observation worth noting but not material.
+- **Anti-pattern explicit call-out**: do NOT label a strength HIGH solely because the underlying number is large. "74% gross margin", "$5B TAM", "700% YoY growth" are MEDIUM by default unless they ARE the primary investment thesis pillar that makes the deal advance vs pass. Concrete examples included for each severity tier.
+
+Synced via `scripts/inject-prompts.js` to the workflow.json embedded copy. Single bump in workflow.json (Build Memo Request 9585 → 11635 bytes). versionId: phase3-session2-v21 → phase4-step3a-v23.
+
+**Item C fix — Extraction retrieval queries broadened.**
+
+Edited the `Prepare Extraction Queries` Code node in `n8n/workflow.json` to broaden the retrieval queries for two sections that were under-recalling on the S-1:
+
+- `company_overview` query: appended "number of employees full-time employees workforce headcount approximately employees as of December". S-1s typically disclose headcount as "As of December 31, 2024, we had approximately 850 employees" buried in the Employees subsection of Item 1 Business — the original query "headcount" alone wasn't bridging the embedding distance to that phrasing.
+- `management_assessment` query: replaced the original "management assessment executives founder ceo cfo key personnel key person risk" with "executive officers directors and executive officers management team chief executive officer chief financial officer chief technology officer named executive officers founder co-founder key personnel key person dependence biographies". S-1s use "Directors and Executive Officers" / "Named Executive Officers" as section headings; the original query missed those exact phrasings.
+
+versionId: phase4-step3a-v23 → phase4-step3c-v24.
+
+**Why retrieval queries (not Extraction prompt) is the right lever for C.** The prior run's evidence shows the model extracts `headcount` and `key_personnel` correctly when given a chunk that mentions them (the press release and analyst reports both got `key_personnel` populated). The S-1 specifically failed because the relevant chunks weren't in the top-5 retrieval results for the section query — embedding-based retrieval didn't bridge the semantic gap between query terms ("headcount", "key personnel") and S-1 actual phrasing ("approximately N employees", "Directors and Executive Officers"). Broadening the queries with S-1 phrasing variants is the lowest-risk, highest-leverage fix. Did NOT touch the Extraction prompt itself — the prompt is correct; the retrieval was missing the relevant chunks.
+
+**Verification.** Workflow.json validates as JSON. Live re-run pending — Will to re-import + trigger CoreWeave run. Acceptance criteria for Phase 4 step 3 closure documented in state.md next-steps:
+- (a) RFD red_flags now includes `material_weakness` HIGH from S-1 (covered by step 3a regex change, already in workflow v22+).
+- (b) Memo key_strengths no longer labels magnitude-y items (74% gross margin) as HIGH severity (covered by 3b prompt change).
+- (c) S-1 ExtractionOutput now populates `headcount` (integer) and `key_personnel` (array of named executives) (covered by 3c query change).
+
+**Process flag (project-conventions §3).** Memo Generation is HIGH-stakes; Extraction is HIGH-stakes. Both prompt-class artifacts were edited tactically — Memo via prompt rule addition, Extraction via retrieval query (not the prompt itself). Per the precedent established earlier this session for HIGH-stakes tactical bugfixes, surfaced explicitly to Will at edit time. Empirical live re-run is the correctness gate.
+
+**Watch out:**
+- The Memo prompt's new severity semantics block is ~280 tokens added. Total Memo prompt now ~2200 tokens (over the 2000-token convention cap from the Phase 3 review notes). Acceptable for this iteration; can compress later if needed. Concrete examples are load-bearing — don't strip them.
+- The new Extraction retrieval queries for `management_assessment` and `company_overview` use more terms. Queries are embedded as a single string and embedded once per (document, section) — the embedding cost is identical (one query per pair regardless of query length). The downstream chunk ranking is unaffected. Pure quality-of-results win, no cost regression.
+- Per P-5 (qwen3-max-preview eager-bypass), the Memo severity semantics change introduces explicit guidance which is the OPPOSITE pattern from abstain rules — should not trigger eager bypass. Safe.
+- Item B is a HIGH-stakes prompt edit. If Will wants Claude Chat to review the new severity semantics block before committing, just paste prompts/memo-generation-agent.md to them. Otherwise the empirical live run is the gate (same approach as Memo anti-empty-shell fix earlier this session).
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed prompt + workflow code), 7 (state changed), 8 (project task status — Phase 4 step 3b+3c addressed in code), 10 (cross-agent risk: HIGH-stakes prompt edit on Memo).
+
+Updates fanned out this task:
+- `prompts/memo-generation-agent.md` ........... severity semantics block added between key_strengths/key_risks and contradictions construction rules; explicit anti-pattern call-out for HIGH-on-magnitude; concrete examples for each tier; frontmatter bumped
+- `n8n/workflow.json` ......................... Build Memo Request system prompt re-injected (item B); Prepare Extraction Queries node `company_overview` + `management_assessment` queries broadened with S-1 phrasing variants (item C); versionId phase3-session2-v21 → phase4-step3c-v24
+- `.claude/memory/state.md` ................... Phase 4 step 3 progress (3a ✅, 3b/3c addressed, awaiting live verification); next-steps re-numbered; frontmatter bumped
+- `docs/agents/claude.md` ..................... this entry; frontmatter bumped to 00:55
+- `.collab/INDEX.md` .......................... timestamps refreshed for changed files
+
+Missing / intentionally skipped:
+- `prompts/extraction-agent.md` — not edited. Item C is a retrieval problem (chunks containing the data weren't in the top-5 for the section query), not an extraction problem (the model extracts correctly when given the chunks). Editing the prompt would mask the root cause. If retrieval still misses post-fix, the next move is increasing top_k or tightening the prompt with S-1 section pointers — not editing the prompt now without empirical evidence it's needed.
+- `docs/STATUS.md` — Phase 4 step 3 still in progress (awaiting live verification); will batch-update at step 3 closure.
+- `.claude/memory/decisions.md` — no architectural decision; both fixes are tactical.
+- `.claude/memory/pitfalls.md` — could note "embedding-based retrieval often misses S-1 sections that use technical / regulatory phrasing not in the natural-language query" but that's a generic IR truth, not a project-specific pitfall worth a P-entry.
+- `.claude/memory/context.md` — no new invariant.
+- Codex memory files — owned by Codex.
+- Live verification — required before Phase 4 step 3 can be marked closed; documented in state.md next-steps as the immediate next-action for Will.
+- Claude Chat refinement of the Memo severity semantics block — explicit user override per project-conventions §3 high-stakes routing exception (precedent established for tactical bugfix path).
 
 ## Handoff blocks
 
