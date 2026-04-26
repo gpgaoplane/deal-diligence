@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-25T20:15:00-04:00
+last-updated: 2026-04-25T20:45:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -750,6 +750,89 @@ Missing / intentionally skipped:
 - `.claude/memory/context.md` — I-9 was already updated 2026-04-25T18:45 with the Phase-3-closure context including a watch-out for model-swap parser robustness. This new finding is a related-but-separate issue (prompt-vs-model, not parser-vs-model). I-9 stands; if pattern confirmed on Evaluator, may add to I-9 watch-out section.
 - Codex memory files — owned by Codex; framework prohibits cross-agent memory editing.
 - Claude Chat refinement of the rule 7/8 edit — explicit user override per project-conventions §3 high-stakes routing exception. Empirical 58/60 result is the gate.
+
+## 2026-04-25T20:45:00-04:00 — Phase 4 step 2: Evaluator prompt fix + meta-eval option (a) finding (anti-discriminative)
+
+**Context.** With Memo Generation fixed (commit `60c4cc2`) and live 58/60 verified, proceeded to Phase 4 step 2: meta-eval discrimination check. Ran `scripts/run-meta-eval.js` (option a, empty upstream) to sanity-check whether discrimination on criteria 1/5/6 alone can clear gap ≥ 20.
+
+**Initial result: gap = 0** (both fixtures scored 0/60). Same eager-bypass pattern as Memo Generation, this time in the Evaluator: the prompt's "All six criteria score 0: structural failure" edge-case rule was being invoked PREEMPTIVELY by qwen3-max-preview when it perceived empty upstream, instead of REACTIVELY after individual scoring. The bad fixture's critical_issues even contained the model's own bypass message: "Evaluation produced all-zero scores; structural failure" — confirming the model invoked the bypass rule itself.
+
+**Pattern recurrence diagnosis (qwen3-max-preview eager-bypass).** Same root cause as Memo Generation. The qwen3-max-2026-01-23 → qwen3-max-preview swap exposed a model-class behavior: edge-case bypass rules in prompts get interpreted as PROACTIVE shortcuts when input has gaps, rather than REACTIVE behaviors after individual scoring. Two prompts now confirmed (Memo + Evaluator). Promoted to **P-5 in pitfalls.md** with the 5-step workaround pattern + regression-test checklist.
+
+**Evaluator prompt fix (5-step pattern from P-5 applied):**
+
+1. Added a new "Empty-upstream handling" section before "Cross-criterion checks" that splits the criteria by upstream dependency:
+   - Criterion 1 (citation_completeness): MEMO-BODY-ONLY — always score from memo, independent of upstream.
+   - Criterion 2 (contradiction_acknowledgment): if contradiction_output is empty → score 10 UNLESS memo CLAIMS contradictions that don't appear upstream → score 0–3 + emit potential_hallucination critical_issue.
+   - Criterion 3 (missing_information_coverage): same pattern as criterion 2 against gap_analysis_output.
+   - Criterion 4 (red_flag_propagation): same pattern against red_flag_detector_output.
+   - Criterion 5 (reasoning_coherence): MEMO-BODY-ONLY — always score from memo.
+   - Criterion 6 (hallucination_check): if extracted_facts_per_document empty → score from internal consistency + obvious-fabrication detection (well-known reality checks for the named company); default 7 with no obvious fabrications, 4–6 for plausible-but-uncorroborated specifics, 0–3 for specifics that contradict reality.
+2. Added "Bottom line" sentence stating: "missing upstream is NOT a shortcut to zero-score everything; the all-zero rule is REACTIVE."
+3. Tightened the all-zero edge case rule: explicit "AFTER you have scored each individually" + "DO NOT preemptively zero-score" language.
+4. Added 4 new silent verification checks: each criterion scored individually using rubric + empty-upstream rules; criteria 2/3/4 scored 10 (not 0) when their upstream is empty unless fabrication detected; criterion 6 scored from internal consistency when extracted_facts empty (not 0); criteria 1 and 5 scored from memo body regardless of upstream availability.
+
+Synced via `scripts/inject-prompts.js`; workflow versionId bumped phase3-session2-v20 → v21.
+
+**Re-ran meta-eval option (a) post-Evaluator-fix:**
+
+```
+good_score: 45
+bad_score:  48     ← BAD scored HIGHER than GOOD
+discrimination_gap: -3  (target ≥ 20)
+```
+
+Per-criterion breakdown:
+
+| Criterion | Good | Bad |
+|---|---|---|
+| citation_completeness | 8 | 10 |
+| contradiction_acknowledgment | 0 | 0 |
+| missing_information_coverage | 0 | 10 |
+| red_flag_propagation | 0 | 0 |
+| reasoning_coherence | 10 | 8 |
+| hallucination_check | 7 | 10 |
+
+**Diagnosis: empty-upstream meta-eval is structurally anti-discriminative for these fixtures.**
+
+The good fixture is being PUNISHED for being thorough:
+- Good has 4 HIGH-importance missing_information items, 3 HIGH-severity red_flags, multiple HIGH-severity contradictions in its memo body. Against empty upstream, ALL of these look like fabrications.
+- Bad has 1 missing_information item, 1 LOW-severity red_flag, 1 contradiction. Fewer fabrication hits.
+- Net result: good gets MORE 0-scores on criteria 2/3/4 because it has MORE correct content to be flagged as "fabricated against empty upstream."
+- Criterion 6 (hallucination_check) scored bad fixture 10/10 because the model didn't catch "highly diversified customer base" as a fabrication about CoreWeave — likely because empty upstream provides nothing to verify against, and qwen3-max-preview's CoreWeave common knowledge is insufficient or the model is being deferential to memo claims.
+
+**The Evaluator change is still a SOUND BUGFIX for production use:**
+- Bypass behavior eliminated: per-criterion scoring now happens.
+- Both fixtures correctly routed to `flagged_for_review` via the HIGH critical_issue override (good got 3 HIGH critical_issues, bad got 2 — Evaluator IS detecting the fabrications, the score arithmetic just doesn't reflect it strongly enough for discrimination).
+- The new defaults (10 when upstream is empty) only fire when upstream IS empty, which never happens in real pipeline runs (RFD always returns something even if no flags found, etc.). Safe for production.
+
+**Conclusion: option (a) is a dead end for Phase 4 calibration.** Cannot produce gap ≥ 20 against THIS pair of fixtures because the fixtures contain rich citable content that needs real upstream to validate against. Moving to **option (c): real upstream from the just-completed CoreWeave run.** Both meta-eval fixtures happen to be CoreWeave memos, so pairing them with real CoreWeave upstream is methodologically clean: tests "does the Evaluator distinguish good vs bad memo when both are evaluated against the same real upstream context?"
+
+**Watch out:**
+- The doubled-prompt surface (D-6) handled Evaluator inject cleanly — `inject-prompts.js --check` flagged drift, default-mode injection re-synced. Mitigation working.
+- P-5 regression-test guidance suggests preemptively auditing Gap Analysis and Portfolio Fit prompts for similar eager-bypass risk before they bite. Logged as backlog in state.md; not blocking Phase 4.
+- I have not yet asked Will to verify the Evaluator change doesn't regress the live 58/60 baseline. The change is behaviorally neutral on populated upstream (all new defaults fire only when upstream is empty), but empirical proof is cheap. Verification ask in next user turn.
+
+**Process flag (project-conventions §3):** Evaluator is medium-stakes — no Claude Chat refinement required by default. Edit committed directly per convention.
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed prompt + workflow), 6 (recurring gotcha → P-5), 7 (state changed), 8 (project task status), 10 (cross-agent risk: P-5 affects all future prompt work).
+
+Updates fanned out this task:
+- `prompts/evaluator-agent.md` ........................ added "Empty-upstream handling" section; tightened all-zero edge case to reactive; added 4 silent verification checks; frontmatter bumped
+- `n8n/workflow.json` ................................. Build Evaluator Request system prompt re-injected via inject-prompts.js; versionId v21
+- `.claude/memory/pitfalls.md` ........................ P-5 added — qwen3-max-preview eager-bypass pattern with 5-step workaround + regression-test checklist; frontmatter bumped
+- `.claude/memory/state.md` ........................... Phase 4 entry status — step 1 ✅, step 2 in progress moving to option (c); next-steps updated; frontmatter bumped
+- `docs/agents/claude.md` ............................. this entry; frontmatter bumped to 20:45
+- `.collab/INDEX.md` .................................. timestamp refreshes for the changed files
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no new architectural decision; bugfix + pitfall capture covers it. (Borderline: model-class behavior on qwen3-max-preview is a Claude-owned observation, but P-5 captures the actionable content; promoting to a D-7-class decision would be ceremony without new content.)
+- `.claude/memory/context.md` I-9 — already has a model-swap watch-out from 2026-04-25T18:45 update. Could cross-reference P-5 here; deferred since P-5 is already linked in I-9's "see also" via the model-swap watch-out's substance.
+- `docs/STATUS.md` — current-phase already accurate ("Phase 4 next" → "Phase 4 entry in progress" implicit). Will update at Phase 4 closeout, not mid-step.
+- Codex memory files — owned by Codex.
+- Live verification of Evaluator change against populated-upstream workflow — surfaced to user as the verification ask in next response.
+- Reverting the Evaluator change since meta-eval option (a) failed — not done; the change is a sound bugfix independent of the test setup limitation.
 
 ## Handoff blocks
 

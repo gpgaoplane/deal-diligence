@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-25T18:45:00-04:00
+last-updated: 2026-04-25T20:45:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -187,5 +187,55 @@ For any new [HTTP Request | Extract from File | similar] → Code-node pair in t
 - "Text Chunker" (after Extract from File) — reaches back to Split Per-Document
 - "Build Slack Message" (after Insert Deal Memo / HTTP Request to Supabase) — reaches back to "Build Supabase Record" for memo + evaluator data (3.16w fix landed in commit `c0ee968`)
 All three demonstrate the pattern. P-4 has now hit three distinct nodes in this workflow; treat any new HTTP Request → Code-node pair as guilty-until-proven-innocent.
+
+## P-5 — qwen3-max-preview eagerly invokes preemptive bypass on prompts with strong abstain rules — 2026-04-25T20:45:00-04:00
+
+**Symptom:**
+A specialist returns structurally-valid JSON matching the schema but with bypass/abstain content rather than substantive output:
+- Memo Generation: empty shell (executive_summary: "", all arrays [], all confidences 0.0, but `recommendation` set to a valid enum like "pass"; finish_reason: "stop"; completion_tokens ~150-200).
+- Evaluator: all-zero criteria_scores + critical_issues entry blaming structural failure ("Evaluation produced all-zero scores" or "Memo Generation bypassed; review provisional"); finish_reason: "stop"; completion_tokens ~100-200.
+
+In both cases the model is NOT being lazy or hitting a token cap — it is invoking the prompt's edge-case bypass rule PREEMPTIVELY rather than REACTIVELY. The downstream parsers are extracting exactly what the model emitted; the bug is upstream in how the model interprets the prompt.
+
+**Root cause:**
+`qwen3-max-preview` interprets edge-case bypass rules as PROACTIVE shortcuts whenever it perceives input gaps, rather than REACTIVE behaviors after individual scoring/synthesis. The earlier `qwen3-max-2026-01-23` (now retired per Will's direction) interpreted the same rules per-claim / per-criterion as the prompt authors intended. The interaction is prompt-vs-model, not parser-vs-model.
+
+Confirmed on two prompts in this workflow:
+- **Memo Generation (HIGH-stakes):** rule 7 "prefer omission over speculation" + rule 4 "if Extraction did not surface a fact, you cannot assert that fact" + seven "MUST cite" rules → global empty memo shell. Triggered when the model perceives any combination of upstream gaps as "insufficient evidence."
+- **Evaluator (medium-stakes):** edge-case rule "All six criteria score 0: structural failure" → preemptive all-zero scoring. Triggered when contradiction_output / gap_analysis_output / red_flag_detector_output are empty (e.g., empty-upstream meta-eval).
+
+Two prompts is enough evidence to call this a model-class behavior, not a prompt-specific anomaly. Other prompts with edge-case bypass rules (Gap Analysis, Portfolio Fit) may show the same pattern; preemptively audit before they bite.
+
+**Workaround (5-step pattern, applied on both prompts):**
+
+1. **Narrow the abstain rule scope.** Change "prefer omission over speculation" to "prefer omission of THE SPECIFIC unciteable claim over speculation." Substitute SPECIFIC for the per-element unit (claim, criterion, field).
+
+2. **Add an explicit anti-bypass scoping rule.** State explicitly: "this rule is per-X, NEVER global. Empty fields/arrays are a structural failure when upstream input contains usable content."
+
+3. **Add per-element handling for empty-input cases.** Example for Evaluator: "if upstream artifact is empty, score 10 by default; score 0–3 only if the model output CLAIMS elements that don't exist upstream." Example for Memo: "if upstream X is non-empty AND output Y would be empty, you misapplied rule 7 — revise and surface what IS supported."
+
+4. **Mark the all-zero / all-empty edge case rule as REACTIVE.** "This rule applies AFTER you have scored each individually using the rubric. DO NOT preemptively zero-score as a shortcut for missing input."
+
+5. **Add silent self-revise checks.** Pattern: "if upstream X is non-empty AND output Y is empty, you misapplied rule Z — revise." One per upstream/output pair.
+
+Verified empirically:
+- Memo fix (commit `60c4cc2`): live CoreWeave run produced empty memo shell pre-fix → produced substantive memo + 58/60 Evaluator score post-fix (qwen3-max-preview, same model both runs).
+- Evaluator fix (commit immediately following, this entry): empty-upstream meta-eval went from 0/0 (preemptive bypass) to 45/48 per-criterion scoring. The 45/48 result has a separate test-setup limitation (empty-upstream is anti-discriminative when fixtures contain rich content; see work-log 2026-04-25T20:45 entry for analysis), but the per-criterion scoring itself is correct — the bypass behavior is fixed.
+
+**Regression test:**
+
+When authoring or refining any specialist prompt for this project, AND after any future model swap:
+
+1. Live workflow run with normal populated upstream → confirm the specialist produces substantive output (no empty shells, no all-zeros).
+2. Live workflow run with one or more upstream specialists DELIBERATELY producing minimal output (e.g., RFD finds no flags on a clean deal) → confirm downstream specialists (Memo, Evaluator) do NOT collapse to empty/zero output.
+3. For Evaluator specifically: `node scripts/run-meta-eval.js` (no upstream flags) → confirm per-criterion scores are produced from memo body alone, NOT all-zeros.
+
+If empty-shell or all-zero pattern reappears: tighten abstain rule scoping in the offending prompt using the 5-step pattern above BEFORE debugging elsewhere.
+
+**See also:**
+- `prompts/memo-generation-agent.md` rules 7–8 + silent final checks (commit `60c4cc2`)
+- `prompts/evaluator-agent.md` "Empty-upstream handling" section + tightened all-zero edge case + silent verification (commit immediately following this entry)
+- D-6 in `decisions.md` for the `scripts/inject-prompts.js` mitigation that lets us iterate on both md and workflow.json copies in lockstep
+- I-9 in `context.md` for the qwen3-max family reasoning-model behavior + model-swap watch-out
 
 <!-- section:entries:end -->

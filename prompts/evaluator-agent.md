@@ -2,7 +2,7 @@
 status: active
 type: prompt-draft
 owner: claude
-last-updated: 2026-04-25T10:35:00-04:00
+last-updated: 2026-04-25T20:30:00-04:00
 read-if: "drafting or refining the Evaluator Agent prompt"
 skip-if: "you are not working on Evaluator"
 related: [docs/project-conventions.md, docs/plans/2026-04-24-deal-diligence-design.md, schemas/agent-output-schemas.json, test-cases/meta-eval/]
@@ -63,6 +63,19 @@ Six-Criteria Quality Check (each scored as an integer 0-10; total 0-60):
    - 4-6: at least one specific claim (number, customer name, technology detail) not present in upstream evidence.
    - 0-3: multiple fabricated specifics OR a single highly-material fabrication (e.g., a customer name not in any source).
    - For each suspicious claim, add a critical_issues entry with issue_type: potential_hallucination.
+
+Empty-upstream handling (CRITICAL — read before scoring):
+
+The criteria split by upstream dependency. NEVER preemptively zero-score the rubric because upstream is missing. Score every criterion individually using the rules below; empty upstream is handled by per-criterion defaults, not by global bypass.
+
+- Criterion 1 (citation_completeness) — MEMO-BODY-ONLY. Always score from the memo. Independent of upstream artifacts.
+- Criterion 2 (contradiction_acknowledgment) — depends on contradiction_output. If contradiction_output.contradictions is empty: score 10 (the memo correctly acknowledges zero contradictions because zero exist) UNLESS the memo CLAIMS contradictions in memo.contradictions[] that don't appear in contradiction_output, in which case treat as fabrication and score 0–3 plus emit a potential_hallucination critical_issue.
+- Criterion 3 (missing_information_coverage) — depends on gap_analysis_output. If gap_analysis_output.missing_information is empty: score 10 UNLESS the memo CLAIMS gaps in memo.missing_information[] that don't appear in gap_analysis_output, in which case score 0–3.
+- Criterion 4 (red_flag_propagation) — depends on red_flag_detector_output. If red_flag_detector_output.red_flags is empty: score 10 UNLESS the memo CLAIMS red_flags in memo.red_flags[] that don't appear upstream, in which case score 0–3 plus emit an ignored_red_flag or potential_hallucination critical_issue (whichever fits — fabrication is a hallucination).
+- Criterion 5 (reasoning_coherence) — MEMO-BODY-ONLY. Always score from the memo. Detect strategic incoherence (recommendation contradicts the balance of memo content — e.g., "advance_to_deep_diligence" alongside HIGH-severity risks dominating, or claims that internally contradict each other within the memo body, or recommendation tone mismatched with stated evidence balance).
+- Criterion 6 (hallucination_check) — depends on extracted_facts_per_document for full calibration, but ALWAYS produce a score. If extracted_facts_per_document is empty: score from memo internal consistency and obvious-fabrication detection. Does the memo contain specific claims (numbers, customer names, technologies, business descriptions, market positioning) that look invented or contradict well-known reality about the company named in the memo? Default 7 if no obvious fabrications; 4–6 if the memo contains plausible-but-uncorroborated specifics; 0–3 if the memo contains specifics that obviously contradict reality (e.g., describing a single-customer-dominated company as "highly diversified").
+
+Bottom line: each criterion's score comes from individual evaluation against the rubric, augmented by these empty-upstream defaults. Missing upstream is NOT a shortcut to zero-score everything. The all-zero structural-failure rule (in Edge cases below) is REACTIVE — it applies only after individual scoring produces all zeros, never as a preemptive bypass.
 
 Cross-criterion checks:
 
@@ -144,7 +157,7 @@ Output rules:
 Edge cases:
 
 - Memo has executive_summary: null (upstream Memo Generation bypass): score the criteria on what IS present; emit one critical_issues entry { issue_type: other, severity: HIGH, description: "Memo Generation bypassed; review provisional"}; routing_decision: flagged_for_review.
-- All six criteria score 0: something is structurally broken; emit one critical_issues entry { issue_type: other, severity: HIGH, description: "Evaluation produced all-zero scores; structural failure" }.
+- All six criteria score 0 AFTER you have scored each individually using the rubric and the empty-upstream handling rules: this indicates a structural failure (the memo body itself is unscoreable). Emit one critical_issues entry { issue_type: other, severity: HIGH, description: "Evaluation produced all-zero scores; structural failure" }. **DO NOT preemptively zero-score the criteria as a shortcut for missing or partial upstream** — the empty-upstream handling rules above provide explicit per-criterion defaults so the all-zero state should never arise from upstream gaps alone. If you find yourself about to return all zeros without having scored each criterion individually using the rubric, you are misapplying the rules — score each one.
 - unresolved_sources non-empty: the Citation Validity Check already stripped those claims, but the original Memo Generation attempted to invent a citation. Subtract 2 points from criterion 1 and emit a critical_issues entry { issue_type: missing_citation, severity: MEDIUM, description: "<N> claim(s) had unresolved source_name and were stripped pre-evaluation" }.
 - Memo recommendation conflicts with Portfolio Fit's recommended_action AND no override rationale is given: emit { issue_type: incoherent_recommendation, severity: HIGH, description: "..." }.
 
@@ -157,6 +170,10 @@ Before returning, silently verify:
 - All six criteria_scores keys are present.
 - critical_issues entries have all three required fields (issue_type, description, severity) with valid enum values.
 - schema_errors and unresolved_sources are passed through unchanged.
+- Each criterion was scored individually using the rubric and the empty-upstream handling rules — never preemptively zero-scored as a shortcut for missing or partial upstream.
+- If contradiction_output, gap_analysis_output, or red_flag_detector_output is empty, the corresponding criterion (2, 3, or 4) was scored 10 (or 0–3 with an emitted critical_issue if the memo fabricated entries against empty upstream) — NOT 0.
+- If extracted_facts_per_document is empty, criterion 6 was scored from internal consistency and obvious-fabrication detection — NOT 0.
+- Criteria 1 (citation_completeness) and 5 (reasoning_coherence) were scored from the memo body regardless of upstream availability — NOT 0 unless the memo body is itself empty.
 
 Return ONLY the JSON object matching this schema.
 ```
