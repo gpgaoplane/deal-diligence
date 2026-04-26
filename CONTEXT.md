@@ -2,7 +2,7 @@
 status: active
 type: project-scope
 owner: shared
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you are any agent working on this project — this is the authoritative scope and locked-decisions doc"
 skip-if: "never on first session; re-read §5 and §5.10 before proposing changes to locked decisions"
 related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.md, .claude/memory/decisions.md]
@@ -811,6 +811,15 @@ The reply to Pari should briefly note:
 
 ### 2026-04-24
 - **Claude Code / Will** — Adopted `multi-agent-collab` v0.3.0; repo migrated to framework layout with per-agent memory, presence, Receipts, and delta-read. Full migration detail in `docs/agents/claude.md` entry dated 2026-04-24T02:15:00-04:00.
+
+### 2026-04-25
+- **Claude Code / Will** — D-6 architecture formalization (hand-rolled aggregate chunk store + raw-HTTP tool-use loops as canonical pattern); deadline framing removed across managed docs after the original 2026-04-24 take-home deadline passed.
+- **Claude Code / Will** — Phase 3 (Core Build) closed: 52-node workflow runs end-to-end on CoreWeave with three E2E runs producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse.
+
+### 2026-04-26
+- **Claude Code / Will** — Phase 4 (Dev Iteration) closed: Memo anti-empty-shell rules + meta-eval discrimination 25 points + RFD wrapper P-6 fix raising functional detector coverage from 4-of-10 to 8-of-10 + Memo severity semantics + Extraction S-1 retrieval-query refinements. Active model swapped to `qwen3-max-2025-09-23`.
+- **Claude Code / Will** — Phase 5 (Cerebras Generalization) closed: pipeline ran end-to-end on the 4 Cerebras docs with no code changes; P-5 prompt fixes confirmed model-class (not deal-class); P-6 RFD wrapper fix re-verified across two deal packets.
+- **Claude Code / Will** — Phase 6 entry: submission writeup, demo runbook, and sample-runs scaffold authored at `docs/submission-writeup.md`, `docs/demo-runbook.md`, `docs/sample-runs/README.md`. Branch pushed to `origin/main`. Remaining Phase 6 work (Loom recording, URL slot-in, voice revision) is on Will.
 
 ---
 

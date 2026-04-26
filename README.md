@@ -2,7 +2,7 @@
 status: active
 type: readme
 owner: shared
-last-updated: 2026-04-25T18:45:00-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you are a human or agent landing on this repo and want the quickstart"
 skip-if: "you already know this repo"
 ---
@@ -12,6 +12,8 @@ skip-if: "you already know this repo"
 **Sagard AI Deal Diligence Workspace** — take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). The original deadline of 2026-04-24 has passed; development continues without an active deadline.
 
 Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
+
+**Submission writeup:** [`docs/submission-writeup.md`](docs/submission-writeup.md) — 250-word framing + reading order + production-changes list.
 
 ## Start here
 
@@ -55,6 +57,12 @@ Trigger a run via the Form Trigger node in the n8n UI, uploading the test-case P
 
 ## Status
 
-**Phases 0 – 3 complete.** End-to-end pipeline runs on CoreWeave producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. 52-node workflow (45-node main path + 5-node error sub-flow + 2-node Langfuse pair). Active model: `qwen3-max-2025-09-23`.
+**Phases 0 – 5 complete; Phase 6 in flight.** End-to-end pipeline runs on CoreWeave (58/60 evaluator score, 17/17 valid citations) and Cerebras (generalization-confirmed, no code change) producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. 52-node workflow (45-node main path + 5-node error sub-flow + 2-node Langfuse pair). Active model: `qwen3-max-2025-09-23`.
 
-**Phase 4 (CoreWeave dev iteration)** is in progress. Step 1 (debug `evaluator_score: 0`) and step 2 (meta-eval discrimination — achieved 25-point gap, target ≥ 20) are complete. Step 3 (CoreWeave quality backlog: RFD verb-form regex, Memo HIGH-on-strength severity, S-1 Extraction recall) is in flight. See [`docs/STATUS.md`](docs/STATUS.md) for the live progress.
+**Phase 4 (CoreWeave Dev Iteration) ✅ closed.** Memo anti-empty-shell rules; meta-eval discrimination = 25 points (target ≥ 20); RFD coverage 4-of-10 → 8-of-10 functional detectors after the P-6 wrapper fix; Memo severity semantics for strengths; Extraction S-1 retrieval-query refinements.
+
+**Phase 5 (Cerebras Generalization) ✅ closed.** Pipeline ran on the 4 Cerebras docs at `test-cases/cerebras/` end-to-end with no code changes. RFD detected `related_party_above_threshold` MEDIUM (OpenAI Warrant — true positive) + `dual_class_structure` LOW (Class A common stock). Cross-source numerical agreement S-1 ↔ analyst report. P-5 prompt fixes confirmed model-class (not deal-class).
+
+**Phase 6 (Demo + 250-word writeup)** in flight. Submission writeup, demo runbook, and sample-runs scaffold landed at `da02148`. Remaining: Loom recording + URL slot-in + writeup voice revision (all on Will).
+
+See [`docs/STATUS.md`](docs/STATUS.md) for the live progress.

@@ -2,7 +2,7 @@
 status: active
 type: shared
 owner: shared
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you are any AI agent starting work in this repo"
 skip-if: "never"
 related: []
@@ -23,16 +23,18 @@ This is the single entry point for any AI agent working here (Claude, Codex, Gem
 
 Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news articles) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
 
-**Stack:** local n8n via Docker → 7-agent pipeline (Coordinator + Extraction + Contradiction + Gap Analysis + Red Flag Detector (deterministic JS) + Portfolio Fit + Memo Generation + Evaluator) → Supabase (memo persistence) + Slack (human notification) + Langfuse (observability, prompt versioning). LLM: Qwen3.5-Plus via Alicloud DashScope, parameterized for one-variable swap.
+**Stack:** local n8n via Docker → 7-agent pipeline (Coordinator + Extraction + Contradiction + Gap Analysis + Red Flag Detector (deterministic JS) + Portfolio Fit + Memo Generation + Evaluator) → Supabase (memo persistence) + Slack (human notification) + Langfuse (observability, prompt versioning). LLM: Qwen3-Max (`qwen3-max-2025-09-23`) via Alicloud DashScope, parameterized for one-variable swap.
 
-**Test cases:** CoreWeave S-1 (dev, known issues), Cerebras S-1 (demo, filed 2026-04-17).
+**Test cases:** CoreWeave S-1 (dev — validated end-to-end with 58/60 evaluator score), Cerebras S-1 (demo — generalization-confirmed end-to-end with no code change). Phases 0–5 closed; Phase 6 (demo + 250-word writeup) in flight.
 
 **Authoritative planning docs (read before acting):**
 - `CONTEXT.md` — scope, locked decisions, rationales (§5.10)
-- `DESIGN.md` — component internals, data contracts, frameworks
-- `IMPLEMENTATION.md` — 7-phase execution plan
+- `docs/plans/2026-04-24-deal-diligence-design.md` — refined system design (authoritative)
+- `docs/plans/2026-04-24-deal-diligence-implementation.md` — refined phased execution plan (authoritative)
+- `DESIGN.md` and `IMPLEMENTATION.md` (root) — v1 baselines, flagged `status: reference-only`
 - `docs/project-conventions.md` — operational rules shared across agents
 - `docs/STATUS.md` — current phase
+- `docs/submission-writeup.md` — Phase 6 submission framing
 <!-- collab:project-summary:end -->
 
 ---

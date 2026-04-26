@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-26T16:45:00-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -13,23 +13,23 @@ skip-if: "never"
 | path | type | owner | status | last-updated |
 |------|------|-------|--------|--------------|
 | AGENTS.md | front-door | shared | active | 2026-04-24T02:07:00-04:00 |
-| AI_AGENTS.md | shared | shared | active | 2026-04-25T09:14:33-04:00 |
-| README.md | readme | shared | active | 2026-04-26T01:30:00-04:00 |
-| CONTEXT.md | project-scope | shared | active | 2026-04-25T09:14:33-04:00 |
+| AI_AGENTS.md | shared | shared | active | 2026-04-26T17:00:00-04:00 |
+| README.md | readme | shared | active | 2026-04-26T17:00:00-04:00 |
+| CONTEXT.md | project-scope | shared | active | 2026-04-26T17:00:00-04:00 |
 | DESIGN.md | design | shared | reference-only | 2026-04-24T03:30:00-04:00 |
 | IMPLEMENTATION.md | implementation-plan | shared | reference-only | 2026-04-24T03:30:00-04:00 |
 | .gitignore | config | shared | active | 2026-04-24T03:45:00-04:00 |
-| docs/STATUS.md | status | shared | active | 2026-04-26T16:30:00-04:00 |
+| docs/STATUS.md | status | shared | active | 2026-04-26T17:00:00-04:00 |
 | docs/project-conventions.md | conventions | shared | active | 2026-04-24T02:30:00-04:00 |
-| .collab/ACTIVE.md | active-board | shared | active | 2026-04-26T16:12:15-04:00 |
-| .collab/INDEX.md | index | shared | active | 2026-04-26T16:12:15-04:00 |
+| .collab/ACTIVE.md | active-board | shared | active | 2026-04-26T17:00:00-04:00 |
+| .collab/INDEX.md | index | shared | active | 2026-04-26T17:00:00-04:00 |
 | .collab/ROUTING.md | routing | shared | active | 2026-04-24T02:07:00-04:00 |
 | .collab/PROTOCOL.md | protocol | shared | active | 2026-04-24T02:07:00-04:00 |
 | .claude/CLAUDE.md | adapter | claude | active | 2026-04-24T02:15:00-04:00 |
-| docs/agents/claude.md | work-log | claude | active | 2026-04-26T16:30:00-04:00 |
-| .claude/memory/state.md | state | claude | active | 2026-04-26T16:12:15-04:00 |
-| .claude/memory/context.md | context | claude | active | 2026-04-25T18:45:00-04:00 |
-| .claude/memory/decisions.md | decisions | claude | active | 2026-04-25T18:45:00-04:00 |
+| docs/agents/claude.md | work-log | claude | active | 2026-04-26T17:00:00-04:00 |
+| .claude/memory/state.md | state | claude | active | 2026-04-26T17:00:00-04:00 |
+| .claude/memory/context.md | context | claude | active | 2026-04-26T17:00:00-04:00 |
+| .claude/memory/decisions.md | decisions | claude | active | 2026-04-26T17:00:00-04:00 |
 | .claude/memory/pitfalls.md | pitfalls | claude | active | 2026-04-26T01:30:00-04:00 |
 | .codex/CODEX.md | adapter | codex | active | 2026-04-24T02:07:00-04:00 |
 | docs/agents/codex.md | work-log | codex | active | 2026-04-25T14:37:31-04:00 |
@@ -38,7 +38,7 @@ skip-if: "never"
 | .codex/memory/decisions.md | decisions | codex | active | 2026-04-25T01:31:21-04:00 |
 | .codex/memory/pitfalls.md | pitfalls | codex | active | 2026-04-25T01:31:21-04:00 |
 | docs/plans/2026-04-24-deal-diligence-design.md | design-plan | shared | active | 2026-04-25T09:14:33-04:00 |
-| docs/plans/2026-04-24-deal-diligence-implementation.md | implementation-plan | shared | active | 2026-04-25T18:45:00-04:00 |
+| docs/plans/2026-04-24-deal-diligence-implementation.md | implementation-plan | shared | active | 2026-04-26T17:00:00-04:00 |
 | prompts/extraction-agent.md | prompt-draft | claude | active | 2026-04-24T22:21:09-04:00 |
 | prompts/contradiction-agent.tool-use.md | prompt-draft | claude | active | 2026-04-25T01:07:48-04:00 |
 | prompts/contradiction-agent.stuffed.md | prompt-draft | claude | active | 2026-04-24T23:39:35-04:00 |

@@ -2,7 +2,7 @@
 status: active
 type: context
 owner: claude
-last-updated: 2026-04-25T18:45:00-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you need durable project truths as understood by Claude"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -69,9 +69,9 @@ Per-run estimate: ~$0.55–$1.10 (200K+ input + 20K output + 40K embedding token
 
 **Why this is a durable truth and not just a plan section:** Phase 6's 250-word submission answers "what breaks first at 10x?" — this invariant sources that answer. If the Evaluator, Memo Generation, or Portfolio Fit prompts later mention scaling, they should reference these five bottlenecks, not "LLM costs scale linearly." Cross-referenced in `docs/plans/2026-04-24-deal-diligence-design.md §5`.
 
-## I-9 — Qwen3-Max family on DashScope is a reasoning model — 2026-04-24T04:15:00-04:00 (revised 2026-04-25T18:45:00-04:00 after Phase 3 closure)
+## I-9 — Qwen3-Max family on DashScope is a reasoning model — 2026-04-24T04:15:00-04:00 (revised 2026-04-26T17:00:00-04:00 after Phase 5 closure)
 
-Originally observed on `qwen3.5-plus` via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208`. Response shape is `{"content": "<final>", "reasoning_content": "<chain-of-thought>"}`. Behavior carries forward to `qwen3-max-2026-01-23` and the currently-active `qwen3-max-preview` — Phase 3 runs confirm both models emit `reasoning_content` separately from `content`.
+Originally observed on `qwen3.5-plus` via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208`. Response shape is `{"content": "<final>", "reasoning_content": "<chain-of-thought>"}`. Behavior carries forward to `qwen3-max-2026-01-23`, `qwen3-max-preview`, and the currently-active `qwen3-max-2025-09-23` — all three models emit `reasoning_content` separately from `content`. Phase 3, 4, and 5 runs confirm.
 
 **Three binding implications, updated against Phase 3 evidence:**
 
@@ -81,6 +81,26 @@ Originally observed on `qwen3.5-plus` via credential sanity-check: a trivial "re
 
 3. **Latency.** Per-run wall-clock on a 4-doc CoreWeave packet: ~3-5 minutes total. Within demo budget. The 300s per-node HTTP timeouts (added after a live `ECONNABORTED` at 120s on Extraction) are the operative ceiling.
 
-**Watch-out for model swaps** (e.g., the qwen3-max-2026-01-23 → qwen3-max-preview swap on 2026-04-25): the Evaluator parser computes `evaluator_score = sum(criteria_scores)` authoritatively. Run `0efb319c` on qwen3-max-preview returned `evaluator_score: 0` despite a passing recommendation — likely because the new model's JSON-mode output shape diverges slightly from qwen3-max-2026-01-23's, causing `criteria_scores` to be missing/malformed and the parser to fall through to default 0. Re-validate parser robustness against any new model's output shape before declaring a swap green. Documented as Phase 4 first calibration item.
+**Watch-out for model swaps** (history: qwen3-max-2026-01-23 → qwen3-max-preview on 2026-04-25; qwen3-max-preview → qwen3-max-2025-09-23 on 2026-04-26): every swap re-tests the prompt fixes empirically. The qwen3-max-preview swap surfaced two cascading bugs: (a) `evaluator_score: 0` due to the model invoking the Memo prompt's abstain rule globally rather than per-claim (root-caused as P-5 eager-bypass; fixed via per-element scoping in Memo + Evaluator prompts; commit `60c4cc2` + `077b9b2`), (b) parser robustness validated separately. The qwen3-max-2025-09-23 swap was clean — Phase 5 Cerebras run validated that the per-element scoping fixes generalize across the qwen3-max family AND across deal packets. Re-validate parser robustness against any new model's output shape before declaring a swap green; the 5-step P-5 workaround pattern is the operational playbook.
+
+## I-10 — Pipeline is deal-agnostic — 2026-04-26T17:00:00-04:00
+
+Validated empirically across two distinct deal packets without code change:
+
+- **CoreWeave** (dev iteration): 58/60 evaluator score, 17/17 valid citations, 5 red_flags including the post-P-6-fix regulatory-only detectors (`material_weakness` HIGH + `related_party_above_threshold` MEDIUM + `dual_class_structure` LOW from S-1).
+- **Cerebras** (Phase 5 generalization): pipeline ran end-to-end with no code changes, producing substantive memo + clean evaluator + 3+ red_flags (`related_party_above_threshold` MEDIUM on OpenAI Warrant + `dual_class_structure` LOW + 1 partial). Cross-source numerical agreement S-1 ↔ Cerebras Analyst Report (#2). Multi-source disambiguation `(#2)` suffix working.
+
+**What this means:**
+
+1. **Prompt fixes are model-class, not deal-class.** P-5 (eager-bypass) corrections in Memo + Evaluator prompts (per-element scoping rules + silent self-revise checks) survived a deal change AND a model swap. The fix design is robust.
+2. **Code paths are deal-agnostic.** All 7 specialists' code paths exercised cleanly on Cerebras inputs they had not seen during Phase 4 calibration. No CoreWeave-specific assumptions baked in.
+3. **D-6 architecture (hand-rolled aggregate chunk store + raw-HTTP tool-use loops) generalizes.** Both retrieval (section-targeted + union pass) and Contradiction tool-use loop ran cleanly on a different document corpus.
+
+**What it does NOT mean:**
+
+- Generalization to non-AI / non-tech / non-public-filing deals is unverified. The retrieval prompts and Portfolio Fit scoring are tuned for AI/SaaS/hardware deals. A consumer-goods or biotech deal would likely surface tuning gaps.
+- The Red Flag Detector's regulatory-only detectors depend on the deal having a regulatory filing (S-1 or equivalent) in the packet. Pre-public deals without an S-1 will exercise only the 4 extraction-based detectors.
+
+**Watch-out for future deal additions:** if quality gaps emerge on a new deal packet (e.g., a Phase 5-style backlog item), apply the Phase 4 step 3 triage pattern (surface gap → propose minimal fix → verify live → commit atomically). Do NOT rewrite prompts wholesale; per-element narrow fixes have proven robust.
 
 <!-- section:entries:end -->

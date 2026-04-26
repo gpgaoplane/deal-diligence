@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T16:45:00-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -1306,6 +1306,74 @@ Missing / intentionally skipped:
 - `.claude/memory/context.md` — could add I-10 (pipeline is deal-agnostic) borderline durable; deferring per Phase 5 rationale.
 - README.md — not edited; submission writeup is at `docs/submission-writeup.md`, README quickstart still serves "how do I run this" purpose.
 - Codex memory files — owned by Codex.
+
+## 2026-04-26T17:00:00-04:00 — Comprehensive sync sweep across managed surfaces
+
+**Context.** Will requested a comprehensive sync to ensure every managed document reflects current Phase 6-in-flight reality (Phases 0-5 closed; Phase 6 partially landed; submission writeup, demo runbook, sample-runs scaffold pushed; Loom + voice revision on Will). This is the same pattern as the 2026-04-25T19:15 stale-content sweep, scoped to post-Phase-5 + post-Phase-6-entry state.
+
+**Audit method.** Walked every row of `.collab/INDEX.md` against current state. For each managed file, asked: "does the content reflect post-Phase-5 + post-Phase-6-entry truth?" Files with stale content vs current state were updated; files that were already current got frontmatter timestamp bumps only when their INDEX rows changed.
+
+**Stale content found and corrected (7 files, 1 strategic-journal append):**
+
+1. **`README.md` Status section** — Said "Phases 0-3 complete; Phase 4 in progress" with step-by-step progress notes that were 18+ hours stale. Rewrote to reflect Phases 0-5 closed + Phase 6 in flight. Added a line at the top of the file pointing to `docs/submission-writeup.md` as the primary submission framing. Frontmatter bumped.
+2. **`AI_AGENTS.md` `## What This Project Is`** — Stack section said "LLM: Qwen3.5-Plus via Alicloud DashScope" — model name slightly stale (the active model is `qwen3-max-2025-09-23`, a member of the qwen3-max family). Test-cases line said "CoreWeave S-1 (dev, known issues), Cerebras S-1 (demo, filed 2026-04-17)" — both now validated end-to-end. Updated both lines + added Phase status line + added pointers to `docs/plans/2026-04-24-deal-diligence-{design,implementation}.md` as authoritative + added `docs/submission-writeup.md` to the planning-docs reading list. Frontmatter bumped.
+3. **`CONTEXT.md §11 Progress Log`** — Strategic journal stopped at 2026-04-24 (framework adoption). Per `I-7` and `docs/project-conventions.md §7`, §11 is framework-aligned — Claude Code may append strategic milestones. Added 2026-04-25 entries (D-6 architecture formalization + Phase 3 closure) and 2026-04-26 entries (Phase 4 closure + Phase 5 closure + Phase 6 entry). Frontmatter bumped. Will's explicit "update all relevant documents" override is the authority basis for editing CONTEXT.md (otherwise scope-locked sections require Claude Chat routing per project-conventions §7).
+4. **`docs/plans/2026-04-24-deal-diligence-implementation.md §14 Current status`** — Said "Phase 4: Not started", "Phase 5-7: Not started", "Active model: qwen3-max-preview". Rewrote with Phase-3 detail-trim + new Phase-4 closure detail (commits, model swap, P-5 + P-6 capture, RFD coverage 4-of-10 → 8-of-10) + new Phase-5 closure detail (Cerebras evidence) + new Phase-6 in-flight detail (artifacts landed + remaining Will-side work). Frontmatter bumped.
+5. **`.claude/memory/context.md` I-9** — Header said "(revised 2026-04-25T18:45:00-04:00 after Phase 3 closure)" and body said "the currently-active `qwen3-max-preview`". Updated to reflect the qwen3-max-preview → qwen3-max-2025-09-23 swap on 2026-04-26 + Phase 3+4+5 evidence. Watch-out section expanded to document both model-swap incidents (qwen3-max-2026-01-23 → qwen3-max-preview surfaced P-5 eager-bypass; qwen3-max-preview → qwen3-max-2025-09-23 was clean and Phase 5 confirmed cross-deal generalization).
+6. **`.claude/memory/context.md` I-10 (NEW)** — Added invariant capturing the Phase 5 generalization finding: pipeline is deal-agnostic, validated empirically across CoreWeave + Cerebras without code change. Three implications surfaced (prompt fixes are model-class not deal-class; code paths are deal-agnostic; D-6 architecture generalizes), two non-implications surfaced (non-AI/SaaS deals are unverified; regulatory-only RFD detectors require an S-1 in the packet), one watch-out (apply Phase 4 step 3 triage pattern to future-deal quality gaps; do NOT rewrite prompts wholesale).
+7. **`.claude/memory/decisions.md` D-6 Verification** — Added Phase 4+5 verification addendum noting D-6 generalizes across qwen3-max model tags AND across deal packets without code change. P-6 RFD wrapper fix referenced as the load-bearing example of why D-6's contract-shape changes need consumer audits.
+
+**Files audited and intentionally left unchanged:**
+
+- **`AGENTS.md`** — front-door entrypoint, framework-static content, no progress dependency.
+- **`docs/project-conventions.md`** — operational rules unchanged.
+- **`.collab/{ROUTING.md, PROTOCOL.md}`** — framework reference, no project-specific content.
+- **`.claude/CLAUDE.md`** — adapter, current.
+- **`.claude/memory/pitfalls.md`** — P-5 + P-6 already capture the Phase 4 lessons; no new pitfalls from Phase 5 (Cerebras run was clean) or Phase 6 entry (no code changes).
+- **`docs/plans/2026-04-24-deal-diligence-design.md`** — design plan content was last refined in commit `d3cd83b` for D-6; Phases 4-5 didn't touch the design surface (only prompt content + workflow.json + a code module). The §14 diff table is historical; not a live status surface.
+- **`prompts/*.md`** — no content drift; the prompt files were edited inline during Phase 4 closure (commits `60c4cc2`, `077b9b2`, `5e775a5`) and their INDEX timestamps reflect that.
+- **`code/red-flag-detector.js`** + **`code/test/red-flag-detector.test.js`** — last edited 2026-04-26T00:30 for Phase 4.A regex; no further drift.
+- **`n8n/workflow.json`** — last edited 2026-04-26T01:30 for the P-6 wrapper fix + model-swap fallback; no further drift.
+- **`schemas/*`**, **`scripts/*`**, **`docker-compose.yml`**, **`.env.example`** — no progress dependency.
+- **DESIGN.md (root) + IMPLEMENTATION.md (root)** — `status: reference-only`, frozen historical baselines.
+- **Codex memory files** (`.codex/memory/*`, `docs/agents/codex.md`) — cross-agent boundary; never edited by claude.
+
+**Watch out:**
+
+- **CONTEXT.md §11 was edited under Will's explicit override.** Per project-conventions §7, §11 is framework-aligned (Claude Code may append) — but Will's "update all relevant documents" instruction stretches further, e.g., into §5.10 if drift were found there. None was. Future "update all relevant" requests should explicitly call out CONTEXT.md scope-locked sections if Will wants those touched.
+- **The implementation-plan §14 rewrite preserves §14 diff-table addenda from D-6 commit `d3cd83b`** — those are historical v1-vs-refined records, not live status. Did not touch them.
+- **I-10 is a new invariant.** Future agents reading context.md will encounter it as durable truth. If Phase 5+ later surfaces a deal where the pipeline does NOT generalize (e.g., a non-public-filing deal), I-10 needs revision/qualification at that time, not silent override.
+- **D-6's verification addendum cross-references P-6 (RFD wrapper).** If P-6 is ever de-promoted from pitfalls.md (e.g., because the RFD wrapper is extracted to `code/rfd-wrapper.js` per the backlog), the cross-reference needs an update.
+- **All five framework agents (handful of agents on this project: Claude Code, Codex, Claude Chat, plus Will, plus Pari as evaluator)** can rely on the work-log + memory + STATUS surfaces to be accurate now. The submission writeup at `docs/submission-writeup.md` serves Pari; the rest serves Claude Code / Codex / Will.
+
+**Process flag.** This sync sweep edited multiple managed surfaces in a single logical operation. Per `docs/project-conventions.md §2` (atomic commits = one logical change per commit), all 7 file edits + INDEX timestamp refreshes belong in a SINGLE commit because they're one logical operation: "synchronize documentation surfaces with current Phase 6-in-flight reality." Resisting the temptation to split into 7 micro-commits.
+
+### Task Receipt
+Routing matrix rows hit: 5 (durable truth surfaced — I-10 added), 7 (state changed across multiple surfaces), 8 (project task status — sync sweep, no new task), 10 (cross-agent risk: I-10 is new durable truth that future agents will rely on).
+
+Updates fanned out this task:
+- `README.md` ............................................. Status section rewrite (Phases 0-5 closed + Phase 6 in flight); submission-writeup pointer added; frontmatter bumped
+- `AI_AGENTS.md` .......................................... project-summary refreshed (model name + test-case validation status + new pointers to authoritative plans + submission writeup); frontmatter bumped
+- `CONTEXT.md` ............................................ §11 strategic journal extended with 2026-04-25 (D-6 + Phase 3 close) + 2026-04-26 (Phase 4 close + Phase 5 close + Phase 6 entry) milestones; frontmatter bumped (under Will's "update all relevant documents" override)
+- `docs/plans/2026-04-24-deal-diligence-implementation.md` . §14 Current status fully rewritten phase-by-phase with Phase 4/5 closure + Phase 6 in-flight detail; frontmatter bumped
+- `.claude/memory/context.md` ............................. I-9 revised (current active model + Phase 4/5 evidence + both model-swap incident summaries); I-10 (NEW: pipeline is deal-agnostic) added; frontmatter bumped
+- `.claude/memory/decisions.md` ........................... D-6 Verification addendum (Phase 4+5 across qwen3-max model tags AND deal packets); frontmatter bumped
+- `.collab/ACTIVE.md` ..................................... claude row timestamp bumped to 17:00; frontmatter bumped
+- `.collab/INDEX.md` ...................................... 11 row timestamps bumped (AI_AGENTS, README, CONTEXT, STATUS, ACTIVE, INDEX, claude.md context/decisions/state, claude work-log, implementation plan); frontmatter bumped
+- `.claude/memory/state.md` ............................... frontmatter bumped (content already current)
+- `docs/STATUS.md` ........................................ frontmatter bumped (content already current)
+- `docs/agents/claude.md` ................................. this entry; frontmatter bumped to 17:00
+
+Missing / intentionally skipped:
+- `docs/plans/2026-04-24-deal-diligence-design.md` — Phases 4-5 didn't touch the design surface; §14 is historical diff-table, not live status.
+- `prompts/*.md`, `code/*.js`, `schemas/*`, `scripts/*`, `n8n/workflow.json`, `docker-compose.yml`, `.env.example` — no progress drift; their INDEX timestamps already reflect their last edits.
+- `AGENTS.md`, `docs/project-conventions.md`, `.collab/ROUTING.md`, `.collab/PROTOCOL.md`, `.claude/CLAUDE.md` — framework / convention static, no project-progress dependency.
+- `DESIGN.md` (root) + `IMPLEMENTATION.md` (root) — reference-only frozen baselines.
+- `.claude/memory/pitfalls.md` — P-5 + P-6 already capture the operative lessons; Phase 5 closure was clean (no new pitfalls); Phase 6 entry has no code changes.
+- Codex memory files (`.codex/memory/*`, `docs/agents/codex.md`) — cross-agent boundary; framework prohibits editing.
+- `docs/submission-writeup.md`, `docs/demo-runbook.md`, `docs/sample-runs/README.md` — landed at `da02148` in this session; no edit needed.
+- Advisor pass — not called on the mechanical sync. Edits are content-replacement against current truth, not creative work.
+- Commit — pending Will's eyeball + go-ahead.
 
 ## Handoff blocks
 

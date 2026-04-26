@@ -2,7 +2,7 @@
 status: active
 type: decisions
 owner: claude
-last-updated: 2026-04-25T18:45:00-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you need Claude's major design decisions"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -42,6 +42,8 @@ Claude Code's own decisions (implementation-level choices Claude made while buil
 **Plan edits landed (commit `d3cd83b`, 2026-04-25):** Will chose Option Y (Claude Code direct edit). 9 surgical edits across design plan §2.3 / §2.4 / §2.5 / §2.7 / §3.4 / §7 / §13 + §14 diff-table addendum; implementation plan tasks 2.0a / 3.3 / 3.5 / 3.6 + §5.4 acceptance criterion + §15 diff-table addendum. Originals preserved in §14 / §15 diff-table addenda, not silently overwritten.
 
 **Verification:** Both topologies have run end-to-end in live n8n across three Phase 3 closure runs (run_ids `14297a4c`, `1bd32e70`, `0efb319c`). Initial verification on `qwen3-max-2026-01-23`; subsequent runs on `qwen3-max-preview` after the model swap landed in commit `09f0323`. Codex's work-log entries from `2026-04-24T22:31:01-04:00` through `2026-04-25T01:31:21-04:00` document the original runtime evidence; my Phase 3 closure receipt at `2026-04-25T16:30` plus the post-closure entry at `2026-04-25T18:45` document the rest.
+
+**Phase 4+5 verification addendum (2026-04-26):** D-6 generalizes across qwen3-max model tags AND across deal packets without code change. Phase 4 added the P-6 RFD wrapper fix on top of D-6's hand-rolled aggregate chunk store (the wrapper had silently iterated `aggregated.source_manifest` as objects when D-6's contract changed it to a string array, leaving 6-of-10 RFD detectors dead since Phase 3 closure; fixed in commit `48cb64d`). Phase 4 also swapped the active model from `qwen3-max-preview` to `qwen3-max-2025-09-23` (commit `48cb64d`). Phase 5 ran the same workflow on Cerebras with no code changes; the hand-rolled retrieval store and raw-HTTP tool-use loops produced substantive memo + clean evaluator on a deal packet that the prompts had never seen during Phase 4 calibration. P-6 lesson promoted: when a contract field's shape changes (per D-6: source_manifest object[] → string[]), every consumer must be audited — n8n workflow.json's jsCode strings have no static type-checking, so silent breakage can survive multiple phases. See P-6 in `pitfalls.md` for the regression-test guidance and consumer-audit recommendation.
 
 ## D-5 — Embeddings provider: OpenRouter (nvidia/llama-nemotron-embed-vl-1b-v2:free) — 2026-04-24T19:30:00-04:00
 **Context:** Initial workflow used Alicloud DashScope `text-embedding-v4` (1024-dim). User requested switch to OpenRouter's `nvidia/llama-nemotron-embed-vl-1b-v2:free` for free-tier embeddings.

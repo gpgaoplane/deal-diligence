@@ -2,7 +2,7 @@
 status: active
 type: implementation-plan
 owner: shared
-last-updated: 2026-04-25T18:45:00-04:00
+last-updated: 2026-04-26T17:00:00-04:00
 read-if: "you are planning, executing, or reviewing a phase — this is the authoritative phased build plan with task-level routing, verification commands, and Receipt gates"
 skip-if: "your question is only about scope (CONTEXT.md) or component design (2026-04-24-deal-diligence-design.md)"
 related: [CONTEXT.md, DESIGN.md, IMPLEMENTATION.md, 2026-04-24-deal-diligence-design.md, docs/STATUS.md, .collab/ROUTING.md, .collab/PROTOCOL.md]
@@ -608,15 +608,19 @@ git log --all --full-history -p | grep -E '(API_KEY|SERVICE_ROLE_KEY|SECRET_KEY|
 
 **Phase 2:** ✅ Complete (2026-04-24) — Spike 2.0a (Qwen tool-use → D-2), spike 2.0b (ajv compile blocked → D-3 hand-rolled validator + P-1), full directory structure, docker-compose.yml, .env.example, scripts (up/down/import/export), all 7 prompt stubs, supabase-schema.sql, agent-output-schemas.json (25 $defs), red-flag-detector.js skeleton, sagard-portfolio.json, json-schema-validator.js (25/25 tests pass), meta-eval fixtures.
 
-**Phase 3:** ✅ Complete (2026-04-25) — 52-node workflow (45-node main + 5-node error sub-flow + 2-node Langfuse pair). All 7 specialists wired and runtime-verified on CoreWeave across 3 E2E runs. D-5 (OpenRouter embeddings), D-6 (formalized hand-rolled aggregate chunk store + raw-HTTP tool-use loops as canonical pattern). Pitfalls P-2/P-3/P-4 captured. Active model: `qwen3-max-preview`. Per-agent schema-validation-with-retry (3.12) deferred — parsers' shape projection sufficient for prototype.
+**Phase 3:** ✅ Complete (2026-04-25) — 52-node workflow (45-node main + 5-node error sub-flow + 2-node Langfuse pair). All 7 specialists wired and runtime-verified on CoreWeave across 3 E2E runs. D-5 (OpenRouter embeddings), D-6 (formalized hand-rolled aggregate chunk store + raw-HTTP tool-use loops as canonical pattern). Pitfalls P-2/P-3/P-4 captured. Per-agent schema-validation-with-retry (3.12) deferred — parsers' shape projection sufficient for prototype.
 
-**Phase 4:** Not started. Entry point: investigate `evaluator_score: 0` anomaly observed on qwen3-max-preview run `0efb319c`, then begin meta-eval discrimination work via `scripts/run-meta-eval.js` with upstream fixture pairs (CLI flags `--extraction --contradictions --gaps --red-flags --portfolio-fit`).
+**Phase 4:** ✅ Complete (2026-04-26) — Memo anti-empty-shell rules (rule 7 narrowing + rule 8 anti-empty-shell + 6 silent self-revise checks); Evaluator empty-upstream handling + reactive all-zero rule; meta-eval discrimination = 25 points on real CoreWeave upstream (target ≥ 20); RFD MATERIAL_WEAKNESS regex extended for phrase-first verb forms; RFD wrapper P-6 fix (source_type lookup) raised functional detector coverage from 4-of-10 to 8-of-10 on CoreWeave; Memo severity semantics for key_strengths (HIGH = institutional materiality, NOT magnitude); Extraction S-1 retrieval-query refinements (S-1 phrasing variants for company_overview + management_assessment). Active model swapped from `qwen3-max-preview` to `qwen3-max-2025-09-23` (commit `48cb64d`). Pitfalls P-5 (qwen3-max-preview eager-bypass with 5-step workaround pattern) and P-6 (contract-shape changes must propagate to all consumers) captured. Live verification on workflow `versionId: phase4-step3a-v25` produced 5 red_flags including `material_weakness HIGH` (NEW) + `related_party_above_threshold MEDIUM` (BONUS) + `dual_class_structure LOW` (BONUS). Memo + Evaluator clean.
 
-**Phase 5–7:** Not started.
+**Phase 5:** ✅ Complete (2026-04-26) — Cerebras generalization confirmed end-to-end. Pipeline ran on `test-cases/cerebras/` (4 PDFs) with no code changes. RFD: `regulatory_filing_count: 1`, `total_chunks: 289`, ≥3 flags including `related_party_above_threshold` MEDIUM (OpenAI Warrant — true positive) + `dual_class_structure` LOW (Class A common stock). Extraction populated Cerebras S-1 financials (cash $1.336B, operating loss $145.86M FY2025) with full competitor list. Cross-source numerical agreement S-1 ↔ Cerebras Analyst Report (#2). Multi-source disambiguation `(#2)` suffix working. Memo + Evaluator clean per Will. P-5 prompt fixes confirmed model-class (not deal-class). P-6 RFD wrapper fix's value re-confirmed across two deal packets.
+
+**Phase 6:** IN FLIGHT (2026-04-26) — Submission writeup at `docs/submission-writeup.md` (237 words in the headline section + reading order + 6-item production-changes list + invariants pointer + acknowledgments). Demo runbook at `docs/demo-runbook.md` (3-4 min Loom script with timestamps and voice-over text). Sample-runs scaffold at `docs/sample-runs/README.md`. Branch pushed to `origin/main` at commit `da02148`. Remaining Phase 6 work is on Will: (a) Loom recording per the runbook, (b) Loom URL slot-in (search for `<Loom URL placeholder>` in the writeup), (c) voice/style revision pass on the writeup.
+
+**Phase 7:** Not started. Entry point: submission to Pari (writeup + Loom URL + repo URL).
 
 **Current blockers:** None.
 
-**Current focus:** Awaiting user direction to begin Phase 4.
+**Current focus:** Will-side Phase 6 deliverables (Loom + URL slot-in + voice revision); after those land, Phase 6 closes and Phase 7 opens.
 
 ## §15 — Diff from original IMPLEMENTATION.md
 
