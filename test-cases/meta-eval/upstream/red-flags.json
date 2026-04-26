@@ -1,0 +1,26 @@
+{
+  "red_flags": [
+    {
+      "flag_type": "customer_concentration_extreme",
+      "severity": "HIGH",
+      "evidence": {
+        "actual_value": 77,
+        "threshold": 70,
+        "source": "CoreWeave Press Release",
+        "raw_text": null
+      },
+      "deterministic": true
+    },
+    {
+      "flag_type": "revenue_growth_anomalous",
+      "severity": "LOW",
+      "evidence": {
+        "actual_value": 700,
+        "threshold": 500,
+        "source": "CoreWeave Press Release",
+        "raw_text": null
+      },
+      "deterministic": true
+    }
+  ]
+}

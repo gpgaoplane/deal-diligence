@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T18:45:00-04:00
+last-updated: 2026-04-25T21:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -14,9 +14,13 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:current-phase:start -->
 ## Current phase
 
-**Phase 3 (Core Build) is COMPLETE.** The workflow runs end-to-end on CoreWeave: Form Trigger → ingestion → Extraction → Contradiction → Gap Analysis → Red Flag Detector → Portfolio Fit → Memo Generation → Citation Validity → Evaluator → Supabase persistence → Slack notification → Langfuse trace, with a parallel Error Trigger sub-flow handling failures. 52 total nodes. Two successful CoreWeave runs verified the chain (58/60 evaluator score, complete_high_confidence routing, 17/17 citations valid, Supabase row landed, Slack message correct, Memo institutional-grade with stage-aware risk calibration). Active chat model: `qwen3-max-preview`.
+**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase3-session2-v21` runs end-to-end on CoreWeave: Form Trigger → ingestion → Extraction → Contradiction → Gap Analysis → Red Flag Detector → Portfolio Fit → Memo Generation → Citation Validity → Evaluator → Supabase persistence → Slack notification → Langfuse trace, with a parallel Error Trigger sub-flow handling failures. 52 total nodes. Active chat model: `qwen3-max-preview`. Both Memo Generation and Evaluator prompts have been hardened (commits `60c4cc2`, `077b9b2`) against P-5 (qwen3-max-preview eager-bypass on prompts with strong abstain rules).
 
-**Phase 4 (CoreWeave dev iteration → meta-eval discrimination ≥ 20)** is the next phase. The `scripts/run-meta-eval.js` harness is already authored; needs upstream fixture pairs supplied via CLI flags for full criteria-2/3/4 calibration of the Evaluator.
+**Phase 4 (Dev Iteration) entry steps 1+2 COMPLETE.**
+- Step 1: `evaluator_score: 0` anomaly debugged → root-cause was Memo prompt's global-bypass interpretation on qwen3-max-preview → fixed → 58/60 live behavior restored.
+- Step 2: meta-eval discrimination calibrated against real CoreWeave upstream — **good=53, bad=28, gap=25 (target ≥ 20 ✓ PASS)**, bad routes to flagged_for_review, all 4 textbook defects detected as HIGH critical_issues. Per-criterion breakdown shows reasoning_coherence carries 8 of the 25 gap points, validating the strategic-incoherence detection design intent.
+
+**Phase 4 step 3 (next): CoreWeave quality backlog** — RFD verb-form regex gap, Memo HIGH-on-strength miscalibration, Extraction S-1 recall regressions.
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->

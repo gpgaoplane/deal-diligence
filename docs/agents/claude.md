@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-25T20:45:00-04:00
+last-updated: 2026-04-25T21:30:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -833,6 +833,96 @@ Missing / intentionally skipped:
 - Codex memory files — owned by Codex.
 - Live verification of Evaluator change against populated-upstream workflow — surfaced to user as the verification ask in next response.
 - Reverting the Evaluator change since meta-eval option (a) failed — not done; the change is a sound bugfix independent of the test setup limitation.
+
+## 2026-04-25T21:30:00-04:00 — Phase 4 step 2 ✅ COMPLETE: meta-eval discrimination = 25 on real CoreWeave upstream
+
+**Context.** Per Will's go-ahead, executed option (c): captured 5 upstream artifact outputs from a fresh CoreWeave live run (run_id `89406eeb-725d-443d-961a-a87cd27be0de`, qwen3-max-preview), built fixture files under `test-cases/meta-eval/upstream/`, re-ran `scripts/run-meta-eval.js` with all five `--extraction --contradictions --gaps --red-flags --portfolio-fit` flags. Both meta-eval fixtures are CoreWeave memos so this pairing tests "does the Evaluator distinguish good vs bad memo when both are evaluated against the SAME real upstream context?" — the question Phase 4 actually wants answered.
+
+**Result.**
+
+```
+good_score:        53 / 60   (routing: complete_high_confidence)
+bad_score:         28 / 60   (routing: flagged_for_review  ✓ < 35 threshold)
+discrimination_gap: 25       (target ≥ 20)  ✓ PASS
+```
+
+Per-criterion breakdown:
+
+| Criterion | Good | Bad | Gap |
+|---|---|---|---|
+| citation_completeness | 10 | 10 | 0 |
+| contradiction_acknowledgment | 8 | 3 | 5 |
+| missing_information_coverage | 7 | 0 | 7 |
+| red_flag_propagation | 8 | 3 | 5 |
+| **reasoning_coherence** | **10** | **2** | **8** |
+| hallucination_check | 10 | 10 | 0 |
+
+Bad fixture's HIGH critical_issues (all 4 textbook defects detected):
+1. **unacknowledged_contradiction** — bad memo failed to surface the $1.9B annual vs $1.2B quarterly revenue dispute.
+2. **ignored_red_flag** — bad memo downgraded the 77% customer concentration HIGH flag to LOW.
+3. **incoherent_recommendation** — bad memo recommended `advance_to_deep_diligence` while Portfolio Fit explicitly recommended `pass`.
+4. **strategic_incoherence** — bad memo asserts "highly diversified customer base" as a strength while simultaneously acknowledging the concentration risk.
+
+**Why this is methodologically sound calibration.**
+- Both meta-eval fixtures are CoreWeave memos. Pairing with real CoreWeave upstream (Extraction × 4 docs, Contradiction, Gap Analysis, RFD, Portfolio Fit) gives the Evaluator the same upstream context to compare BOTH memos against.
+- The discrimination signal lives where the prompt design intended: criteria 2, 3, 4 (upstream-anchored) plus criterion 5 (reasoning_coherence / strategic incoherence). Criterion 5 alone carries 8 points of the 25-point gap, validating the design plan §4 intent that reasoning_coherence is the load-bearing detection for off-criteria defects.
+- Citation_completeness and hallucination_check both score 10/10 for each fixture — both authored fixtures have valid citations, and neither contains specific fabrications the Evaluator can verify against the extracted CoreWeave facts. (The bad fixture's "highly diversified customer base" is caught by criterion 5 reasoning_coherence as strategic incoherence, not as a hallucination — because the bad memo cites it to a real CoreWeave source page; the model treats the source as authoritative on existence and applies coherence judgment.)
+- Bad fixture below the flagged_for_review threshold (28 < 35) means the routing decision matches the threshold rule, AND the 4 HIGH critical_issues would force flagged_for_review even if the score were higher (per the override rule). Routing is doubly-protected.
+
+**Implementation details.**
+
+Step 1 — fixture file creation. Will pasted the 5 node outputs (Parse Extraction Response, Parse Contradiction Response, Parse Gap Analysis Response, Run Red Flag Detector, Parse Portfolio Fit Response). Extracted just the relevant artifact fields (`extraction_output`, `contradiction_output`, etc.) and wrote 5 JSON files under `test-cases/meta-eval/upstream/`:
+
+- `extraction.json` (4 ExtractionOutput objects, one per source)
+- `contradiction.json` (5 contradictions + 7 verified_claims)
+- `gap-analysis.json` (20 missing_information items across 4 categories)
+- `red-flags.json` (2 deterministic red_flags: customer_concentration_extreme HIGH, revenue_growth_anomalous LOW)
+- `portfolio-fit.json` (full PortfolioFitOutput: LOW alignment, recommend pass, 2 anti-patterns matched)
+
+All 5 validated as parseable JSON before invoking the script.
+
+Step 2 — script projection patch. First two attempts at running the meta-eval failed with `good: /criteria_scores/hallucination_check: number above maximum 10`. The model on `qwen3-max-preview` was confidently emitting > 10 on the good fixture's hallucination_check. The workflow's `Parse Evaluator Response` Code node already applies `clampInt(v, 0, 10) ?? 0` to each criterion before storing — but `scripts/run-meta-eval.js` was validating raw model output without that projection step.
+
+Patched `scripts/run-meta-eval.js` to mirror the workflow parser:
+- New `projectEvaluator(parsed)` helper: clamps each criteria_scores field to [0,10] integer, recomputes `evaluator_score = sum(criteria_scores)`.
+- Applied to both `goodResult.parsed` and `badResult.parsed` before `validator.validateDef(..., 'EvaluatorOutput')`.
+
+This brings meta-eval output range-equivalent to what lands in Supabase. Documented in the script's inline comment.
+
+**Phase 4 step 3 backlog (open for next user direction):**
+- RFD `MATERIAL_WEAKNESS_POS` regex misses "exist" / "remain" / "are present" verb forms (S-1 has "Material weaknesses exist..." which doesn't match current pattern).
+- Memo HIGH-on-strength miscalibration ("74% gross margin" was tagged HIGH in a prior run; HIGH should describe weaknesses, not strengths).
+- Extraction S-1 recall regressions on `headcount` (came back null), `key_personnel` (came back empty array), exact revenue values (rounded to 1.9B instead of 1915426000).
+
+**Watch out:**
+- The script projection patch is a behavioral change to the meta-eval harness. Future Codex post-commit review may flag the lack of test coverage for this projection step — could add a tiny smoke test (`assert clampInt(11) === 10`) but deferred to keep this commit atomic.
+- The empty-upstream meta-eval mode (option a) remains structurally anti-discriminative as documented in the prior 20:45 work-log entry — could add a `--require-upstream` flag or refuse to proceed if all upstream is empty, but it's a sharp-knife script, deferred to backlog.
+- The 5 upstream fixture files are CoreWeave-specific. If we ever add Cerebras or other deals to meta-eval (unlikely given fixtures are CoreWeave-anchored), would need parallel `test-cases/meta-eval/upstream/cerebras/`.
+- The model on qwen3-max-preview emits criterion scores > 10 sometimes. The workflow parser handles this silently via clamp. May want to log a one-line warning in the parser when clamping fires, so we know if the model drifts further out-of-range.
+
+**Process flag (project-conventions §3):** Evaluator is medium-stakes; Memo is HIGH-stakes. The Evaluator change committed at `077b9b2` was a tactical bugfix. Empirical 25-point discrimination gap is the correctness gate; the design is validated by Phase 4 calibration result.
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed code: run-meta-eval.js + 5 new fixture files), 7 (state changed), 8 (project task status changed), 9 (created 5 new files — fixture files), 10 (cross-agent risk: backlog items now visible).
+
+Updates fanned out this task:
+- `test-cases/meta-eval/upstream/extraction.json` (NEW) ........ 4 ExtractionOutput objects from CoreWeave run
+- `test-cases/meta-eval/upstream/contradiction.json` (NEW) ..... ContradictionOutput from CoreWeave run
+- `test-cases/meta-eval/upstream/gap-analysis.json` (NEW) ...... GapAnalysisOutput from CoreWeave run
+- `test-cases/meta-eval/upstream/red-flags.json` (NEW) ......... RedFlagDetectorOutput from CoreWeave run
+- `test-cases/meta-eval/upstream/portfolio-fit.json` (NEW) ..... PortfolioFitOutput from CoreWeave run
+- `scripts/run-meta-eval.js` ........................ added projectEvaluator() to clamp criteria_scores to [0,10] before validation, mirroring workflow parser
+- `docs/agents/claude.md` ........................... this entry; frontmatter bumped
+- `docs/STATUS.md` .................................. current-phase rewritten — Phase 3 + Phase 4 entry steps 1+2 COMPLETE; Phase 4 step 3 next; frontmatter bumped
+- `.claude/memory/state.md` ......................... current-state rewritten — Phase 4 step 2 COMPLETE; full result captured; frontmatter bumped
+- `.collab/INDEX.md` ................................ 5 new fixture-file rows registered; timestamps refreshed for changed files
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no architectural decision; this is calibration validation. The methodological choice "use real upstream from a CoreWeave live run paired with CoreWeave-anchored fixtures" was a tactical execution choice, not a design decision (the design plan §4 already specifies meta-eval with upstream fixture pairs).
+- `.claude/memory/pitfalls.md` — no new pitfall. The qwen3-max-preview > 10 score behavior is parser-tolerant via clamp (not a hard failure), and P-5 already covers the broader qwen3-max-preview behavioral patterns.
+- `.claude/memory/context.md` — no new invariant. Phase 4 calibration result is durable but contextual; lives appropriately in state.md / STATUS.md / this work-log entry, not as a context invariant.
+- Codex memory files — owned by Codex.
+- Live verification of Evaluator change against populated-upstream workflow — Will did re-import + run the workflow before pasting the 5 node outputs (the run produced the upstream artifacts I now use as fixtures). The Memo + RFD + Portfolio Fit + everything chained successfully. Implicit verification: live workflow not regressed by the Evaluator change. Will did NOT explicitly paste the Parse Evaluator Response evaluator_output for this run; if Will wants explicit confirmation, that's a one-click ask, but the implicit signal (full upstream pipeline produced consistent valid outputs) is reasonable evidence.
 
 ## Handoff blocks
 

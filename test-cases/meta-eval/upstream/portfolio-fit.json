@@ -1,0 +1,32 @@
+{
+  "portfolio_fit": {
+    "strategic_fit": {
+      "score": 0.3,
+      "rationale": "CoreWeave operates in AI infrastructure (GPU provisioning), which falls outside Sagard's four disclosed pillars. The closest adjacency is ai_in_finance via Boosted.AI, but that pillar targets AI applications in institutional finance, not compute infrastructure."
+    },
+    "stage_fit": {
+      "score": 0.2,
+      "rationale": "Target is pursuing a public offering at $35B valuation — materially larger than Sagard's typical series B+ private growth investments and misaligned with its alternative-asset strategy focused on private markets."
+    },
+    "synergy_potential": [
+      {
+        "portfolio_company": "Boosted.AI",
+        "synergy_type": "technology_adjacency",
+        "description": "Both operate in AI-driven domains, but at different layers: Boosted.AI applies AI to portfolio management; CoreWeave provides GPU infrastructure. No direct go-to-market or product integration synergy exists.",
+        "strength": "LOW"
+      }
+    ],
+    "anti_patterns": [
+      {
+        "pattern": "large-cap AI infrastructure IPO ($10B+ valuation)",
+        "concern": "Target's deal_structure indicates a $35B public offering, exceeding Sagard's typical check size and deviating from its private-market, growth-stage mandate."
+      },
+      {
+        "pattern": "companies with extreme customer concentration (>70% top-2) and no diversification roadmap",
+        "concern": "Verified claim shows top two customers represented 77% of 2024 revenue; no credible diversification roadmap is presented in the materials to mitigate this fiduciary risk."
+      }
+    ],
+    "overall_thesis_alignment": "LOW",
+    "recommended_action": "pass"
+  }
+}

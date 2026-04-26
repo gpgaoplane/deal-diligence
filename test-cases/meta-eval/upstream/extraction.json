@@ -1,0 +1,284 @@
+[
+  {
+    "source_name": "CoreWeave Press Release",
+    "source_type": "press_release",
+    "extracted_facts": {
+      "company_overview": {
+        "description": "AI cloud provider",
+        "founding_year": null,
+        "headcount": null,
+        "geography": "New Jersey",
+        "citations": ["CoreWeave Press Release p. 1"]
+      },
+      "investment_thesis": {
+        "bull_case": "We are the AI Hyperscaler driving the AI revolution, likening AI to a new industrial revolution.",
+        "citations": ["CoreWeave Press Release p. 1"]
+      },
+      "market_opportunity": {
+        "tam": null,
+        "sam": null,
+        "som": null,
+        "growth_drivers": [],
+        "citations": []
+      },
+      "business_model": {
+        "revenue_streams": [],
+        "pricing": null,
+        "citations": []
+      },
+      "financial_performance": {
+        "revenue_latest_period": {"value": 1900000000, "period": null, "citation": "CoreWeave Press Release p. 1"},
+        "revenue_growth_yoy": {"value": 700, "period": "most recent year", "citation": "CoreWeave Press Release p. 1"},
+        "gross_margin": {"value": null, "citation": null},
+        "operating_loss": {"value": null, "period": null, "citation": null},
+        "cash_balance": {"value": null, "period": null, "citation": null},
+        "monthly_burn": {"value": null, "period": null, "citation": null}
+      },
+      "unit_economics": {"cac": null, "ltv": null, "payback_period_months": null, "citations": []},
+      "competitive_position": {"competitors": [], "moat": null, "citations": []},
+      "management_assessment": {
+        "key_personnel": ["Michael Intrator", "Brannin McBee", "Brian Venturo"],
+        "key_person_risk": null,
+        "citations": ["CoreWeave Press Release p. 1"]
+      },
+      "customer_profile": {
+        "concentration_top_1": null,
+        "concentration_top_2": 77,
+        "concentration_top_5": null,
+        "retention_rate": null,
+        "citations": ["CoreWeave Press Release p. 1"]
+      },
+      "risk_factors": [
+        {"factor": "Material weaknesses in the company's capacity to manage its internal financial reporting and IT systems.", "citation": "CoreWeave Press Release p. 1"}
+      ],
+      "management_claims": [
+        {"claim": "We are the AI Hyperscaler driving the AI revolution.", "citation": "CoreWeave Press Release p. 1"},
+        {"claim": "Boasting about its arsenal of 250,000 GPUs distributed across its 32 data centers.", "citation": "CoreWeave Press Release p. 1"}
+      ],
+      "deal_structure": {
+        "valuation": 35000000000,
+        "amount_raising": null,
+        "use_of_proceeds": null,
+        "citations": ["CoreWeave Press Release p. 1"]
+      }
+    }
+  },
+  {
+    "source_name": "CoreWeave Analyst Report",
+    "source_type": "analyst_report",
+    "extracted_facts": {
+      "company_overview": {
+        "description": "CoreWeave rents GPUs by the hour for AI workloads, operating as a cloud compute provider with 250,000+ NVIDIA GPUs across 33 data centers in the U.S. and Europe.",
+        "founding_year": 2017,
+        "headcount": null,
+        "geography": "U.S. and Europe",
+        "citations": ["CoreWeave Analyst Report p. ~1", "CoreWeave Analyst Report p. ~2"]
+      },
+      "investment_thesis": {
+        "bull_case": "Hyperscalers like Microsoft and Google face compute shortages, creating demand for CoreWeave to act as a 'shadow cloud' renting GPU capacity, enabling explosive growth backed by long-term contracts.",
+        "citations": ["CoreWeave Analyst Report p. ~1"]
+      },
+      "market_opportunity": {"tam": null, "sam": null, "som": null, "growth_drivers": [], "citations": []},
+      "business_model": {
+        "revenue_streams": ["Hourly GPU rentals for AI workloads"],
+        "pricing": "Hourly rental pricing",
+        "citations": ["CoreWeave Analyst Report p. ~6"]
+      },
+      "financial_performance": {
+        "revenue_latest_period": {"value": 1200000000, "period": "Q2 2025", "citation": "CoreWeave Analyst Report p. ~2"},
+        "revenue_growth_yoy": {"value": null, "period": null, "citation": null},
+        "gross_margin": {"value": null, "citation": null},
+        "operating_loss": {"value": 290500000, "period": "Q2 2025", "citation": "CoreWeave Analyst Report p. ~2"},
+        "cash_balance": {"value": 2050000000, "period": "mid-2025", "citation": "CoreWeave Analyst Report p. ~4"},
+        "monthly_burn": {"value": null, "period": null, "citation": null}
+      },
+      "unit_economics": {"cac": null, "ltv": null, "payback_period_months": null, "citations": []},
+      "competitive_position": {
+        "competitors": ["AWS", "Azure", "GCP", "Nebius Group", "Lambda Labs"],
+        "moat": "Proximity to NVIDIA and preferential chip access; lacks proprietary tools or brand moat.",
+        "citations": ["CoreWeave Analyst Report p. ~6", "CoreWeave Analyst Report p. ~8"]
+      },
+      "management_assessment": {
+        "key_personnel": ["Nitin Agrawal (CFO)"],
+        "key_person_risk": null,
+        "citations": ["CoreWeave Analyst Report p. ~6"]
+      },
+      "customer_profile": {
+        "concentration_top_1": 71,
+        "concentration_top_2": null,
+        "concentration_top_5": null,
+        "retention_rate": null,
+        "citations": ["CoreWeave Analyst Report p. ~1", "CoreWeave Analyst Report p. ~2"]
+      },
+      "risk_factors": [
+        {"factor": "Heavy leverage: $11.17 billion total debt as of June 30, 2025, mostly high-interest and secured by depreciating GPUs.", "citation": "CoreWeave Analyst Report p. ~2"},
+        {"factor": "Customer concentration: 71% of Q2 2025 revenue from Customer A (likely Microsoft).", "citation": "CoreWeave Analyst Report p. ~2"},
+        {"factor": "Negative operating cash flow: H1 2025 operating cash flow was negative.", "citation": "CoreWeave Analyst Report p. ~1"},
+        {"factor": "Refinancing risk: $986 million due in 2025 and $4.2 billion in 2026 must be refinanced at potentially high rates.", "citation": "CoreWeave Analyst Report p. ~1"},
+        {"factor": "Collateral depreciation: Loans secured by GPUs that lose value rapidly with new chip releases.", "citation": "CoreWeave Analyst Report p. ~1"},
+        {"factor": "Covenant exposure: Must meet leverage and contracted-revenue tests; breach risks tighter terms or paydowns.", "citation": "CoreWeave Analyst Report p. ~1"},
+        {"factor": "Material weaknesses disclosed in internal controls per S-1 filing.", "citation": "CoreWeave Analyst Report p. ~2"}
+      ],
+      "management_claims": [
+        {"claim": "Secured, self-amortizing DDTL debt is tied to specific customer contracts and structured to cover interest and principal while generating positive free cash flow during contract term.", "citation": "CoreWeave Analyst Report p. ~6"},
+        {"claim": "Projects are evaluated on a 2.5-year payback (on an adjusted EBITDA basis).", "citation": "CoreWeave Analyst Report p. ~6"},
+        {"claim": "Operations require substantial capital expenditures and will require additional capital to fund business and support growth.", "citation": "CoreWeave Analyst Report p. ~2"}
+      ],
+      "deal_structure": {
+        "valuation": 35000000000,
+        "amount_raising": null,
+        "use_of_proceeds": null,
+        "citations": ["CoreWeave Analyst Report p. ~1"]
+      }
+    }
+  },
+  {
+    "source_name": "CoreWeave Analyst Report (#2)",
+    "source_type": "analyst_report",
+    "extracted_facts": {
+      "company_overview": {
+        "description": "CoreWeave is a supercharged cloud provider built specifically for AI, renting out high-performance GPUs to companies like Meta, Microsoft, and AI startups.",
+        "founding_year": null,
+        "headcount": null,
+        "geography": null,
+        "citations": ["CoreWeave Analyst Report (#2) p. ~1"]
+      },
+      "investment_thesis": {
+        "bull_case": "AI model sizes and compute needs keep growing, fueling GPU demand. CoreWeave remains a key player, benefiting from scarcity pricing. Revenue skyrockets beyond expectations as AI startups and enterprises lock in long-term contracts.",
+        "citations": ["CoreWeave Analyst Report (#2) p. ~9"]
+      },
+      "market_opportunity": {
+        "tam": null,
+        "sam": null,
+        "som": null,
+        "growth_drivers": ["Global shortage of high-end GPUs", "AI models growing larger and demanding more compute", "Renting out NVIDIA GPUs at a markup", "Long-term contracts providing revenue visibility"],
+        "citations": ["CoreWeave Analyst Report (#2) p. ~2", "CoreWeave Analyst Report (#2) p. ~4"]
+      },
+      "business_model": {
+        "revenue_streams": ["Access to AI infrastructure (compute, networking)", "Proprietary managed software and application services", "Storage sold separately on per gigabyte per month basis"],
+        "pricing": "Per GPU per hour for compute; per gigabyte per month for storage",
+        "citations": ["CoreWeave Analyst Report (#2) p. ~1"]
+      },
+      "financial_performance": {
+        "revenue_latest_period": {"value": 1900000000, "period": "2024", "citation": "CoreWeave Analyst Report (#2) p. ~1"},
+        "revenue_growth_yoy": {"value": 737, "period": "2024", "citation": "CoreWeave Analyst Report (#2) p. ~1"},
+        "gross_margin": {"value": null, "citation": null},
+        "operating_loss": {"value": -863000000, "period": "2024", "citation": "CoreWeave Analyst Report (#2) p. ~1"},
+        "cash_balance": {"value": 1400000000, "period": "as of report date", "citation": "CoreWeave Analyst Report (#2) p. ~4"},
+        "monthly_burn": {"value": null, "period": null, "citation": null}
+      },
+      "unit_economics": {
+        "cac": null,
+        "ltv": null,
+        "payback_period_months": 30,
+        "citations": ["CoreWeave Analyst Report (#2) p. ~8"]
+      },
+      "competitive_position": {
+        "competitors": ["AWS", "Google Cloud", "Azure"],
+        "moat": "Purpose-built AI cloud platform with optimized networking, storage, and Kubernetes-based orchestration for AI workloads, unlike generalized hyperscaler clouds.",
+        "citations": ["CoreWeave Analyst Report (#2) p. ~2"]
+      },
+      "management_assessment": {
+        "key_personnel": ["Michael Intrator (CEO)", "Brian Venturo (CTO)", "Brannin McBee (Chief Strategy Officer)"],
+        "key_person_risk": true,
+        "citations": ["CoreWeave Analyst Report (#2) p. ~6"]
+      },
+      "customer_profile": {
+        "concentration_top_1": 62,
+        "concentration_top_2": null,
+        "concentration_top_5": null,
+        "retention_rate": null,
+        "citations": ["CoreWeave Analyst Report (#2) p. ~4"]
+      },
+      "risk_factors": [
+        {"factor": "Heavy reliance on NVIDIA for GPU supply; if NVIDIA prioritizes other customers or sells directly, CoreWeave is in trouble.", "citation": "CoreWeave Analyst Report (#2) p. ~2"},
+        {"factor": "Customer concentration risk: Microsoft accounted for 62% of 2024 revenue.", "citation": "CoreWeave Analyst Report (#2) p. ~4"},
+        {"factor": "$15B in long-term lease commitments not classified as debt, masking true leverage and creating risk if AI demand weakens.", "citation": "CoreWeave Analyst Report (#2) p. ~4"},
+        {"factor": "Hyperscalers (AWS, Azure, Google) could compete directly and squeeze CoreWeave out.", "citation": "CoreWeave Analyst Report (#2) p. ~2"}
+      ],
+      "management_claims": [
+        {"claim": "CoreWeave Cloud Platform is purpose-built for running AI workloads such as model training and inference at maximum performance and efficiency.", "citation": "CoreWeave Analyst Report (#2) p. ~4"},
+        {"claim": "Generalized clouds operated by hyperscalers were not built to serve the specific requirements of AI.", "citation": "CoreWeave Analyst Report (#2) p. ~2"}
+      ],
+      "deal_structure": {
+        "valuation": 35000000000,
+        "amount_raising": 3500000000,
+        "use_of_proceeds": null,
+        "citations": ["CoreWeave Analyst Report (#2) p. ~8"]
+      }
+    }
+  },
+  {
+    "source_name": "CoreWeave S-1 Filing",
+    "source_type": "regulatory_filing",
+    "extracted_facts": {
+      "company_overview": {
+        "description": "CoreWeave provides AI infrastructure and proprietary managed software and application services through its CoreWeave Cloud Platform, optimized for high-performance AI workloads including training and inference.",
+        "founding_year": null,
+        "headcount": null,
+        "geography": "United States and Europe (facilities in 15 U.S. states and three countries; European headquarters in London with expansion in UK, Spain, Sweden, and Norway)",
+        "citations": ["CoreWeave S-1 Filing p. 211", "CoreWeave S-1 Filing p. 310"]
+      },
+      "investment_thesis": {
+        "bull_case": "CoreWeave will be one of the most sought-after platforms for the world's AI workloads due to its performance, scale, efficiency, and ability to capture both training and inference workloads across evolving hardware generations.",
+        "citations": ["CoreWeave S-1 Filing p. 29", "CoreWeave S-1 Filing p. 290"]
+      },
+      "market_opportunity": {
+        "tam": 399000000000,
+        "sam": null,
+        "som": null,
+        "growth_drivers": ["AI adoption across all sectors driving productivity gains and cost efficiencies", "Training infrastructure ($330B by 2028)", "Inference infrastructure ($49B by 2028)", "Workload monitoring ($20B by 2028)", "Expansion into regulated industries (banks, pharma, HFT)", "International demand for local AI deployment"],
+        "citations": ["CoreWeave S-1 Filing p. 29", "CoreWeave S-1 Filing p. 290"]
+      },
+      "business_model": {
+        "revenue_streams": ["Access to AI infrastructure (compute, networking) via CoreWeave Cloud Platform", "Proprietary managed software and application services", "Storage (sold separately per gigabyte per month)"],
+        "pricing": "Per GPU per hour for compute/networking; per gigabyte per month for storage",
+        "citations": ["CoreWeave S-1 Filing p. 211"]
+      },
+      "financial_performance": {
+        "revenue_latest_period": {"value": 1915426000, "period": "Year Ended December 31, 2024", "citation": "CoreWeave S-1 Filing p. 229"},
+        "revenue_growth_yoy": {"value": 737, "period": "2023 to 2024", "citation": "CoreWeave S-1 Filing p. 229"},
+        "gross_margin": {"value": null, "citation": null},
+        "operating_loss": {"value": -863448000, "period": "Year Ended December 31, 2024", "citation": "CoreWeave S-1 Filing p. 229"},
+        "cash_balance": {"value": 1361083000, "period": "As of December 31, 2024", "citation": "CoreWeave S-1 Filing p. 197"},
+        "monthly_burn": {"value": null, "period": null, "citation": null}
+      },
+      "unit_economics": {"cac": null, "ltv": null, "payback_period_months": null, "citations": []},
+      "competitive_position": {
+        "competitors": ["AWS", "Microsoft Azure", "Google Cloud", "Crusoe", "Lambda"],
+        "moat": "Proven track record of performance and reliability at scale; proprietary software tailored for AI; automation and ease of use; speed to market with latest GPUs; security; brand awareness in AI community; customer support focused on AI use cases",
+        "citations": ["CoreWeave S-1 Filing p. 326"]
+      },
+      "management_assessment": {
+        "key_personnel": [],
+        "key_person_risk": null,
+        "citations": []
+      },
+      "customer_profile": {
+        "concentration_top_1": 62,
+        "concentration_top_2": 77,
+        "concentration_top_5": null,
+        "retention_rate": null,
+        "citations": ["CoreWeave S-1 Filing p. 314"]
+      },
+      "risk_factors": [
+        {"factor": "A substantial portion of our revenue is driven by a limited number of our customers, and the loss of, or a significant reduction in, spend from one or a few of our top customers would adversely affect our business.", "citation": "CoreWeave S-1 Filing p. 33"},
+        {"factor": "We have identified material weaknesses in our internal control over financial reporting.", "citation": "CoreWeave S-1 Filing p. 33"},
+        {"factor": "Our substantial indebtedness could materially adversely affect our financial condition.", "citation": "CoreWeave S-1 Filing p. 33"},
+        {"factor": "We face intense competition and could lose market share to our competitors.", "citation": "CoreWeave S-1 Filing p. 33"},
+        {"factor": "We have a history of generating net losses and may not achieve or sustain profitability.", "citation": "CoreWeave S-1 Filing p. 33"}
+      ],
+      "management_claims": [
+        {"claim": "CoreWeave will be one of the most sought-after platforms for the world's AI workloads.", "citation": "CoreWeave S-1 Filing p. 29"},
+        {"claim": "Our platform is ideally situated to capture all AI workloads — both inference and training.", "citation": "CoreWeave S-1 Filing p. 29"},
+        {"claim": "We are a leading-edge provider of choice for new customers due to continuous learning applied across clusters.", "citation": "CoreWeave S-1 Filing p. 290"}
+      ],
+      "deal_structure": {
+        "valuation": null,
+        "amount_raising": 2300000000,
+        "use_of_proceeds": "Approximately $1.0 billion to repay 2024 Term Loan Facility; approximately $12 million for tax withholding obligations related to RSU Net Settlement; approximately $500 million held as restricted cash to secure DDTL 2.0 Facility; remainder for working capital and general corporate purposes including product development, G&A, capex, and potential acquisitions",
+        "citations": ["CoreWeave S-1 Filing p. 38", "CoreWeave S-1 Filing p. 193"]
+      }
+    }
+  }
+]

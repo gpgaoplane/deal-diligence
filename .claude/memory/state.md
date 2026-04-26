@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-25T20:45:00-04:00
+last-updated: 2026-04-25T21:30:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -10,24 +10,33 @@ skip-if: "status != active or last-updated <= your watermark"
 # Claude — Live State
 
 <!-- section:current-state:start -->
-**Branch:** `main` (53+ commits ahead of origin/main; not pushed).
-**Active task:** **Phase 4 entry in progress.** Workflow at `versionId: phase3-session2-v21` (Memo + Evaluator prompts both fixed for qwen3-max-preview eager-bypass pattern, P-5 added). Step 1 of Phase 4 entry plan ✅ COMPLETE: `evaluator_score: 0` anomaly debugged → root-caused to Memo prompt's global-bypass interpretation on qwen3-max-preview → fixed → live CoreWeave re-run produces 58/60 Evaluator score (same quality as prior `qwen3-max-2026-01-23` baseline restored). Step 2 partial: meta-eval option (a) ran but failed gap target — the empty-upstream test is structurally anti-discriminative because the rich fixture content has nothing to validate against. Confirmed the Evaluator change is a SOUNDNESS fix (preemptive bypass bug) not a regression risk; safe to keep.
-**Pause point:** Awaiting Will to: (1) re-run live workflow to confirm Evaluator change doesn't regress 58/60; (2) capture 5 node outputs from the live CoreWeave run to enable option (c): real-upstream meta-eval. Walk-through pending in next user turn.
-**Blockers:** None — empirical proof that meta-eval option (a) is a dead end means option (c) is the operative path forward.
+**Branch:** `main` (54+ commits ahead of origin/main; not pushed).
+**Active task:** **Phase 4 entry COMPLETE — meta-eval discrimination gap target hit (25 points; target ≥ 20).** Workflow at `versionId: phase3-session2-v21`. Both Memo + Evaluator prompts now hardened against qwen3-max-preview eager-bypass (P-5). Three Phase 4 artifacts committed: (1) Memo prompt anti-empty-shell rules + silent checks (`60c4cc2`); (2) Evaluator empty-upstream handling + reactive all-zero (commit pending); (3) 5 upstream fixture files + run-meta-eval.js projection patch + this state update (next commit).
+
+Phase 4 step 2 final result on real CoreWeave upstream:
+- good_score = 53/60 → routing: complete_high_confidence
+- bad_score  = 28/60 → routing: flagged_for_review  ✓ < 35 threshold
+- discrimination_gap = 25  (target ≥ 20: ✓ PASS)
+- bad fixture's 4 textbook defects all detected as HIGH critical_issues
+- reasoning_coherence carries 8 points of the gap (strategic incoherence test working)
+
+**Pause point:** Phase 4 step 3 (CoreWeave dev iteration on quality backlog: RFD verb-form, Memo HIGH-on-strength miscalibration, Extraction recall regressions) — open for next user direction. Phases 5–7 (Cerebras generalization → demo → submission) all unlocked.
+**Blockers:** None.
 <!-- section:current-state:end -->
 
 <!-- section:next-steps:start -->
-1. **Phase 4 step 1 ✅ COMPLETE** — `evaluator_score: 0` debugged and fixed. Memo Generation prompt rules 7–8 + silent checks (commit `60c4cc2`); Evaluator prompt empty-upstream handling + reactive all-zero (commit pending). 58/60 live behavior restored.
-2. **Phase 4 step 2 (in progress) — meta-eval discrimination ≥ 20.** Option (a) empty-upstream sanity check ran; failed gap target (45/48 with bad ≥ good — anti-discriminative). Moving to **option (c): real upstream from CoreWeave run**. Capture 5 node outputs from the live workflow, save as JSON fixture files under `test-cases/meta-eval/upstream/`, re-run `scripts/run-meta-eval.js --extraction <path> --contradictions <path> --gaps <path> --red-flags <path> --portfolio-fit <path>`. Both meta-eval fixtures are CoreWeave memos so this pairing is methodologically sound.
-3. **Phase 4 step 3 (after step 2 closes) — quality backlog.** RFD `MATERIAL_WEAKNESS_POS` regex verb-forms; Memo HIGH-on-strength miscalibration; Extraction S-1 recall regressions.
-4. **Phase 5** — Cerebras generalization (re-run pipeline against the 4 Cerebras docs, no code changes expected).
+1. **Phase 4 step 1 ✅ COMPLETE** — `evaluator_score: 0` debugged. Memo prompt anti-empty-shell rules (commit `60c4cc2`).
+2. **Phase 4 step 2 ✅ COMPLETE** — meta-eval discrimination = 25 (target ≥ 20). Evaluator empty-upstream handling (commit `077b9b2`); 5 upstream fixture files + `run-meta-eval.js` projection patch (next commit).
+3. **Phase 4 step 3 (next) — CoreWeave quality backlog.** Top items: (a) RFD `MATERIAL_WEAKNESS_POS` regex misses "exist" / "remain" / "are present" verb forms; (b) Memo HIGH-on-strength miscalibration for "74% gross margin"; (c) Extraction S-1 recall regressions for `headcount`, `key_personnel`, exact revenue values.
+4. **Phase 5** — Cerebras generalization (re-run pipeline against the 4 Cerebras docs; no code changes expected).
 5. **Phase 6** — demo + 250-word written explanation.
 6. **Phase 7** — submission to Pari.
 7. **Other backlog (do not gate forward):**
    - Cosmetic: `supabase_id` missing from Slack footer (n8n unwraps single-row REST response).
    - Codex post-commit reviews of medium-stakes prompts (Gap Analysis, Portfolio Fit, Evaluator).
    - 3.12 schema-validation-with-retry machinery DEFERRED — parsers' shape projection sufficient for prototype.
-   - Consider proactive empty-shell audit of Gap Analysis + Portfolio Fit prompts per P-5 regression-test guidance (may have same eager-bypass risk on qwen3-max-preview).
+   - Consider proactive empty-shell audit of Gap Analysis + Portfolio Fit prompts per P-5 regression-test guidance (same eager-bypass risk on qwen3-max-preview).
+   - Reduce empty-upstream meta-eval setup limitation — currently option (a) of meta-eval is anti-discriminative on rich fixtures; document as a script limitation or add a "skip if upstream empty" mode.
 <!-- section:next-steps:end -->
 
 <!-- section:open-questions:start -->

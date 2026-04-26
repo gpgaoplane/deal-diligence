@@ -215,6 +215,33 @@ async function main() {
   console.error('Running Evaluator on bad fixture...');
   const badResult = await callEvaluator(badMemo, systemPrompt, upstream);
 
+  // Mirror the production workflow's Parse Evaluator Response projection:
+  // clamp criteria_scores to [0,10], recompute evaluator_score as the sum.
+  // This keeps meta-eval output range-equivalent to what lands in Supabase
+  // when the model occasionally emits criterion scores above 10.
+  function projectEvaluator(parsed) {
+    const clamp = (v) => {
+      if (typeof v !== 'number' || Number.isNaN(v)) return 0;
+      const n = Math.round(v);
+      return n < 0 ? 0 : n > 10 ? 10 : n;
+    };
+    const cs = parsed.criteria_scores || {};
+    const criteriaScores = {
+      citation_completeness: clamp(cs.citation_completeness),
+      contradiction_acknowledgment: clamp(cs.contradiction_acknowledgment),
+      missing_information_coverage: clamp(cs.missing_information_coverage),
+      red_flag_propagation: clamp(cs.red_flag_propagation),
+      reasoning_coherence: clamp(cs.reasoning_coherence),
+      hallucination_check: clamp(cs.hallucination_check),
+    };
+    const sum = Object.values(criteriaScores).reduce((a, b) => a + b, 0);
+    parsed.criteria_scores = criteriaScores;
+    parsed.evaluator_score = sum;
+    return parsed;
+  }
+  goodResult.parsed = projectEvaluator(goodResult.parsed);
+  badResult.parsed = projectEvaluator(badResult.parsed);
+
   // Validate Evaluator outputs against EvaluatorOutput schema.
   const goodValid = validator.validateDef(goodResult.parsed, 'EvaluatorOutput');
   const badValid = validator.validateDef(badResult.parsed, 'EvaluatorOutput');
