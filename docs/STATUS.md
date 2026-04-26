@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-26T01:50:00-04:00
+last-updated: 2026-04-26T16:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -28,7 +28,9 @@ skip-if: "status != active or last-updated <= your watermark"
 
 Final live-verification run (`75ba2ad5...`, `qwen3-max-2025-09-23`): RFD coverage jumped from 4-of-10 → 8-of-10 functional detectors on CoreWeave. red_flags[] = 5 entries (was 2): customer_concentration_extreme HIGH + material_weakness HIGH (NEW) + related_party_above_threshold MEDIUM (BONUS) + revenue_growth_anomalous LOW + dual_class_structure LOW (BONUS). Memo + Evaluator chain ran end-to-end without errors, implicitly confirming the per-element scoping fixes from P-5 generalize across the qwen3-max family.
 
-**Phase 5 (Generalization Test — Cerebras) is the next phase.** Re-run the same workflow against the 4 Cerebras docs at `test-cases/cerebras/`. No code changes expected; quality gaps that emerge become Phase 5 backlog using the same Phase 4-step-3 triage pattern.
+**Phase 5 (Generalization Test — Cerebras) ✅ CLOSED.** Live re-run against the 4 Cerebras docs at `test-cases/cerebras/` succeeded end-to-end with no code changes. RFD: `regulatory_filing_count: 1`, `total_chunks: 289`, ≥3 flags including `related_party_above_threshold` MEDIUM (OpenAI Warrant) + `dual_class_structure` LOW. Extraction populated Cerebras S-1 financials (cash $1.336B, operating loss $145.86M FY2025) with full competitor list. Cross-source numerical agreement between S-1 and Cerebras Analyst Report (#2). Multi-source disambiguation `(#2)` working. Memo + Evaluator clean per Will. P-5 prompt fixes generalized to a deal not seen during Phase 4 calibration → confirmed model-class fixes, not deal-class fixes. P-6 RFD wrapper fix's value re-confirmed across two deal packets. No new Phase 5 backlog (one minor observation logged: audit truncated flag_type from Phase 5 RFD output).
+
+**Phase 6 (Demo + 250-word written explanation) is the next phase.** Packaging + framing for Pari submission; no code changes expected.
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->

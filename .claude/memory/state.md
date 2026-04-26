@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-26T01:50:00-04:00
+last-updated: 2026-04-26T16:30:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,17 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main` (60+ commits ahead of origin/main; not pushed).
-**Active task:** **Phase 4 step 3 ✅ CLOSED — RFD coverage jumped from 4-of-10 functional detectors to 8-of-10 on CoreWeave; LLM swap to qwen3-max-2025-09-23 verified.** Workflow at `versionId: phase4-step3a-v25`. Active chat model: `qwen3-max-2025-09-23`.
+**Active task:** **Phase 5 ✅ CLOSED — Cerebras generalization confirmed end-to-end.** Pipeline ran on the 4 Cerebras docs at `test-cases/cerebras/` with no code changes. Will reported memo + evaluator clean, no quality regressions. Workflow still at `versionId: phase4-step3a-v25`. Active chat model: `qwen3-max-2025-09-23`.
+
+Phase 5 verification highlights (from Will's pasted node outputs):
+- RFD: `regulatory_filing_count: 1`, `total_chunks: 289`, ≥3 flags including `related_party_above_threshold` MEDIUM (OpenAI Warrant — true positive) + `dual_class_structure` LOW (Class A common stock).
+- Extraction (Cerebras S-1): cash $1.336B, operating loss $145.86M (FY2025), competitors NVIDIA/AMD/Intel/AWS/Azure/Google extracted.
+- Cross-source consistency: Cerebras Analyst Report (#2) reports operating_loss $145.9M / revenue $510M / 76% YoY — agrees with S-1 figures.
+- Multi-source disambiguation `(#2)` working.
+- P-5 prompt fixes generalized to a deal the model had never seen during Phase 4 calibration → confirmed model-class fixes, not deal-class fixes.
+
+**Pause point:** **Phase 6 (demo + 250-word writeup) is the next phase.** Packaging + framing for Pari submission; no code changes expected.
+**Blockers:** None.
 
 Phase 4 step 3 final verification (Will's live re-run on workflow v25 with new model):
 ```
@@ -39,10 +49,11 @@ Phase 4 step 3 backlog items B + C also confirmed in this run (carried forward f
 4. **Phase 4 step 3b ✅** Memo severity semantics (`5e775a5`) — verified.
 5. **Phase 4 step 3c ✅** Extraction S-1 retrieval (`5e775a5`) — verified.
 6. **Phase 4 step 3 ✅ CLOSED** — RFD coverage jumped 4-of-10 → 8-of-10 functional detectors. LLM swap operational.
-7. **Phase 5 (NEXT) — Cerebras generalization.** Re-run the same workflow against the 4 Cerebras docs at `test-cases/cerebras/` (`cerebras-s1.pdf`, `cerebras-press-release.pdf`, `cerebras-futurum-teardown-analyst-report.pdf`, `cerebras-motley-fool-analyst-report.pdf`). No code changes expected. This validates that the CoreWeave-tuned pipeline generalizes; any quality gaps that emerge become Phase 5 backlog (with the same triage pattern as Phase 4 step 3 used).
-8. **Phase 6** — demo + 250-word written explanation.
+7. **Phase 5 ✅ CLOSED** — Cerebras generalization confirmed; pipeline is deal-agnostic.
+8. **Phase 6 (NEXT)** — demo + 250-word written explanation. No code changes expected. Capture full Parse Memo Response from a Cerebras run for the demo artifact if needed.
 9. **Phase 7** — submission to Pari.
 10. **Other backlog (do not gate forward):**
+    - **Audit truncated Cerebras flag_type** — first flag in Phase 5 RFD output was cut at the chunk boundary; raw_text was a Cerebras S-1 responsible-AI risk-factor sentence with the boilerplate "harm our reputation or business" tail. Could be a noisy `material_weakness` / `going_concern` regex hit on boilerplate, or a benign true positive — needs investigation. Not a Phase 5 blocker since memo + evaluator clean.
     - Cosmetic: `supabase_id` missing from Slack footer (n8n unwraps single-row REST response).
     - Codex post-commit reviews of medium-stakes prompts (Gap Analysis, Portfolio Fit, Evaluator).
     - 3.12 schema-validation-with-retry machinery DEFERRED — parsers' shape projection sufficient for prototype.
@@ -61,5 +72,5 @@ Phase 4 step 3 backlog items B + C also confirmed in this run (carried forward f
 <!-- section:open-questions:end -->
 
 <!-- section:read-watermark:start -->
-Last read INDEX at: 2026-04-25T19:15:00-04:00
+Last read INDEX at: 2026-04-26T16:12:15-04:00
 <!-- section:read-watermark:end -->

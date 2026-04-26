@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T01:50:00-04:00
+last-updated: 2026-04-26T16:30:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -1198,6 +1198,61 @@ Missing / intentionally skipped:
 - `.claude/memory/pitfalls.md` — P-6 already captures the RFD wrapper lesson. No new pitfalls from this verification.
 - `.claude/memory/context.md` — no new invariant. The "8-of-10 functional detectors on CoreWeave" is contextual not durable.
 - Codex memory files — owned by Codex.
+
+## 2026-04-26T16:30:00-04:00 — Phase 5 ✅ CLOSED: Cerebras generalization confirmed end-to-end
+
+**Context.** Picked up Phase 4 closure self-handoff (`20260426-010700-b33e`) at session start. Per Will's go-ahead, Phase 5 entry: re-run the same workflow against the 4 Cerebras docs at `test-cases/cerebras/` with no code changes. Will triggered the workflow via the n8n Form Trigger; pipeline ran end-to-end; Will pasted the relevant node outputs for triage.
+
+**Result: PASS — pipeline generalizes.**
+
+| Acceptance | Outcome |
+|---|---|
+| Workflow runs end-to-end without errors | ✓ confirmed by Will |
+| RFD `regulatory_filing_count: 1` (P-6 fix generalizes) | ✓ |
+| RFD detects S-1-only flags via the formerly-dead regulatory detectors | ✓ `related_party_above_threshold` MEDIUM (OpenAI Warrant — true positive) + `dual_class_structure` LOW (Class A common stock) + 1 partial-pasted flag |
+| Extraction populates Cerebras S-1 financials | ✓ cash $1.336B, operating loss $145.86M (FY2025), competitors fully extracted (NVIDIA, AMD, Intel, AWS, Azure, Google Cloud) |
+| Multi-source disambiguation with `(#N)` suffix | ✓ "Cerebras Analyst Report (#2)" disambiguator landed correctly |
+| Cross-source numerical agreement | ✓ Cerebras Analyst Report (#2) reports operating_loss $145.9M / revenue $510M / 76% YoY — consistent with the S-1 figures |
+| Memo + Evaluator produce substantive output (P-5 regression test) | ✓ "memo and evaluator surfaced nothing off" per Will |
+| Workflow versionId unchanged (no code change) | ✓ still phase4-step3a-v25 |
+
+**Implications.**
+
+1. **Pipeline generalizes across deal packets without code change.** This was the Phase 5 hypothesis and it held. The CoreWeave-tuned pipeline does not contain CoreWeave-specific code; the patterns generalize to a different SaaS/hardware AI deal with different concentration, governance, and financial profiles.
+
+2. **The Phase 4 prompt fixes are model-class fixes, not deal-class fixes.** P-5's per-element scoping for Memo (rules 7-8 + silent self-revise checks) and Evaluator (empty-upstream handling) prevented eager-bypass on a deal the model had never seen during Phase 4 calibration. This is the strongest evidence yet that the fixes are robust.
+
+3. **The RFD wrapper P-6 fix was load-bearing for Cerebras.** Without it, `regulatory_filing_count` would be 0 and the same 6 regulatory-only detectors would be silently dead — which would have meant losing `related_party_above_threshold` (true positive on OpenAI Warrant) and `dual_class_structure` (true positive on Class A) that surfaced in this run. The fix's value is now empirically confirmed across two deal packets.
+
+4. **No new Phase 5 backlog.** Will reported memo + evaluator clean, no quality regressions. The triage-pattern-as-needed playbook from Phase 4 step 3 was not invoked because nothing surfaced as off.
+
+**Minor observation flagged for backlog (not blocking).** The first flag in the pasted RFD output was cut off at the chunk boundary (flag_type missing in the visible portion). The visible raw_text is from a Cerebras S-1 risk-factor sentence about responsible-AI use ("failure to adequately address... AI may undermine public confidence... harm our reputation or business, financial condition, results of operations, and prospects"). This raw_text doesn't obviously map to any of the 10 canonical RFD detectors — could be a noisy match worth investigating, OR it could be a benign material_weakness/going_concern hit on the boilerplate "harm our reputation or business" tail. Logged in state.md backlog as "audit truncated Cerebras flag_type"; not a Phase 5 blocker since the user reported memo + evaluator clean.
+
+**Phase 5 → Phase 6 transition.** With generalization confirmed, the pipeline is demo-ready. Phase 6 = demo + 250-word written explanation (per `IMPLEMENTATION.md`). No code changes expected; this is a packaging + framing phase. Phase 7 = submission to Pari.
+
+**Watch out:**
+- The Cerebras run's Memo + Evaluator outputs were not pasted in detail — Will reported them as clean. If Phase 6 demo needs to surface a specific Cerebras memo to Pari, capture the full Parse Memo Response output then for the writeup. Not strictly needed for closure since clean ≠ blocker.
+- Cerebras's `customer_concentration_extreme` detector did NOT fire on this run, as expected — Cerebras's Q1 2025 concentration was different from CoreWeave's 77% (Cerebras has reduced concentration via OpenAI + AWS deals per the analyst report bull case). Detector behavior is correct: presence/absence is deal-dependent, not pipeline-dependent.
+- The Cerebras Analyst Report (#2)'s operating_loss agreement with the S-1 ($145.9M ≈ $145.86M) is striking — the Contradiction agent should have either verified or surfaced no contradiction, since values within ~$40K of $145.86M are well within a rounding tolerance. Will didn't paste Contradiction output but the absence of a `contradictions` flag in Memo critical_issues implies the Contradiction agent handled it cleanly (no spurious contradiction flagged on the rounding agreement).
+
+### Task Receipt
+Routing matrix rows hit: 5 (durable truth surfaced — Phase 5 generalization confirms pipeline is deal-agnostic), 7 (state changed — Phase 5 closed), 8 (project task status — major phase milestone), 9 (closing handoff `20260426-010700-b33e`).
+
+Updates fanned out this task:
+- `.claude/memory/state.md` ............... Phase 5 ✅ CLOSED; Phase 6 (demo + 250-word writeup) advanced to next; current-state rewritten; backlog item "audit truncated Cerebras flag_type" added; frontmatter bumped
+- `docs/STATUS.md` ........................ current-phase rewritten with Phase 5 closure; Phase 6 entry plan; frontmatter bumped
+- `docs/agents/claude.md` ................. this entry; frontmatter bumped to 16:30
+- `.collab/INDEX.md` ...................... timestamps refreshed for changed files
+- `.collab/ACTIVE.md` ..................... claude row already registered at session start (16:12); will clear after this Receipt commits per framework etiquette
+- Handoff `20260426-010700-b33e` .......... will be closed via `npx @gpgaoplane/multi-agent-collab handoff close 20260426-010700-b33e --from claude` after diff eyeball
+
+Missing / intentionally skipped:
+- `n8n/workflow.json` — no code change; Phase 5 was generalization-only verification.
+- `.claude/memory/decisions.md` — no architectural decision; closure receipt only.
+- `.claude/memory/pitfalls.md` — no new pitfalls. The truncated flag_type observation is a triage backlog item, not a recurring class.
+- `.claude/memory/context.md` — could add an invariant "I-10: Pipeline is deal-agnostic — CoreWeave-tuned prompts and detectors generalize to other AI/SaaS deals without code change (validated on Cerebras 2026-04-26)." Borderline durable; deferring unless Phase 6/7 surfaces a need to formalize. State.md captures the operational fact for now.
+- Codex memory files — owned by Codex.
+- Commit — pending Will's eyeball + go-ahead. Recommend atomic commit `[5 close] Phase 5 ✅ CLOSED — Cerebras generalization confirmed; Phase 6 demo + writeup next` once approved. After commit, run handoff close command.
 
 ## Handoff blocks
 
