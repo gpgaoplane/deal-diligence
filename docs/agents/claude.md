@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T16:30:00-04:00
+last-updated: 2026-04-26T16:45:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -1253,6 +1253,59 @@ Missing / intentionally skipped:
 - `.claude/memory/context.md` — could add an invariant "I-10: Pipeline is deal-agnostic — CoreWeave-tuned prompts and detectors generalize to other AI/SaaS deals without code change (validated on Cerebras 2026-04-26)." Borderline durable; deferring unless Phase 6/7 surfaces a need to formalize. State.md captures the operational fact for now.
 - Codex memory files — owned by Codex.
 - Commit — pending Will's eyeball + go-ahead. Recommend atomic commit `[5 close] Phase 5 ✅ CLOSED — Cerebras generalization confirmed; Phase 6 demo + writeup next` once approved. After commit, run handoff close command.
+
+## 2026-04-26T16:45:00-04:00 — Phase 6 entry: writeup + demo runbook + sample-runs scaffold; pushed to origin
+
+**Context.** Will authorized Phase 6 entry with three decisions: (1) writeup at `docs/submission-writeup.md`, (2) Loom recording as primary demo + supporting captured outputs, (3) push to origin now. Executed in that order.
+
+**Action.**
+
+1. **Push to origin** — `git push origin main`. 60+ commits ahead of `origin/main` since Phase 0; landed clean on `d3320c9` (the Phase 5 closure handoff-close). Repo is now publicly visible at `github.com/gpgaoplane/deal-diligence`.
+
+2. **Submission writeup** — `docs/submission-writeup.md` (~880 words full file; 237 words in the headline two-paragraph section). Structure:
+   - Top: 250-word two-paragraph summary hitting what / how / engineering-decisions / scale-bottlenecks / scale-path. Headline scoreboard: CoreWeave 58/60 + Cerebras generalized end-to-end.
+   - "How to read this submission" table with 10-row reading order (writeup → Loom → README → design plan → impl plan → sample-runs → workflow.json → prompts → RFD code+tests → work log).
+   - Loom URL placeholder for Will to fill post-recording.
+   - "What I'd change in a production version" — six items ordered by triggering condition (pgvector at >50MB, modules+tests for embedded JS, retry-then-bypass for schema validation, per-specialist concurrency, audit-query layer, HITL UI).
+   - Key invariants section pointing at I-1, I-2, I-3, I-8, I-9 from `.claude/memory/context.md`.
+   - Acknowledgments naming multi-agent-collab framework + Claude Code + Codex + Claude Chat as design assist; explicit attribution that authorship and architectural calls are Will's.
+
+3. **Demo runbook** — `docs/demo-runbook.md` (~120 lines). Pre-recording checklist (n8n up, browser tabs ordered, .env loaded, Cerebras as recommended demo deal). Recording sequence with explicit timestamps, voice-over text per section so Will doesn't compose live, post-recording checklist, things-to-avoid-showing list (.env, P-5/P-6 work-log entries, pre-deadline framing, Codex memory), failure-mode contingencies for workflow errors / Slack webhook fails / Loom crash.
+
+4. **Sample-runs scaffold** — `docs/sample-runs/README.md` capture-index with file-naming convention + 7-node capture list per future run. Directory empty at submission time. Privacy note explicit: all sample inputs are public documents, no Sagard-internal data.
+
+**Why these three artifacts and not just the writeup.** Pari's evaluation lens is "AI Builder / Forward Deployed Engineer" — she's hiring someone who needs to build customer-facing AI systems with engineering rigor. The writeup is the framing. The Loom is the proof of work in a non-text channel. The sample-runs scaffold demonstrates the audit-replay claim — anyone can fork the repo and replay against the captured outputs, validating I-2.
+
+**Watch out:**
+- The writeup voice is mine. Recommend Will reads aloud once and revises sentence-level cadence before submission. Numbers and engineering claims can stay; sentence structure is yours to own.
+- Loom URL placeholder is `<Loom URL placeholder>` — search for that exact string in `docs/submission-writeup.md` and replace post-recording.
+- The "How to read this submission" table assumes Pari clicks through GitHub. If submission is via a different channel (email attachment), some links won't resolve.
+- Three of the six "What I'd change in production" items are already on backlog in `.claude/memory/state.md` next-steps. If Will ships one before submission, update both surfaces in lockstep.
+- The acknowledgments section discloses the multi-agent collaboration + two AI agents. Intentional disclosure beats hidden authorship that gets discovered. Personal-judgment claim is in the "authorship and architectural calls are mine" sentence; expand if voice revision goes that direction.
+- Cerebras was chosen as the recommended demo deal because the OpenAI Warrant flag is institutionally recognizable. Will may prefer CoreWeave for the 58/60 evaluator headline; if so, swap the runbook's "test-cases/cerebras" references for "test-cases/coreweave" and keep the talking points.
+
+**Process flag.** Submission writeup is high-stakes content destined for an external party. Voice/style revision by Will is a NEEDED step before submission, not optional. The runbook and sample-runs README are operational and don't need voice revision.
+
+### Task Receipt
+Routing matrix rows hit: 1 (created 3 new docs), 7 (state changed — Phase 6 in flight), 8 (project task status — Phase 6 entry), 9 (created 3 new files).
+
+Updates fanned out this task:
+- `docs/submission-writeup.md` (NEW) ............ 250-word framing + reading order + production-changes list + invariants pointer + acknowledgments
+- `docs/demo-runbook.md` (NEW) .................. Loom recording script with timestamps, voice-over text, pre/post checklists, failure-mode contingencies
+- `docs/sample-runs/README.md` (NEW) ............ capture-index for end-to-end run outputs; directory otherwise empty
+- `.collab/INDEX.md` ............................ 3 new file rows registered; INDEX last-updated bumped
+- `.claude/memory/state.md` ..................... current-state rewritten — Phase 6 in flight; next-steps re-numbered; frontmatter bumped
+- `docs/STATUS.md` .............................. current-phase rewritten — Phase 6 in flight; Phase 7 entry plan; frontmatter bumped
+- `docs/agents/claude.md` ....................... this entry; frontmatter bumped to 16:45
+
+Missing / intentionally skipped:
+- `n8n/workflow.json` — no code change.
+- `prompts/*.md` — no edits.
+- `.claude/memory/decisions.md` — no architectural decision; submission packaging is execution.
+- `.claude/memory/pitfalls.md` — no new pitfalls.
+- `.claude/memory/context.md` — could add I-10 (pipeline is deal-agnostic) borderline durable; deferring per Phase 5 rationale.
+- README.md — not edited; submission writeup is at `docs/submission-writeup.md`, README quickstart still serves "how do I run this" purpose.
+- Codex memory files — owned by Codex.
 
 ## Handoff blocks
 

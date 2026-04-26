@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-26T16:30:00-04:00
+last-updated: 2026-04-26T16:45:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -30,7 +30,9 @@ Final live-verification run (`75ba2ad5...`, `qwen3-max-2025-09-23`): RFD coverag
 
 **Phase 5 (Generalization Test — Cerebras) ✅ CLOSED.** Live re-run against the 4 Cerebras docs at `test-cases/cerebras/` succeeded end-to-end with no code changes. RFD: `regulatory_filing_count: 1`, `total_chunks: 289`, ≥3 flags including `related_party_above_threshold` MEDIUM (OpenAI Warrant) + `dual_class_structure` LOW. Extraction populated Cerebras S-1 financials (cash $1.336B, operating loss $145.86M FY2025) with full competitor list. Cross-source numerical agreement between S-1 and Cerebras Analyst Report (#2). Multi-source disambiguation `(#2)` working. Memo + Evaluator clean per Will. P-5 prompt fixes generalized to a deal not seen during Phase 4 calibration → confirmed model-class fixes, not deal-class fixes. P-6 RFD wrapper fix's value re-confirmed across two deal packets. No new Phase 5 backlog (one minor observation logged: audit truncated flag_type from Phase 5 RFD output).
 
-**Phase 6 (Demo + 250-word written explanation) is the next phase.** Packaging + framing for Pari submission; no code changes expected.
+**Phase 6 (Demo + 250-word written explanation) IN FLIGHT.** Submission writeup at `docs/submission-writeup.md` (237 words in the 250-word headline section), demo runbook at `docs/demo-runbook.md` (3-4 min Loom script), sample-runs index at `docs/sample-runs/README.md`. Branch pushed to `origin/main` at commit `d3320c9`. Loom recording + URL slot-in are on Will; revisions to writeup voice are on Will.
+
+**Phase 7** — submission to Pari (writeup + Loom URL + repo URL).
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->

@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-26T16:30:00-04:00
+last-updated: 2026-04-26T16:45:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -10,8 +10,10 @@ skip-if: "status != active or last-updated <= your watermark"
 # Claude — Live State
 
 <!-- section:current-state:start -->
-**Branch:** `main` (60+ commits ahead of origin/main; not pushed).
-**Active task:** **Phase 5 ✅ CLOSED — Cerebras generalization confirmed end-to-end.** Pipeline ran on the 4 Cerebras docs at `test-cases/cerebras/` with no code changes. Will reported memo + evaluator clean, no quality regressions. Workflow still at `versionId: phase4-step3a-v25`. Active chat model: `qwen3-max-2025-09-23`.
+**Branch:** `main` (pushed to origin at `d3320c9` after Phase 5 closure).
+**Active task:** **Phase 6 IN FLIGHT — submission writeup + demo runbook authored, awaiting Loom recording.** Three new files: `docs/submission-writeup.md` (237 words in the 250-word section), `docs/demo-runbook.md` (3-4 min Loom script), `docs/sample-runs/README.md` (capture index, directory empty pending recording-day captures). Loom URL is a placeholder in the writeup — Will fills after recording.
+
+**Phase 5 ✅ CLOSED — Cerebras generalization confirmed end-to-end (carried forward).** Pipeline ran on the 4 Cerebras docs at `test-cases/cerebras/` with no code changes. Will reported memo + evaluator clean, no quality regressions. Workflow still at `versionId: phase4-step3a-v25`. Active chat model: `qwen3-max-2025-09-23`.
 
 Phase 5 verification highlights (from Will's pasted node outputs):
 - RFD: `regulatory_filing_count: 1`, `total_chunks: 289`, ≥3 flags including `related_party_above_threshold` MEDIUM (OpenAI Warrant — true positive) + `dual_class_structure` LOW (Class A common stock).
@@ -20,7 +22,7 @@ Phase 5 verification highlights (from Will's pasted node outputs):
 - Multi-source disambiguation `(#2)` working.
 - P-5 prompt fixes generalized to a deal the model had never seen during Phase 4 calibration → confirmed model-class fixes, not deal-class fixes.
 
-**Pause point:** **Phase 6 (demo + 250-word writeup) is the next phase.** Packaging + framing for Pari submission; no code changes expected.
+**Pause point:** Phase 6 work-streams partially landed; Loom recording is on Will. After Loom URL slot-in, Phase 6 closes and Phase 7 (submission to Pari) opens.
 **Blockers:** None.
 
 Phase 4 step 3 final verification (Will's live re-run on workflow v25 with new model):
@@ -50,8 +52,14 @@ Phase 4 step 3 backlog items B + C also confirmed in this run (carried forward f
 5. **Phase 4 step 3c ✅** Extraction S-1 retrieval (`5e775a5`) — verified.
 6. **Phase 4 step 3 ✅ CLOSED** — RFD coverage jumped 4-of-10 → 8-of-10 functional detectors. LLM swap operational.
 7. **Phase 5 ✅ CLOSED** — Cerebras generalization confirmed; pipeline is deal-agnostic.
-8. **Phase 6 (NEXT)** — demo + 250-word written explanation. No code changes expected. Capture full Parse Memo Response from a Cerebras run for the demo artifact if needed.
-9. **Phase 7** — submission to Pari.
+8. **Phase 6 IN FLIGHT** —
+    - ✅ `docs/submission-writeup.md` authored (237 words in the headline section; outranges, demo-walk references, what-I'd-change list, invariants pointer)
+    - ✅ `docs/demo-runbook.md` authored (recording sequence + pre-checklist + failure-mode contingencies + things-to-not-show)
+    - ✅ `docs/sample-runs/README.md` authored as capture index; directory empty until Loom day
+    - ⏳ **Will: record Loom per `docs/demo-runbook.md`, then paste URL into the placeholder in `docs/submission-writeup.md`** (search for `<Loom URL placeholder>`)
+    - ⏳ **Will: optionally capture the Loom-day run's Parse Memo Response + Parse Evaluator Response into `docs/sample-runs/`** (recommended but not blocking)
+    - ⏳ **Will: review `docs/submission-writeup.md` voice/content** — current draft is from my voice; revise for personal tone before submitting
+9. **Phase 7** — submission to Pari (writeup + Loom URL + repo URL).
 10. **Other backlog (do not gate forward):**
     - **Audit truncated Cerebras flag_type** — first flag in Phase 5 RFD output was cut at the chunk boundary; raw_text was a Cerebras S-1 responsible-AI risk-factor sentence with the boilerplate "harm our reputation or business" tail. Could be a noisy `material_weakness` / `going_concern` regex hit on boilerplate, or a benign true positive — needs investigation. Not a Phase 5 blocker since memo + evaluator clean.
     - Cosmetic: `supabase_id` missing from Slack footer (n8n unwraps single-row REST response).
