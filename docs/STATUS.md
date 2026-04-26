@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-26T01:30:00-04:00
+last-updated: 2026-04-26T01:50:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -14,16 +14,21 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:current-phase:start -->
 ## Current phase
 
-**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase4-step3a-v25` runs end-to-end on CoreWeave: Form Trigger → ingestion → Extraction → Contradiction → Gap Analysis → Red Flag Detector → Portfolio Fit → Memo Generation → Citation Validity → Evaluator → Supabase persistence → Slack notification → Langfuse trace, with a parallel Error Trigger sub-flow handling failures. 52 total nodes. **Active chat model: `qwen3-max-2025-09-23`** (swapped from qwen3-max-preview 2026-04-26).
+**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase4-step3a-v25` runs end-to-end on CoreWeave. 52 total nodes. **Active chat model: `qwen3-max-2025-09-23`** (swapped 2026-04-26).
 
-Both Memo Generation and Evaluator prompts have been hardened (commits `60c4cc2`, `077b9b2`) against P-5 (qwen3-max-preview eager-bypass on prompts with strong abstain rules); the same prompt fixes should generalize to qwen3-max-2025-09-23 since they're per-element scoping rules rather than model-specific.
+**Phase 4 (Dev Iteration) ✅ ALL ENTRY STEPS COMPLETE.**
 
-**Phase 4 (Dev Iteration) — steps 1+2 COMPLETE; step 3 in progress.**
-- Step 1: `evaluator_score: 0` anomaly debugged → Memo prompt anti-empty-shell rules (`60c4cc2`) → 58/60 live behavior restored.
-- Step 2: meta-eval discrimination calibrated against real CoreWeave upstream — **good=53, bad=28, gap=25 (target ≥ 20 ✓ PASS)**, bad routes to flagged_for_review, all 4 textbook defects detected as HIGH critical_issues. Reasoning_coherence carries 8 of the 25 gap points.
-- Step 3 progress: RFD MATERIAL_WEAKNESS regex extended for phrase-first verb forms (`43f6d28`, 43/43 unit tests passing); Memo severity semantics added with key_strengths anti-pattern call-out (`5e775a5`); Extraction S-1 retrieval queries broadened for headcount + key_personnel S-1 phrasings (`5e775a5`). First live verification surfaced a DEEPER pre-existing bug: the RFD wrapper jsCode iterated `aggregated.source_manifest` expecting `{source_name, source_type}` objects, but per D-6 it's a string array — `sourceTypeBySource` was always empty, all 6 regulatory-only detectors (material_weakness, going_concern, dual_class, etc.) silently no-opped from Phase 3 closure forward. **Fixed (P-6, commit pending)** by switching to `extractionOutputs`-iteration. Items B (Memo severity) and C (S-1 Extraction recall) verified working in the same first-verification run.
+| Step | Description | Status | Commit |
+|---|---|---|---|
+| 1 | Debug `evaluator_score: 0` → Memo anti-empty-shell rules | ✅ | `60c4cc2` |
+| 2 | Meta-eval discrimination ≥ 20 → achieved 25-point gap | ✅ | `c3bf7af` + `077b9b2` |
+| 3a | RFD MATERIAL_WEAKNESS regex + wrapper P-6 fix | ✅ | `43f6d28` + `48cb64d` |
+| 3b | Memo severity semantics for strengths | ✅ | `5e775a5` |
+| 3c | Extraction S-1 retrieval-query refinements | ✅ | `5e775a5` |
 
-**Phase 4 step 3 final verification (Will):** re-import workflow + re-run on CoreWeave with new model. Acceptance: `rfd_meta.regulatory_filing_count: 1` AND `red_flags[]` contains `material_weakness HIGH` from the S-1.
+Final live-verification run (`75ba2ad5...`, `qwen3-max-2025-09-23`): RFD coverage jumped from 4-of-10 → 8-of-10 functional detectors on CoreWeave. red_flags[] = 5 entries (was 2): customer_concentration_extreme HIGH + material_weakness HIGH (NEW) + related_party_above_threshold MEDIUM (BONUS) + revenue_growth_anomalous LOW + dual_class_structure LOW (BONUS). Memo + Evaluator chain ran end-to-end without errors, implicitly confirming the per-element scoping fixes from P-5 generalize across the qwen3-max family.
+
+**Phase 5 (Generalization Test — Cerebras) is the next phase.** Re-run the same workflow against the 4 Cerebras docs at `test-cases/cerebras/`. No code changes expected; quality gaps that emerge become Phase 5 backlog using the same Phase 4-step-3 triage pattern.
 <!-- section:current-phase:end -->
 
 <!-- section:done:start -->
