@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-24T19:45:00-04:00
+last-updated: 2026-04-25T18:45:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -185,6 +185,7 @@ For any new [HTTP Request | Extract from File | similar] → Code-node pair in t
 **See also:** `n8n/workflow.json`
 - "Extract Embedding" (after HTTP Request) — reaches back to Text Chunker
 - "Text Chunker" (after Extract from File) — reaches back to Split Per-Document
-Both demonstrate the pattern.
+- "Build Slack Message" (after Insert Deal Memo / HTTP Request to Supabase) — reaches back to "Build Supabase Record" for memo + evaluator data (3.16w fix landed in commit `c0ee968`)
+All three demonstrate the pattern. P-4 has now hit three distinct nodes in this workflow; treat any new HTTP Request → Code-node pair as guilty-until-proven-innocent.
 
 <!-- section:entries:end -->

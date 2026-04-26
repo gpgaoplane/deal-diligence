@@ -2,7 +2,7 @@
 status: active
 type: context
 owner: claude
-last-updated: 2026-04-24T04:15:00-04:00
+last-updated: 2026-04-25T18:45:00-04:00
 read-if: "you need durable project truths as understood by Claude"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -69,18 +69,18 @@ Per-run estimate: ~$0.55–$1.10 (200K+ input + 20K output + 40K embedding token
 
 **Why this is a durable truth and not just a plan section:** Phase 6's 250-word submission answers "what breaks first at 10x?" — this invariant sources that answer. If the Evaluator, Memo Generation, or Portfolio Fit prompts later mention scaling, they should reference these five bottlenecks, not "LLM costs scale linearly." Cross-referenced in `docs/plans/2026-04-24-deal-diligence-design.md §5`.
 
-## I-9 — qwen3.5-plus is a reasoning model — 2026-04-24T04:15:00-04:00
+## I-9 — Qwen3-Max family on DashScope is a reasoning model — 2026-04-24T04:15:00-04:00 (revised 2026-04-25T18:45:00-04:00 after Phase 3 closure)
 
-Empirically verified via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208` — i.e., ~97% of output tokens were internal reasoning, not visible content. Response shape is `{"content": "pong", "reasoning_content": "<chain-of-thought>"}`.
+Originally observed on `qwen3.5-plus` via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208`. Response shape is `{"content": "<final>", "reasoning_content": "<chain-of-thought>"}`. Behavior carries forward to `qwen3-max-2026-01-23` and the currently-active `qwen3-max-preview` — Phase 3 runs confirm both models emit `reasoning_content` separately from `content`.
 
-**Three binding implications:**
+**Three binding implications, updated against Phase 3 evidence:**
 
-1. **Cost model underestimates.** Design plan §5 assumed ~24K output tokens/run at $0.55–$1.10/deal. Real output will be 2–4× higher due to reasoning. Refined estimate: ~$1.50–$3.00/deal. **Scaling conclusions unchanged** — cost is still not the #1 bottleneck. Update the cost model in the design plan after Phase 3 produces real multi-agent run numbers.
+1. **Cost model.** Per-run actuals (CoreWeave, run_id `0efb319c`): Extraction (2 docs) + Contradiction + Gap + Portfolio Fit + Memo + Evaluator ≈ ~200K-300K total tokens at qwen3-max-preview rates. Cost remains under the I-8 estimate; cost is still NOT the #1 bottleneck.
 
-2. **JSON-output parsing risk.** If n8n's AI Agent node concatenates `content` + `reasoning_content` before JSON parsing, structured outputs break. The Extraction / Contradiction / Memo-Gen / Evaluator schemas all require pure JSON. Phase 2 spike 2.0a MUST explicitly verify that only `content` is consumed by schema validation, not the concatenation. If concatenation happens: post-process to strip `reasoning_content` before the schema validator Code node.
+2. **JSON-output parsing.** Risk RESOLVED for the live raw-HTTP topology (per D-6): all chat-completions calls are direct `POST /chat/completions` with `response_format: { type: 'json_object' }`. Parsers read `data.choices[0].message.content` only — `reasoning_content` never reaches the schema-shape projection. The original concern was the n8n AI Agent node's LangChain wrapper potentially concatenating fields; D-6 routed around it. **Re-emerges as risk** if a future specialist is rewired through the AI Agent node — verify the wrapper isolates `content` before trusting schema validation.
 
-3. **Latency budget.** ~200 reasoning tokens × ~30ms/token ≈ 6s/call × 7 calls = ~40s added per run. Live demo budget tightens. Options if the demo stalls: (a) use `reasoning_effort: "low"` if DashScope exposes it, (b) switch to a non-reasoning model for some specialists (e.g., Evaluator could use `qwen-plus` base), (c) cache good runs for fallback.
+3. **Latency.** Per-run wall-clock on a 4-doc CoreWeave packet: ~3-5 minutes total. Within demo budget. The 300s per-node HTTP timeouts (added after a live `ECONNABORTED` at 120s on Extraction) are the operative ceiling.
 
-**Where to verify:** DashScope OpenAI-compat endpoint doesn't document `reasoning_effort` clearly; check Alicloud's native API or test empirically in spike 2.0a.
+**Watch-out for model swaps** (e.g., the qwen3-max-2026-01-23 → qwen3-max-preview swap on 2026-04-25): the Evaluator parser computes `evaluator_score = sum(criteria_scores)` authoritatively. Run `0efb319c` on qwen3-max-preview returned `evaluator_score: 0` despite a passing recommendation — likely because the new model's JSON-mode output shape diverges slightly from qwen3-max-2026-01-23's, causing `criteria_scores` to be missing/malformed and the parser to fall through to default 0. Re-validate parser robustness against any new model's output shape before declaring a swap green. Documented as Phase 4 first calibration item.
 
 <!-- section:entries:end -->

@@ -2,7 +2,7 @@
 status: active
 type: readme
 owner: shared
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-25T18:45:00-04:00
 read-if: "you are a human or agent landing on this repo and want the quickstart"
 skip-if: "you already know this repo"
 ---
@@ -39,13 +39,22 @@ Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a 
 
 ## Running
 
-Phases 1–2 (environment setup + scaffolding) are planned in the authoritative implementation plan. Once scaffolded:
-
 ```bash
+cp .env.example .env     # fill in real values for the 4 services
 ./scripts/up.sh          # start local n8n (http://localhost:5678)
 ./scripts/down.sh        # tear down
 ```
 
+Then import the workflow once the n8n container is up:
+
+```bash
+./scripts/import-workflow.sh   # imports n8n/workflow.json
+```
+
+Trigger a run via the Form Trigger node in the n8n UI, uploading the test-case PDFs from `test-cases/coreweave/` or `test-cases/cerebras/`.
+
 ## Status
 
-Phase 0 (Planning Lock) complete. Framework migration complete. Refined design + implementation plans committed. Ready for implementation Phase 1 (Environment Setup) — see [`docs/STATUS.md`](docs/STATUS.md).
+**Phases 0 – 3 complete.** End-to-end pipeline runs on CoreWeave producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. 52-node workflow (45-node main path + 5-node error sub-flow + 2-node Langfuse pair). Active model: `qwen3-max-preview`.
+
+**Phase 4 (CoreWeave dev iteration → meta-eval discrimination ≥ 20)** is the next phase. See [`docs/STATUS.md`](docs/STATUS.md) for current phase, recent runs, and Phase 4 entry points.

@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-25T16:30:00-04:00
+last-updated: 2026-04-25T18:45:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -99,37 +99,27 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:in-progress:start -->
 ## In progress
 
-- `n8n/workflow.json` now has a live-verified Extraction specialist path, but Extraction quality still needs follow-up tuning before final memo-eval hardening.
-- `n8n/workflow.json` now includes a live-verified Contradiction Variant A path; D-2 is effectively confirmed for the current hand-rolled HTTP tool-use loop.
-- A live rerun hit provider latency at `Call Extraction Agent` (`ECONNABORTED` after 120s) before Contradiction verification could even begin. Workflow has since been hardened to use 300s timeouts on all long-running chat-completions nodes.
-- A subsequent live rerun reached `Parse Contradiction Tool Calls` and exposed a workflow-shape bug: the node was emitting multiple items while still in `runOnceForEachItem` mode. This has been corrected to `runOnceForAllItems`, so that failure also does not count as a D-2 tool-use failure.
-- The first successful Contradiction run confirmed tool-use works, but revealed a prompt-quality issue: the agent sometimes treated broad directional support (e.g. "more than half") as corroboration for exact numeric claims (e.g. `62%`). The prompt was tightened twice, and the follow-up rerun on `qwen3-max-preview` removed the main `Microsoft 62%` false corroboration. One narrower detail-merging caveat remains for some `CORROBORATED` wording (for example adding modifiers like `more than` or extra sub-details not fully shared by all citations), but the user explicitly accepted the current quality as sufficient to proceed.
-- The adopted Extraction prompt exists both in `prompts/extraction-agent.md` and embedded in the workflow's `Build Extraction Request` node; these must stay aligned.
-- The adopted Contradiction Variant A prompt exists in `prompts/contradiction-agent.tool-use.md` and is also embedded into the workflow's `Build Contradiction Request` node; these must stay aligned.
-- Extraction follow-up backlog from the verified run:
-- S-1 `headcount` came back `null` despite earlier evidence that the filing contains that fact.
-- `management_assessment.key_personnel` came back empty on the S-1.
-- `financial_performance.revenue_latest_period` regressed to a rounded `1.9B` figure instead of the earlier more exact value.
-- Current retrieval cap (`24` regular, `6` union) is much healthier than the earlier 54-chunk stuffing pass, but may still need query / ranking refinement for best recall.
-- Remaining Phase 3 implementation after Contradiction is open: Gap Analysis, Red Flag Detector integration, Portfolio Fit, Citation Validity / retry machinery, Memo Generation, Evaluator, Supabase writes, Slack, and Langfuse.
+Nothing in active flight. Phase 3 is closed and observable. Awaiting explicit user direction to begin Phase 4.
 <!-- section:in-progress:end -->
 
 <!-- section:up-next:start -->
 ## Up next
 
-**Immediate next tasks from the current baseline:**
+**Phase 4 entry (await user direction):**
 
-- **Move to task `3.7`** — Begin Gap Analysis prompt work and wiring from the now-accepted Extraction + Contradiction baseline.
-- **Extraction quality tuning backlog** — improve retrieval / prompt grounding so high-value fields like headcount, key personnel, and exact revenue figures are recovered more consistently.
-- **Contradiction quality backlog** — optional future tightening: keep `CORROBORATED` claims at the exact shared wording supported by all citations, even when the current output is directionally acceptable.
-- **Tasks 3.7–3.15** — Gap Analysis, Red Flag Detector integration, Portfolio Fit, Citation Validity, Memo Generation, Evaluator, routing IF, and Supabase persistence.
-- **Tasks 3.18w–3.20w** — Helper scripts: run-meta-eval.js, validate-memo-citations.js, validate-fixture.js.
-- **Phase 3 exit criterion:** one successful end-to-end run on CoreWeave producing a memo in Supabase with all 7 agents green.
+1. **First calibration item: investigate `evaluator_score: 0` anomaly** in run `0efb319c-...` on `qwen3-max-preview`. Likely Parse Evaluator Response parser fall-through to default 0 because qwen3-max-preview's JSON-mode output shape diverges slightly from qwen3-max-2026-01-23. Inspect raw model output vs parser logic; tighten parser or prompt as needed.
+2. **Meta-eval discrimination ≥ 20** — run `scripts/run-meta-eval.js` with upstream fixture pairs supplied via CLI flags (`--extraction --contradictions --gaps --red-flags --portfolio-fit`). Without upstream fixtures, Evaluator criteria 2/3/4 cannot be calibrated (loud stderr WARN in place per Codex P2 fix).
+3. **CoreWeave dev iteration** — close out remaining quality gaps surfaced during runs (RFD MATERIAL_WEAKNESS verb-form gap, Memo HIGH-on-strength miscalibration, Extraction recall regressions on S-1 headcount/key_personnel/exact-revenue).
 
-**Community nodes install (Will, before Phase 3 task 3.24 — can be done any time):**
-- n8n UI → Settings → Community Nodes → Install
-- Packages: `@langfuse/n8n-nodes-langfuse` and `n8n-nodes-openai-langfuse`
-- Persists via bind-mounted `./n8n/n8n-data/` volume.
+**Phase 5–7:** Cerebras generalization → demo + 250-word written explanation → submission to Pari.
+
+**Backlog (do not gate forward):**
+- RFD `MATERIAL_WEAKNESS_POS` regex misses "exist" / "remain" / "are present" verb forms.
+- Memo's severity HIGH on "74% gross margin" key_strength miscalibration (HIGH should describe weaknesses).
+- Extraction S-1 `headcount`, `key_personnel`, exact revenue value recall regressions.
+- Cosmetic: `supabase_id` missing from Slack footer (n8n unwraps single-row REST response).
+- Codex post-commit reviews of medium-stakes prompts (Gap Analysis, Portfolio Fit, Evaluator).
+- 3.12 schema-validation-with-retry machinery DEFERRED — parsers' shape projection sufficient for prototype.
 <!-- section:up-next:end -->
 
 <!-- section:test-results:start -->
@@ -139,16 +129,18 @@ skip-if: "status != active or last-updated <= your watermark"
 - `npx @gpgaoplane/multi-agent-collab check` — **OK**, INDEX and filesystem aligned.
 - Credential sanity-checks (live calls) — **7/7 pass**.
 - Meta-eval fixtures schema validation — **both VALID** against MemoGenerationOutput.
-- S-1 PDFs — **both valid PDF, 632 + 396 pages, text-extractable** (verified via pypdf reader).
-- Workflow build verification — `n8n/workflow.json` currently parses to 24 connected nodes from `Form Trigger` through `Parse Contradiction Response`.
-- Extraction runtime verification — **PASS** on CoreWeave press release + S-1. Workflow completed successfully; schema-shape cleanup and retrieval caps held in the second verified run. S-1 prompt size dropped from ~58.9k to ~30.4k prompt tokens after retrieval capping.
-- Contradiction runtime verification — **PASS** on CoreWeave press release + S-1. Turn 1 emitted `retrieve_document` calls, retrieval returned raw passages from the aggregate chunk store, and `Parse Contradiction Response` produced valid structured output. A later rerun on `qwen3-max-preview` removed the earlier `Microsoft 62%` false corroboration and is the accepted handoff baseline.
-- Operational hardening — chat-completions HTTP nodes now use 300s timeouts after a live 120s timeout at `Call Extraction Agent`.
-- Phase 3 full end-to-end memo-generation run: not yet run.
+- S-1 PDFs — **both valid PDF, 632 + 396 pages, text-extractable**.
+- Workflow build verification — `n8n/workflow.json` parses to 52 connected nodes (45-node main + 5-node error sub-flow + 2-node Langfuse pair). `versionId: phase3-session2-v19`.
+- Extraction runtime — **PASS** on CoreWeave (S-1 prompt size ~30.4k tokens after retrieval capping).
+- Contradiction runtime — **PASS** on CoreWeave press release + S-1 (Microsoft 62% false corroboration resolved on `qwen3-max-preview`).
+- Operational hardening — chat-completions HTTP nodes use 300s timeouts.
+- **End-to-end run #1** (run_id `14297a4c-...`) — 58/60 evaluator score, complete_high_confidence routing, 17/17 citations valid, Supabase row landed; Slack P-4 data-flow bug surfaced + fixed in `c0ee968`.
+- **End-to-end run #2** (run_id `1bd32e70-...`) — Slack message correctly formatted post-fix.
+- **End-to-end run #3** (run_id `0efb319c-...`) — Langfuse trace landed (12/12 ingestion events 201) with all observations tagged `qwen3-max-preview`. Error sub-flow correctly did NOT fire on green run. Anomaly: `evaluator_score: 0` despite `recommendation: pass` — likely parser fall-through on qwen3-max-preview output shape; flagged as Phase 4 first calibration item.
 <!-- section:test-results:end -->
 
 <!-- section:branch:start -->
 ## Branch
 
-`main` — all Phase 1/2 work landed directly. Feature branches expected once Phase 3 task 3.8 (Red Flag Detector JS logic — TDD-worthy) begins.
+`main` — all Phase 1/2/3 work landed directly. **51 commits ahead of `origin/main` (not pushed).** Latest: `09f0323` ([config] swap chat model to qwen3-max-preview; fix Langfuse host env-var mismatch).
 <!-- section:branch:end -->

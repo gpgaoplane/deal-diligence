@@ -2,7 +2,7 @@
 status: active
 type: decisions
 owner: claude
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-25T18:45:00-04:00
 read-if: "you need Claude's major design decisions"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -39,9 +39,9 @@ Claude Code's own decisions (implementation-level choices Claude made while buil
 - **Production migration path.** Moving to pgvector becomes a code rewrite (rewriting cosine ranking and metadata recovery into SQL queries) rather than an n8n config swap. Acceptable for a prototype with explicit demo scope.
 - **Demo narrative.** Pari sees raw HTTP loops not the canonical n8n pattern. Recast as: "spikes 2.0a/2.0b revealed sandbox limits → engineering call to pure-JS + raw HTTP for consistency and inspectability → working empirical baseline." That's the FDE-role narrative, stronger than "we used the LangChain wrapper."
 
-**What this implies for design plan §2.3 / §2.5:** Both sections describe v1-pre-spike architecture. Per the document authority table in `docs/project-conventions.md §7`, neither is in the scope-locked set, so Claude Code may update component-internal descriptions as implementation lands. Recommended path: short Claude Chat consultation describing the drift + rationale, then update both sections with cross-reference to D-6 here. Originals worth preserving in a §15 diff-table addendum, not silent overwrite. Awaiting Will's direction on whether to (a) request Claude Chat update, (b) authorize Claude Code direct edit, or (c) leave the plan as historical v1 with D-6 as the live reference.
+**Plan edits landed (commit `d3cd83b`, 2026-04-25):** Will chose Option Y (Claude Code direct edit). 9 surgical edits across design plan §2.3 / §2.4 / §2.5 / §2.7 / §3.4 / §7 / §13 + §14 diff-table addendum; implementation plan tasks 2.0a / 3.3 / 3.5 / 3.6 + §5.4 acceptance criterion + §15 diff-table addendum. Originals preserved in §14 / §15 diff-table addenda, not silently overwritten.
 
-**Verification:** Both topologies running end-to-end in live n8n on CoreWeave press release + S-1 pair, on `qwen3-max-2026-01-23`. Codex's work log entries from `2026-04-24T22:31:01-04:00` through `2026-04-25T01:31:21-04:00` document the runtime evidence.
+**Verification:** Both topologies have run end-to-end in live n8n across three Phase 3 closure runs (run_ids `14297a4c`, `1bd32e70`, `0efb319c`). Initial verification on `qwen3-max-2026-01-23`; subsequent runs on `qwen3-max-preview` after the model swap landed in commit `09f0323`. Codex's work-log entries from `2026-04-24T22:31:01-04:00` through `2026-04-25T01:31:21-04:00` document the original runtime evidence; my Phase 3 closure receipt at `2026-04-25T16:30` plus the post-closure entry at `2026-04-25T18:45` document the rest.
 
 ## D-5 — Embeddings provider: OpenRouter (nvidia/llama-nemotron-embed-vl-1b-v2:free) — 2026-04-24T19:30:00-04:00
 **Context:** Initial workflow used Alicloud DashScope `text-embedding-v4` (1024-dim). User requested switch to OpenRouter's `nvidia/llama-nemotron-embed-vl-1b-v2:free` for free-tier embeddings.
@@ -74,7 +74,7 @@ Claude Code's own decisions (implementation-level choices Claude made while buil
 **Split:** ajv remains available OUTSIDE the Code-node sandbox — for `scripts/run-meta-eval.js`, `scripts/validate-memo-citations.js`, `scripts/validate-fixture.js` (regular Node execution) and for local/CI schema-file linting. Same schema file; two validators chosen by context.
 **Follow-up:** remove `NODE_FUNCTION_ALLOW_EXTERNAL=ajv` from `docker-compose.yml` (no longer needed) OR leave it for the outside-sandbox scripts (harmless either way). Leaving for now.
 
-## D-2 — Contradiction Agent: Variant A (tool-use), provisional — 2026-04-24T14:00:00-04:00
+## D-2 — Contradiction Agent: Variant A (tool-use) — 2026-04-24T14:00:00-04:00 (CONFIRMED 2026-04-25 for raw-HTTP path; see D-6)
 **Context:** Design plan §2.5 documented two prompt variants for Contradiction Agent — Variant A (tool-use via n8n AI Agent node with Simple Vector Store tool) and Variant B (stuffed-context). Spike 2.0a was to verify Qwen3.5-Plus tool-use reliability through DashScope + n8n AI Agent.
 **Alternatives:** (A) Run full in-n8n AI Agent tool-use spike manually via UI. (B) Trust the API-level tool-use spike (direct curl to DashScope `/chat/completions` with `tools[]`) and confirm at Phase 3 wire-up. (C) Provisionally select Variant B (stuffed) as safer default.
 **Spike result (API-level, 2026-04-24T13:15):** qwen3.5-plus returned well-formed `tool_calls` on first turn (`finish_reason: tool_calls`, valid JSON args in `function.arguments`). Multi-turn synthesis with fed-back `tool_result` worked cleanly — model cited sources from the retrieved content in the final answer. `reasoning_content` and `content` are cleanly separated in the response shape. Usage: 380 prompt + 126 completion tokens on turn 1; 482 + 351 on turn 2.

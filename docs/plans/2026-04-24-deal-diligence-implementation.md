@@ -2,7 +2,7 @@
 status: active
 type: implementation-plan
 owner: shared
-last-updated: 2026-04-25T09:14:33-04:00
+last-updated: 2026-04-25T18:45:00-04:00
 read-if: "you are planning, executing, or reviewing a phase — this is the authoritative phased build plan with task-level routing, verification commands, and Receipt gates"
 skip-if: "your question is only about scope (CONTEXT.md) or component design (2026-04-24-deal-diligence-design.md)"
 related: [CONTEXT.md, DESIGN.md, IMPLEMENTATION.md, 2026-04-24-deal-diligence-design.md, docs/STATUS.md, .collab/ROUTING.md, .collab/PROTOCOL.md]
@@ -604,13 +604,19 @@ git log --all --full-history -p | grep -E '(API_KEY|SERVICE_ROLE_KEY|SECRET_KEY|
 
 **Phase 0:** ✅ Complete (2026-04-24) — CONTEXT.md v2, DESIGN.md (v1 @ reference-only), this plan v1, IMPLEMENTATION.md (v1 @ reference-only), `multi-agent-collab` framework bootstrapped.
 
-**Phase 1:** Not started.
+**Phase 1:** ✅ Complete (2026-04-24) — Docker Desktop, Supabase project + keys, Langfuse Cloud project + keys, Slack webhook, Alicloud DashScope credits, 4 CoreWeave PDFs, 4 Cerebras PDFs, all credentials sanity-tested live.
 
-**Phase 2–7:** Not started.
+**Phase 2:** ✅ Complete (2026-04-24) — Spike 2.0a (Qwen tool-use → D-2), spike 2.0b (ajv compile blocked → D-3 hand-rolled validator + P-1), full directory structure, docker-compose.yml, .env.example, scripts (up/down/import/export), all 7 prompt stubs, supabase-schema.sql, agent-output-schemas.json (25 $defs), red-flag-detector.js skeleton, sagard-portfolio.json, json-schema-validator.js (25/25 tests pass), meta-eval fixtures.
+
+**Phase 3:** ✅ Complete (2026-04-25) — 52-node workflow (45-node main + 5-node error sub-flow + 2-node Langfuse pair). All 7 specialists wired and runtime-verified on CoreWeave across 3 E2E runs. D-5 (OpenRouter embeddings), D-6 (formalized hand-rolled aggregate chunk store + raw-HTTP tool-use loops as canonical pattern). Pitfalls P-2/P-3/P-4 captured. Active model: `qwen3-max-preview`. Per-agent schema-validation-with-retry (3.12) deferred — parsers' shape projection sufficient for prototype.
+
+**Phase 4:** Not started. Entry point: investigate `evaluator_score: 0` anomaly observed on qwen3-max-preview run `0efb319c`, then begin meta-eval discrimination work via `scripts/run-meta-eval.js` with upstream fixture pairs (CLI flags `--extraction --contradictions --gaps --red-flags --portfolio-fit`).
+
+**Phase 5–7:** Not started.
 
 **Current blockers:** None.
 
-**Current focus:** Will to begin Phase 1 (Environment Setup).
+**Current focus:** Awaiting user direction to begin Phase 4.
 
 ## §15 — Diff from original IMPLEMENTATION.md
 
