@@ -21,8 +21,8 @@ const AUDITOR_CHANGE_WINDOW_YEARS         = 2;    // (reserved; not used by curr
 // Rule: positive match AND no negation within the SAME sentence.
 // All flags are case-insensitive; no /g — single match is sufficient.
 
-const MATERIAL_WEAKNESS_POS = /(?:identified|disclose[ds]?|found|reported|existence of|presence of)[^.!?]{0,60}material weakness(?:es)?/i;
-const MATERIAL_WEAKNESS_NEG = /(?:no |without |absence of |did not (?:identify|find|disclose|report) (?:any )?|no such )material weakness/i;
+const MATERIAL_WEAKNESS_POS = /(?:(?:identified|disclose[ds]?|found|reported|existence of|presence of)[^.!?]{0,60}material weakness(?:es)?|material weakness(?:es)?[^.!?]{0,30}(?:exist|remain|persist|are present|were noted|have been (?:identified|disclosed|found|noted|reported)))/i;
+const MATERIAL_WEAKNESS_NEG = /(?:(?:no |without |absence of |did not (?:identify|find|disclose|report) (?:any )?|no such )material weakness|material weakness(?:es)?[^.!?]{0,30}(?:do not exist|no longer exist|have been remediated|were remediated|are no longer present))/i;
 
 const GOING_CONCERN_POS = /(?:substantial doubt|going concern|ability to continue as a going concern)/i;
 const GOING_CONCERN_NEG = /(?:no substantial doubt|without substantial doubt|no going concern|absence of going concern)/i;

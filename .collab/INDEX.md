@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-25T21:30:00-04:00
+last-updated: 2026-04-26T00:30:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -22,11 +22,11 @@ skip-if: "never"
 | docs/STATUS.md | status | shared | active | 2026-04-25T21:30:00-04:00 |
 | docs/project-conventions.md | conventions | shared | active | 2026-04-24T02:30:00-04:00 |
 | .collab/ACTIVE.md | active-board | shared | active | 2026-04-25T01:31:21-04:00 |
-| .collab/INDEX.md | index | shared | active | 2026-04-25T21:30:00-04:00 |
+| .collab/INDEX.md | index | shared | active | 2026-04-26T00:30:00-04:00 |
 | .collab/ROUTING.md | routing | shared | active | 2026-04-24T02:07:00-04:00 |
 | .collab/PROTOCOL.md | protocol | shared | active | 2026-04-24T02:07:00-04:00 |
 | .claude/CLAUDE.md | adapter | claude | active | 2026-04-24T02:15:00-04:00 |
-| docs/agents/claude.md | work-log | claude | active | 2026-04-25T21:30:00-04:00 |
+| docs/agents/claude.md | work-log | claude | active | 2026-04-26T00:30:00-04:00 |
 | .claude/memory/state.md | state | claude | active | 2026-04-25T21:30:00-04:00 |
 | .claude/memory/context.md | context | claude | active | 2026-04-25T18:45:00-04:00 |
 | .claude/memory/decisions.md | decisions | claude | active | 2026-04-25T18:45:00-04:00 |
@@ -58,12 +58,12 @@ skip-if: "never"
 | scripts/inject-prompts.js | script | claude | active | 2026-04-25T15:10:00-04:00 |
 | schemas/supabase-schema.sql | schema-sql | shared | active | 2026-04-24T13:30:00-04:00 |
 | schemas/agent-output-schemas.json | schema-json | shared | active | 2026-04-24T13:30:00-04:00 |
-| code/red-flag-detector.js | code | claude | active | 2026-04-24T16:45:00-04:00 |
+| code/red-flag-detector.js | code | claude | active | 2026-04-26T00:30:00-04:00 |
 | code/sagard-portfolio.json | data | claude | active | 2026-04-24T13:30:00-04:00 |
 | code/json-schema-validator.js | code | claude | active | 2026-04-24T14:15:00-04:00 |
 | code/citation-validity.js | code | claude | active | 2026-04-25T14:55:00-04:00 |
 | code/test/json-schema-validator.test.js | test | claude | active | 2026-04-24T14:15:00-04:00 |
-| code/test/red-flag-detector.test.js | test | claude | active | 2026-04-24T16:45:00-04:00 |
+| code/test/red-flag-detector.test.js | test | claude | active | 2026-04-26T00:30:00-04:00 |
 | test-cases/meta-eval/chatgpt-authoring-prompt.md | external-prompt | shared | active | 2026-04-24T15:30:00-04:00 |
 | test-cases/meta-eval/intentionally-good-memo.json | meta-eval-fixture | shared | active | 2026-04-24T14:21:00-04:00 |
 | test-cases/meta-eval/intentionally-bad-memo.json | meta-eval-fixture | shared | active | 2026-04-24T14:22:00-04:00 |
@@ -81,5 +81,5 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-25T20:45:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-26T00:30:00-04:00 |
 <!-- collab:index:end -->

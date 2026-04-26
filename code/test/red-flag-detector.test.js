@@ -148,6 +148,46 @@ test('materialWeakness: ignored when source_type != regulatory_filing', () => {
   assert.ok(!r.red_flags.find(x => x.flag_type === 'material_weakness'));
 });
 
+// Phrase-first verb-form variants (CoreWeave S-1 actual phrasings + adjacents)
+test('materialWeakness: positive "material weaknesses exist in internal control" → HIGH flag', () => {
+  const raw = mkRaw('Material weaknesses exist in internal control over financial reporting related to IT general controls.');
+  const r = detectFlags([], raw);
+  const f = r.red_flags.find(x => x.flag_type === 'material_weakness');
+  assert.ok(f, 'expected material_weakness flag');
+  assert.equal(f.severity, 'HIGH');
+  assert.ok(/material weaknesses exist/i.test(f.evidence.raw_text));
+});
+
+test('materialWeakness: positive "material weaknesses remain" → HIGH flag', () => {
+  const raw = mkRaw('Material weaknesses remain unremediated as of the latest reporting period.');
+  const r = detectFlags([], raw);
+  assert.ok(r.red_flags.find(x => x.flag_type === 'material_weakness'));
+});
+
+test('materialWeakness: positive "material weaknesses are present" → HIGH flag', () => {
+  const raw = mkRaw('Material weaknesses are present in our internal control over financial reporting.');
+  const r = detectFlags([], raw);
+  assert.ok(r.red_flags.find(x => x.flag_type === 'material_weakness'));
+});
+
+test('materialWeakness: positive "material weaknesses were noted" → HIGH flag', () => {
+  const raw = mkRaw('During the audit, material weaknesses were noted by our independent auditors.');
+  const r = detectFlags([], raw);
+  assert.ok(r.red_flags.find(x => x.flag_type === 'material_weakness'));
+});
+
+test('materialWeakness: phrase-first negation "material weaknesses do not exist" → no flag', () => {
+  const raw = mkRaw('After remediation, material weaknesses do not exist in our internal controls as of December 31, 2024.');
+  const r = detectFlags([], raw);
+  assert.ok(!r.red_flags.find(x => x.flag_type === 'material_weakness'));
+});
+
+test('materialWeakness: phrase-first negation "material weaknesses have been remediated" → no flag', () => {
+  const raw = mkRaw('Previously identified material weaknesses have been remediated and tested for effectiveness.');
+  const r = detectFlags([], raw);
+  assert.ok(!r.red_flags.find(x => x.flag_type === 'material_weakness'));
+});
+
 // ---------------------------------------------------------------------
 // 4. going_concern (HIGH)
 // ---------------------------------------------------------------------

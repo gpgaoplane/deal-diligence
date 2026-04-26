@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-25T21:30:00-04:00
+last-updated: 2026-04-26T00:30:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -923,6 +923,59 @@ Missing / intentionally skipped:
 - `.claude/memory/context.md` — no new invariant. Phase 4 calibration result is durable but contextual; lives appropriately in state.md / STATUS.md / this work-log entry, not as a context invariant.
 - Codex memory files — owned by Codex.
 - Live verification of Evaluator change against populated-upstream workflow — Will did re-import + run the workflow before pasting the 5 node outputs (the run produced the upstream artifacts I now use as fixtures). The Memo + RFD + Portfolio Fit + everything chained successfully. Implicit verification: live workflow not regressed by the Evaluator change. Will did NOT explicitly paste the Parse Evaluator Response evaluator_output for this run; if Will wants explicit confirmation, that's a one-click ask, but the implicit signal (full upstream pipeline produced consistent valid outputs) is reasonable evidence.
+
+## 2026-04-26T00:30:00-04:00 — Phase 4 step 3a: RFD MATERIAL_WEAKNESS regex verb-form gap closed
+
+**Context.** Phase 4 step 3 quality backlog item A. The CoreWeave S-1 contains the phrasing "Material weaknesses **exist** in internal control over financial reporting" which the original `MATERIAL_WEAKNESS_POS` regex didn't catch — the pattern required a verb of identification BEFORE "material weakness" (`identified|disclose[ds]?|found|reported|existence of|presence of`), missing the phrase-first verb form. RFD therefore omitted this HIGH-severity flag from the CoreWeave run despite the S-1 explicitly disclosing it three different ways across the packet (S-1 risk factors, analyst report, press release).
+
+**Fix.** Extended both `MATERIAL_WEAKNESS_POS` and `MATERIAL_WEAKNESS_NEG` to handle the phrase-first verb form via regex alternation:
+
+- `MATERIAL_WEAKNESS_POS` now also matches `material weakness(es)? [≤30 chars] (exist|remain|persist|are present|were noted|have been (identified|disclosed|found|noted|reported))`. The 30-char proximity bound prevents false-positives like "material weaknesses, although remediated, exist in our prior period" (40+ chars).
+- `MATERIAL_WEAKNESS_NEG` also extended to suppress the new POS pattern when negated: `material weakness(es)? [≤30 chars] (do not exist|no longer exist|have been remediated|were remediated|are no longer present)`. Negation guard fires per-sentence in `matchWithNegationGuard()` — same machinery as before, just covering more phrasings.
+
+**Tests.** Added 6 new test cases at `code/test/red-flag-detector.test.js`:
+
+1. `materialWeakness: positive "material weaknesses exist in internal control" → HIGH flag` (the CoreWeave S-1 actual phrasing)
+2. `materialWeakness: positive "material weaknesses remain" → HIGH flag`
+3. `materialWeakness: positive "material weaknesses are present" → HIGH flag`
+4. `materialWeakness: positive "material weaknesses were noted" → HIGH flag`
+5. `materialWeakness: phrase-first negation "material weaknesses do not exist" → no flag`
+6. `materialWeakness: phrase-first negation "material weaknesses have been remediated" → no flag`
+
+Ran `node --test code/test/red-flag-detector.test.js`: **43/43 passing** (was 37; added 6 new). All prior tests preserved — the regex extension is purely additive.
+
+**D-6 doubled-code surface.** The RFD module body is also pasted inline in `n8n/workflow.json` Run Red Flag Detector node. Per the explicit IMPLEMENTATION NOTE comment in that node, "If [code/red-flag-detector.js] changes, this node must be re-pasted." Manually updated the embedded copy with the same regex change. Bumped `versionId` to `phase4-step3a-v22`. Verified workflow.json still parses as valid JSON.
+
+**Backlog item recorded:** extending `scripts/inject-prompts.js` to also handle the RFD code paste (it currently only covers the 5 Build * Request prompt nodes). Would eliminate the manual-paste step for future RFD edits. Out of scope for this fix; logged for later.
+
+**Verification.** Live workflow re-run not strictly needed for this regex change because:
+1. Unit tests cover the new patterns directly.
+2. The CoreWeave S-1 has the exact phrasing ("Material weaknesses exist...") in its risk factors — but on the NEXT live run, this will surface as a third red flag in the workflow output (alongside customer_concentration_extreme HIGH and revenue_growth_anomalous LOW that we already see).
+3. The change is purely additive — existing positive matches and negation guards are unchanged.
+
+**Watch out:**
+- The 30-char proximity bound is tighter than the verb-first pattern's 60-char bound. Reasoning: the verb-first form is typically prosaic ("we have identified, in connection with our recent audit, certain material weaknesses..."), while the phrase-first form is typically a tight subject-verb assertion ("Material weaknesses exist..."). 30 chars is enough for "Material weaknesses, identified during the 2024 audit, exist..." (40 chars over the bound, would NOT match — acceptable since the verb-first pattern would catch this anyway via "identified ... material weaknesses").
+- Per P-5 (qwen3-max-preview eager-bypass), this change to a deterministic detector (no LLM) is structurally immune to model interaction issues. Pure code, deterministic, tested.
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed code), 6 (closes a recurring gotcha — Codex P-5 phrasing recall gap noted in earlier work-log entries), 7 (state changed via Phase 4 step 3a → step 3b), 8 (project task status — Phase 4 step 3a closed).
+
+Updates fanned out this task:
+- `code/red-flag-detector.js` ........................ MATERIAL_WEAKNESS_POS + NEG regexes extended with phrase-first verb-form alternation; 30-char proximity bound on the new alternation arm
+- `code/test/red-flag-detector.test.js` .............. 6 new test cases (4 positive verb-form variants + 2 phrase-first negations); 43/43 passing total
+- `n8n/workflow.json` ................................ embedded RFD module body re-synced with the new regex; versionId bumped phase3-session2-v21 → phase4-step3a-v22
+- `docs/agents/claude.md` ............................ this entry; frontmatter bumped
+- `.collab/INDEX.md` ................................. timestamps refreshed for the 3 changed code files
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no architectural decision; bugfix on existing detector.
+- `.claude/memory/pitfalls.md` — could note "always check regex covers verb-first AND phrase-first forms" but the lesson is captured in the test file (phrase-first variants now cover the gap). Promote only if a third regex shows the same blind spot.
+- `.claude/memory/context.md` — no new invariant.
+- `.claude/memory/state.md` — Phase 4 step 3 progress is tracked in next-steps already; will batch-update with step 3b.
+- `docs/STATUS.md` — Phase 4 step 3 is in-progress, not closed; will batch-update at step 3 closure.
+- `scripts/inject-prompts.js` extension to handle RFD — backlog item, out of scope for this fix.
+- Live workflow re-run — not required (deterministic regex change, unit-tested).
+- Codex memory — owned by Codex.
 
 ## Handoff blocks
 
