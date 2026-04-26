@@ -12,4 +12,5 @@ skip-if: "never"
 <!-- collab:active:start -->
 | agent | session-id | branch | started-at |
 |-------|------------|--------|------------|
+| claude | phase4-entry | main | 2026-04-25T19:45:00-04:00 |
 <!-- collab:active:end -->

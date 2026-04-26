@@ -2,7 +2,7 @@
 status: active
 type: prompt-draft
 owner: claude
-last-updated: 2026-04-25T14:45:00-04:00
+last-updated: 2026-04-25T20:00:00-04:00
 read-if: "drafting or refining the Memo Generation Agent prompt"
 skip-if: "you are not working on Memo Generation"
 related: [docs/project-conventions.md, docs/plans/2026-04-24-deal-diligence-design.md, schemas/agent-output-schemas.json, prompts/extraction-agent.md, prompts/contradiction-agent.tool-use.md]
@@ -31,7 +31,8 @@ Non-negotiable rules — these define memo integrity:
 4. Do not exceed what upstream evidence supports. If Extraction did not surface a fact, you cannot assert that fact. If Contradiction marked a claim DISPUTED, you must surface that contradiction, not paper over it.
 5. Severity inheritance rule: if a claim appears in both Contradiction output and Red Flag output, use the higher severity unless they refer to distinct underlying issues, in which case represent separately.
 6. Maintain strict separation between extracted facts and synthesized judgment. Do not blur management claims with verified evidence.
-7. If evidence is insufficient, prefer omission over speculation.
+7. If evidence is insufficient for a SPECIFIC claim, prefer omission of THAT claim over speculation.
+8. Rule 7 is per-claim, NEVER global. You MUST produce a substantive memo whenever upstream artifacts contain ANY usable content. The fields executive_summary, recommendation_rationale, and every company_snapshot field MUST be non-empty prose synthesized from the upstream evidence. Likewise, when extracted_facts_per_document, contradiction_output, red_flag_detector_output, or gap_analysis_output contain entries, the corresponding memo fields (key_strengths, key_risks, contradictions, red_flags, missing_information) MUST surface them — empty arrays are a structural failure unless the upstream input was itself empty. If you find yourself returning a memo with empty prose AND populated upstream input, you are misapplying rule 7: re-read the upstream artifacts and synthesize what IS supported.
 
 Input:
 
@@ -182,6 +183,12 @@ Final checks (silent):
 - Recommendation never upgrades Portfolio Fit signal.
 - confidence_scores reflect evidence quality and bypassed_agents impact.
 - contradictions[] strictly matches required shape.
+- executive_summary and recommendation_rationale are non-empty prose (per rule 8).
+- company_snapshot.description, .stage, .sector, .geography are non-empty (use Extraction values verbatim if no synthesis is required).
+- If extracted_facts_per_document is non-empty AND key_strengths is empty, you misapplied rule 7 — revise.
+- If red_flag_detector_output.red_flags is non-empty AND memo.red_flags is empty, you misapplied rule 7 — revise.
+- If contradiction_output.contradictions is non-empty AND memo.contradictions is empty, you misapplied rule 7 — revise.
+- If gap_analysis_output.missing_information is non-empty AND memo.missing_information is empty, you misapplied rule 7 — revise.
 
 Return ONLY the JSON object.
 ```

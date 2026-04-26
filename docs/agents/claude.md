@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-24T16:15:00-04:00
+last-updated: 2026-04-25T20:15:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -606,6 +606,150 @@ Missing / intentionally skipped:
 - `.claude/memory/pitfalls.md` — three new P-4 instances surfaced this phase but the entry already documents the class. Adding individual occurrences would duplicate. P-4 entry's "see also" section could be extended to list every instance, but that's documentation polish.
 - 3.12 schema-validation-with-retry — deferred deliberately, documented in STATUS.md.
 - Codex post-commit reviews of the medium-stakes prompts (Gap Analysis, Portfolio Fit, Evaluator) — not yet routed to Codex. Will should batch this with the next Codex session if desired; not a Phase 4 blocker.
+
+## 2026-04-25T18:45:00-04:00 — Post-closure: model swap + Langfuse host fix + 3rd E2E run
+
+**Context.** After the 16:30 Phase-3 closure receipt, Will requested two follow-ups: (1) swap the active chat model from `qwen3-max-2026-01-23` to `qwen3-max-preview` (Will pre-verified the model name exists in DashScope), (2) debug a Langfuse 401 "Invalid credentials. Confirm correct host" error from Send Langfuse Ingestion.
+
+**Model swap.** Updated `.env.example` to set `ALICLOUD_MODEL=qwen3-max-preview`. Workflow nodes already read `ALICLOUD_MODEL` from env (per Codex P-2), so no workflow.json change was needed beyond the env line. Will updated `.env` and restarted the n8n container.
+
+**Langfuse 401 root cause.** Env-var name mismatch. `.env.example` and `.env` set `LANGFUSE_BASE_URL=https://us.cloud.langfuse.com` (per design plan §2.12 convention), but my `Build Langfuse Batch` jsCode only read `$env.LANGFUSE_HOST` (Langfuse Python SDK convention). Since `LANGFUSE_HOST` was not forwarded by docker-compose, the workflow defaulted to `https://cloud.langfuse.com` (EU region) and the US-region credentials returned 401.
+
+**Fix (commit `09f0323`):**
+- `docker-compose.yml` now forwards BOTH `LANGFUSE_BASE_URL` AND `LANGFUSE_HOST` for env-var convention robustness.
+- `.env.example` documents `LANGFUSE_BASE_URL` as primary with `LANGFUSE_HOST` as alternate.
+- `n8n/workflow.json` Build Langfuse Batch jsCode reads `LANGFUSE_BASE_URL` first then falls back to `LANGFUSE_HOST`.
+- Added one-line diagnostic stderr log on auth failure.
+
+**Verification — third E2E run** (run_id `0efb319c-7e26-49bb-b17e-635926d7f595`): all 12 ingestion events returned 201; Langfuse trace landed with observations correctly tagged `qwen3-max-preview` (verified in trace JSON Will pasted). Error sub-flow correctly did NOT fire on the green run — confirmed expected behavior.
+
+**Quality anomaly flagged for Phase 4.** Run `0efb319c` showed `evaluator_score: 0` and `routing_decision: flagged_for_review` despite `recommendation: pass`. Most likely cause: `qwen3-max-preview` produces a slightly different output shape than `qwen3-max-2026-01-23` for the Evaluator step, causing `Parse Evaluator Response` parser to fall through to score=0 default. First Phase 4 calibration item.
+
+**Watch out:**
+- Any future model swap: re-verify the Evaluator parser still extracts `criteria_scores` from the new model's JSON-mode output. The parser currently sums `criteria_scores` authoritatively; if that field is missing/malformed, evaluator_score collapses to 0 and routing forces flagged_for_review.
+- Both Langfuse env-var names are now load-bearing in docker-compose. Removing either could break runs after the next env-convention shift.
+- Test HTTP nodes with `--data-binary @-` style payloads on Windows — verified the Langfuse batch endpoint via curl from the host before the fix, ruling out network/auth-shape issues vs the in-workflow defaulting bug.
+
+### Task Receipt
+Updates fanned out this task:
+- `n8n/workflow.json` ................................... Build Langfuse Batch reads LANGFUSE_BASE_URL first; diagnostic log added; versionId bumped to phase3-session2-v19
+- `.env.example` ........................................ ALICLOUD_MODEL=qwen3-max-preview; LANGFUSE_BASE_URL primary + LANGFUSE_HOST alternate documented
+- `docker-compose.yml` .................................. forwards both LANGFUSE_BASE_URL and LANGFUSE_HOST
+- `.claude/memory/state.md` ............................. updated to reflect Phase 3 fully closed + observable; flagged evaluator_score:0 anomaly as first Phase 4 item; watermark bumped
+- `docs/STATUS.md` ...................................... in-progress cleared; up-next refocused on Phase 4 entry; test-results updated with 3 E2E runs + Langfuse confirmation
+- `docs/agents/claude.md` ............................... this entry
+- `.collab/INDEX.md` .................................... timestamps refreshed for the changed files
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no new Claude-owned decisions; model swap is a config change, not an architectural choice. The Langfuse host fix is a bugfix, not a decision.
+- `.claude/memory/pitfalls.md` — could add a P-5 ("env-var name conventions: docker-compose must forward both LANGFUSE_BASE_URL and LANGFUSE_HOST"), but the lesson is captured in the docker-compose comments and .env.example. Promote to P-entry only if it recurs.
+- `.claude/memory/context.md` — no new invariants.
+- Codex memory files — not touched.
+- Phase 4 entry — not started. Awaiting explicit user direction per session-management discussion.
+
+## 2026-04-25T19:15:00-04:00 — Stale-content sweep across managed files
+
+**Context.** Will requested a thorough audit of all managed files to eliminate misleading content and reflect the true post-Phase-3 state. The earlier session-end update (18:45) handled the active surfaces (state.md, STATUS.md, work log, INDEX timestamps). This sweep targets the dormant surfaces that hadn't been touched in days and were drifting from reality.
+
+**Drift found and corrected (5 files).**
+
+1. **`README.md` `## Status` and `## Running`** — said "Phase 0 complete... Ready for implementation Phase 1" and "Phases 1–2 are planned." Both wildly stale; we're at Phase 3 complete. Rewrote `## Status` to show Phases 0–3 complete with active model, 52-node count, error sub-flow, and Phase 4 entry; expanded `## Running` with the actual `cp .env.example .env` + `import-workflow.sh` quickstart.
+2. **`.claude/memory/context.md` I-9** — described qwen3.5-plus reasoning behavior with implications expressed as Phase-2-future-work ("Phase 2 spike 2.0a MUST verify..."). All three implications are now empirically resolved by Phase 3 runs. Revised text generalizes the invariant to the qwen3-max family (verified on both `qwen3-max-2026-01-23` and `qwen3-max-preview`), updates the cost model with run-`0efb319c` actuals, marks the JSON-parsing risk as RESOLVED via D-6 raw-HTTP path (with re-emergence trigger if AI Agent node ever returns), and converts the latency note into a 300s-timeout reference. Added a model-swap watch-out citing the `evaluator_score: 0` anomaly as the canonical recurrence.
+3. **`.claude/memory/decisions.md` D-6** — last paragraph said "Awaiting Will's direction on whether to (a) request Claude Chat update, (b) authorize Claude Code direct edit, or (c) leave the plan as historical v1." Will chose Option Y two weeks ago in commit `d3cd83b` and the plan edits already landed. Replaced with concrete record of what landed (9 design-plan edits + impl-plan edits + diff-table addenda). Verification paragraph updated to reflect three E2E runs across two models.
+4. **`.claude/memory/decisions.md` D-2 header** — labeled "provisional" but D-6 already confirms it for the raw-HTTP path. Header now reads `(CONFIRMED 2026-04-25 for raw-HTTP path; see D-6)` to surface the resolution at a glance.
+5. **`.claude/memory/pitfalls.md` P-4 "See also"** — listed only two instances (Extract Embedding, Text Chunker). The third (Build Slack Message after Insert Deal Memo, fixed in `c0ee968`) was missing. Added with commit ref + escalation note: P-4 has now hit three nodes; treat any new HTTP-Request → Code-node pair as guilty-until-proven-innocent.
+6. **`docs/plans/2026-04-24-deal-diligence-implementation.md §14 Current Status`** — said "Phase 1: Not started. Phase 2–7: Not started." Per `.claude/CLAUDE.md` adapter file, "you may check off completed tasks and update §12 Current Status" (renumbered §14 in the refined plan). Rewrote with phase-by-phase status, key artifacts/decisions per phase, Phase 4 entry point, and current focus.
+
+**Files audited and intentionally left unchanged:**
+- `CONTEXT.md` — scope-locked sections owned by Will / Claude Chat per `docs/project-conventions.md §7`. Earlier deadline-removal edit had explicit user override; no comparable override here.
+- `DESIGN.md`, `IMPLEMENTATION.md` (root) — flagged `status: reference-only`. Frozen historical baselines.
+- `docs/plans/2026-04-24-deal-diligence-design.md` — only the impl plan's §14 is explicitly Claude-editable per the adapter; design plan changes were already made in commit `d3cd83b`.
+- `.codex/memory/*`, `docs/agents/codex.md` — Codex-owned per framework rule "Do not edit another agent's log or memory" (`AI_AGENTS.md` behavioral-rules / multi-agent coordination).
+- `.collab/PROTOCOL.md`, `.collab/ROUTING.md`, `AGENTS.md`, `AI_AGENTS.md` — current. (AI_AGENTS.md project-summary still accurate at the abstract level it operates at.)
+- Adapter files (`.claude/CLAUDE.md`, `.codex/CODEX.md`) — current.
+- `docs/project-conventions.md` — operational rules unchanged.
+
+**Verification.** `npx @gpgaoplane/multi-agent-collab check` → OK. INDEX timestamps now reflect actual content age for all touched files.
+
+**Watch out:**
+- `CONTEXT.md` is the next likely staleness candidate but I cannot edit its scope-locked sections without an explicit user override or a Claude Chat pass. If Will wants CONTEXT.md refreshed against Phase 3 reality, that's a separate request that should route via Claude Chat (or with explicit "edit CONTEXT.md to reflect X" override from Will).
+- The `docs/plans/2026-04-24-deal-diligence-design.md §14 Current status` row of the diff table mirrors §14 of the impl plan; not updated here because it's a historical diff entry, not live status. Live status lives in §14 of the impl plan.
+
+### Task Receipt
+Updates fanned out this task:
+- `README.md` ........................................... `## Status` and `## Running` rewritten; frontmatter bumped
+- `.claude/memory/context.md` .......................... I-9 revised with Phase 3 evidence; frontmatter bumped
+- `.claude/memory/decisions.md` ........................ D-6 final paragraphs replaced with landed-plan record; D-2 header marked CONFIRMED; frontmatter bumped
+- `.claude/memory/pitfalls.md` ......................... P-4 "See also" extended with Slack instance + escalation note; frontmatter bumped
+- `docs/plans/2026-04-24-deal-diligence-implementation.md` §14 rewritten phase-by-phase; frontmatter bumped
+- `docs/agents/claude.md` .............................. this entry; frontmatter bumped to 19:15
+- `.collab/INDEX.md` ................................... timestamps refreshed for the 5 modified content files and self
+
+Missing / intentionally skipped:
+- `CONTEXT.md` — scope-locked authority constraint; no user override for this sweep.
+- `DESIGN.md`, `IMPLEMENTATION.md` (root) — reference-only frozen.
+- Design plan (`docs/plans/2026-04-24-deal-diligence-design.md`) — no Claude-editable section flagged stale; D-6 already routed §2.3 / §2.5 edits in `d3cd83b`.
+- Codex-owned files (`.codex/memory/*`, `docs/agents/codex.md`) — framework prohibits cross-agent memory editing.
+- `.collab/ACTIVE.md` — was already empty; no row to update.
+- New decisions / invariants / pitfalls — none surfaced; this was content reconciliation, not new work.
+
+## 2026-04-25T20:15:00-04:00 — Phase 4 entry step 1: debug evaluator_score:0 anomaly → Memo prompt fix
+
+**Context.** Per Will's go-ahead for the Phase 4 entry plan, debugged the `evaluator_score: 0` anomaly observed in run `0efb319c` on `qwen3-max-preview`.
+
+**Diagnosis path.**
+1. Read `Parse Evaluator Response` parser. Confirmed defaults: missing/non-numeric criteria_scores collapse to 0 each via `clampInt(...) ?? 0`. So either model produced 0s OR parser stripped content.
+2. Asked Will for raw `Call Evaluator Agent` output. Got it: model returned well-formed JSON with all six criteria_scores=0 and a deliberate `critical_issues[0] = { issue_type: "other", description: "Memo Generation bypassed; review provisional", severity: "HIGH" }`. Not a parser bug — the Evaluator deliberately invoked its bypass rule.
+3. Asked for `Build Evaluator Request` output to see what memo it received. Got `memo_output: { executive_summary: "", recommendation: "pass", recommendation_rationale: "", company_snapshot: { description: "", stage: "", ... } }`. The memo was an EMPTY SHELL.
+4. Asked for raw `Call Memo Generation Agent` output to confirm Memo parser wasn't the culprit. Got the model's actual output: same empty-shell pattern (`executive_summary: ""`, all arrays `[]`, all confidences `0.0`, but `recommendation: "pass"` and `portfolio_fit.overall_alignment: "LOW"`). `finish_reason: "stop"`, `completion_tokens: 184` — not a token cutoff. The model deliberately produced minimum-valid output.
+
+**Root cause.** Memo Generation prompt rule 7 ("prefer omission over speculation") + rule 4 ("if Extraction did not surface a fact, you cannot assert that fact") + seven "MUST cite" rules combine to trigger a global-abstain failure mode on `qwen3-max-preview`. The prompt was Claude-Chat-refined against `qwen3-max-2026-01-23` (which produced 58/60 memos with the same prompt and input). qwen3-max-preview interprets the abstain signals globally rather than per-claim. Same model interaction class as we'll likely see when other prompts are first exposed to qwen3-max-preview.
+
+**Fix (option B per Will's choice — no fallback to qwen3-max-2026-01-23 since that model has been retired).**
+
+Edited `prompts/memo-generation-agent.md`:
+- **Rule 7 narrowed** from "If evidence is insufficient, prefer omission over speculation" to "If evidence is insufficient for a SPECIFIC claim, prefer omission of THAT claim over speculation."
+- **Added rule 8** explicitly scoping rule 7 to per-claim, NEVER global. Mandates non-empty prose for `executive_summary`, `recommendation_rationale`, and every `company_snapshot` field whenever upstream artifacts have ANY usable content. Mandates corresponding memo arrays (`key_strengths`, `key_risks`, `contradictions`, `red_flags`, `missing_information`) be non-empty when the upstream input is non-empty.
+- **Added 6 silent final checks** at the end: explicit non-empty assertions on prose fields + 4 self-revise triggers ("if extracted_facts_per_document is non-empty AND key_strengths is empty → revise" pattern × 4).
+
+Ran `scripts/inject-prompts.js` to sync the embedded copy in `n8n/workflow.json`. Workflow `versionId` bumped `phase3-session2-v19 → v20`.
+
+**Verification (live n8n re-run on CoreWeave).**
+- `Call Memo Generation Agent` now produces a substantive memo (no longer the empty shell).
+- `Call Evaluator Agent` returns: `evaluator_score: 58 / 60`, `criteria_scores: { citation_completeness: 10, contradiction_acknowledgment: 10, missing_information_coverage: 10, red_flag_propagation: 10, reasoning_coherence: 9, hallucination_check: 9 }`, `routing_decision: complete_high_confidence`, `critical_issues: []`. Same quality bar as the prior `qwen3-max-2026-01-23` baseline, restored on `qwen3-max-preview`.
+- Identical model, identical input, prompt change is the only delta.
+
+**Step 2 of Phase 4 entry (meta-eval discrimination check, option A — empty-upstream sanity check).**
+Ran `scripts/run-meta-eval.js` against the meta-eval fixtures with empty upstream. Both fixtures scored 0/60, gap = 0.
+- Same eager-bypass pattern as Memo Generation, this time in the Evaluator. With empty upstream, qwen3-max-preview invokes the prompt's "All six criteria score 0: structural failure" edge-case rule preemptively instead of scoring criteria 1/5/6 from the memo body alone (which is plenty calibrate-able: both fixtures have 4-source manifests, populated key_strengths/key_risks, citable claims, and the bad fixture has the textbook "highly diversified customer base" + advance_to_deep_diligence pairing that contradicts the actual S-1 evidence).
+- Empty-upstream meta-eval cannot produce meaningful discrimination on this Evaluator prompt as currently written — the bypass over-triggers.
+- Same fix pattern as Memo will likely apply: scope the all-zero rule to "score-derived only, never preemptive" + tell the model to score criteria 1/5/6 from memo body alone when upstream is empty, and score criteria 2/3/4 as N/A-neutral (or default to 7) when their upstream is empty.
+- **Surfaced to Will, awaiting direction:** apply the same prompt-tightening pattern to the Evaluator now (continues Phase 4 entry plan), or move to option C (capture real upstream from the just-completed CoreWeave run).
+
+**Watch out:**
+- **Pattern recurrence prediction:** every prompt that has an "edge-case bypass" rule may show this behavior on `qwen3-max-preview`. Memo and Evaluator are confirmed; Gap Analysis and Portfolio Fit also have edge-case clauses. If we observe the same global-bypass pattern there, consider a project-wide prompt-pattern audit before Phase 4 calibration deepens.
+- **Doubled-prompt surface (D-6) held up well.** `inject-prompts.js --check` correctly flagged drift on Build Memo Request after the prompts/memo-generation-agent.md edit; default-mode injection re-synced. The mitigation works as designed.
+- **Process flag (project-conventions §3):** Memo Generation is a HIGH-stakes prompt. The convention says high-stakes prompt edits route through Claude Chat for refinement before commit. I made this edit as a tactical bugfix (rule 7 scoping + silent checks; not a structural rewrite), then verified empirically. Surfaced this trade-off explicitly to Will at the time of the edit; Will chose to test first and refine after empirically. The 58/60 verification gives empirical evidence that the fix is sound.
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed code/prompt), 7 (session state changed), 8 (project task status), 10 (cross-agent risk flag).
+
+Updates fanned out this task:
+- `prompts/memo-generation-agent.md` ................... rule 7 narrowed; rule 8 added; 6 silent final checks added; frontmatter bumped
+- `n8n/workflow.json` .................................. Build Memo Request system prompt re-injected via inject-prompts.js; versionId v20
+- `docs/agents/claude.md` .............................. this entry; frontmatter bumped to 20:15
+
+Updates deferred to a separate atomic commit (immediately following):
+- `.claude/memory/state.md` ............................ Phase 4 entry status; cross-references this fix
+- `docs/STATUS.md` ..................................... Phase 4 entry progress note
+- `.collab/INDEX.md` ................................... timestamp refreshes
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no new architectural decision; this is a tactical prompt bugfix, not a design choice. The diagnosis (qwen3-max-preview's global-bypass interpretation pattern) is captured in this work-log entry; if the pattern recurs across multiple prompts, that becomes a Claude-owned decision (D-7-class: model-vs-prompt interaction) and earns a decisions.md entry.
+- `.claude/memory/pitfalls.md` — could promote to a P-5 ("qwen3-max-preview eagerly invokes preemptive bypass on prompts with strong abstain rules"). Will hold until pattern confirmed on a second prompt (Evaluator); promoting after one observation risks over-fitting the pitfall to one case.
+- `.claude/memory/context.md` — I-9 was already updated 2026-04-25T18:45 with the Phase-3-closure context including a watch-out for model-swap parser robustness. This new finding is a related-but-separate issue (prompt-vs-model, not parser-vs-model). I-9 stands; if pattern confirmed on Evaluator, may add to I-9 watch-out section.
+- Codex memory files — owned by Codex; framework prohibits cross-agent memory editing.
+- Claude Chat refinement of the rule 7/8 edit — explicit user override per project-conventions §3 high-stakes routing exception. Empirical 58/60 result is the gate.
 
 ## Handoff blocks
 
