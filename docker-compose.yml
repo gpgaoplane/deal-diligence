@@ -82,3 +82,7 @@ services:
     volumes:
       - ./n8n/n8n-data:/home/node/.n8n
       - ./test-cases:/files:ro
+      # Generated memo outputs — n8n writes one Markdown file per run here
+      # via the "Write Memo File" node (Phase 6 enhancement). Read-write so
+      # the workflow can create files; visible on the host at ./outputs/.
+      - ./outputs:/files/outputs

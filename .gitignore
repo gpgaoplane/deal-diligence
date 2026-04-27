@@ -14,8 +14,11 @@
 # n8n runtime data volume (per docker-compose.yml bind mount)
 n8n/n8n-data/
 
-# Generated memo outputs — regenerated per run; test-cases/ holds inputs, not outputs
+# Generated memo outputs — regenerated per run; test-cases/ holds inputs, not outputs.
+# README.md in outputs/ is committed (explains what the directory is for).
 outputs/*.json
+outputs/*.md
+!outputs/README.md
 
 # Node deps (we don't use npm install in repo root; only outside-sandbox scripts)
 node_modules/

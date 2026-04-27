@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-26T17:30:00-04:00
+last-updated: 2026-04-26T18:00:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -18,7 +18,6 @@ skip-if: "never"
 | CONTEXT.md | project-scope | shared | active | 2026-04-26T17:00:00-04:00 |
 | DESIGN.md | design | shared | reference-only | 2026-04-24T03:30:00-04:00 |
 | IMPLEMENTATION.md | implementation-plan | shared | reference-only | 2026-04-24T03:30:00-04:00 |
-| .gitignore | config | shared | active | 2026-04-24T03:45:00-04:00 |
 | docs/STATUS.md | status | shared | active | 2026-04-26T17:30:00-04:00 |
 | docs/project-conventions.md | conventions | shared | active | 2026-04-24T02:30:00-04:00 |
 | .collab/ACTIVE.md | active-board | shared | active | 2026-04-26T17:00:00-04:00 |
@@ -46,7 +45,6 @@ skip-if: "never"
 | prompts/portfolio-fit-agent.md | prompt-draft | claude | active | 2026-04-26T17:30:00-04:00 |
 | prompts/memo-generation-agent.md | prompt-draft | claude | active | 2026-04-26T00:55:00-04:00 |
 | prompts/evaluator-agent.md | prompt-draft | claude | active | 2026-04-25T20:45:00-04:00 |
-| docker-compose.yml | compose-config | shared | active | 2026-04-25T18:45:00-04:00 |
 | .env.example | config-template | shared | active | 2026-04-26T01:30:00-04:00 |
 | scripts/up.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
 | scripts/down.sh | script | shared | active | 2026-04-24T13:30:00-04:00 |
@@ -81,7 +79,10 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-26T17:30:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-26T18:00:00-04:00 |
+| docker-compose.yml | compose-config | shared | active | 2026-04-26T18:00:00-04:00 |
+| .gitignore | config | shared | active | 2026-04-26T18:00:00-04:00 |
+| outputs/README.md | outputs-readme | shared | active | 2026-04-26T18:00:00-04:00 |
 | docs/submission-writeup.md | submission | shared | active | 2026-04-26T16:45:00-04:00 |
 | docs/demo-runbook.md | runbook | shared | active | 2026-04-26T16:45:00-04:00 |
 | docs/sample-runs/README.md | sample-runs-index | shared | active | 2026-04-26T16:45:00-04:00 |

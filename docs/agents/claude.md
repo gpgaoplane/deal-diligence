@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T17:30:00-04:00
+last-updated: 2026-04-26T18:00:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -1439,6 +1439,94 @@ Missing / intentionally skipped:
 - inject-prompts.js `$10B+` mangling fix — backlog
 - Codex memory files — owned by Codex
 - Commit — pending Will's eyeball
+
+## 2026-04-26T18:00:00-04:00 — Phase 6: auto-save Markdown memo to outputs/
+
+**Context.** Will requested the workflow auto-save a structured, readable Markdown memo to a local `outputs/` folder per run, eliminating the need to manually query Supabase + copy/paste the JSON. Implemented via two new n8n nodes + a Docker volume mount.
+
+**Action.**
+
+1. **Created `outputs/` directory** with `outputs/README.md` explaining the file-naming convention (`<deal_id>-<YYYYMMDD-HHMMSS>.md`), the volume-mount mechanism, the gitignore policy, and how to disable the auto-save if undesired.
+
+2. **Updated `.gitignore`** — `outputs/*.md` and `outputs/*.json` are gitignored; `outputs/README.md` is allowlisted via `!outputs/README.md`. Generated memos don't pollute git history; the directory's purpose stays documented.
+
+3. **Updated `docker-compose.yml`** — added `./outputs:/files/outputs` volume mount on the n8n container. Read-write so the workflow can create files. Comment block explains the Phase 6 enhancement.
+
+4. **Added 2 new nodes to `n8n/workflow.json`** (via one-shot Python helper `_tmp_wire_md.py`, then deleted):
+   - **Build Markdown Memo** (Code node, runOnceForEachItem) — renders the structured memo + evaluator + RFD + portfolio fit + sources into a single Markdown document. Reaches back to `Validate Memo Citations` (cleaned memo), `Parse Memo Response` (fallback), and `Coordinator` (source manifest) for inputs. Returns the markdown as both a JSON string AND a base64 binary payload (`binary.memo_md`) so the next node can write it via standard n8n file-write semantics.
+   - **Write Memo File** (Read/Write File node, `n8n-nodes-base.readWriteFile`) — writes the binary to `/files/outputs/{{ $json.memo_markdown_filename }}` inside the container, which lands on the host at `./outputs/<filename>.md`.
+   
+   Connection rewiring: `Parse Evaluator Response → Build Markdown Memo → Write Memo File → Build Supabase Record` (the rest of the chain unchanged: Build Supabase → Insert Deal Memo → Build Slack Message → Send Slack Notification).
+
+   Total nodes: 52 → 54. versionId: `phase4-step3a-v26 → phase6-md-output-v27`.
+
+5. **Markdown rendering structure** (in priority order, each conditional on input presence):
+   - Header (company name, deal_id, run_id, generated timestamp, recommendation with emoji, evaluator score, routing decision)
+   - Executive Summary
+   - Recommendation Rationale
+   - Company Snapshot (description, stage, sector, headcount, revenue, business model, key personnel)
+   - Investment Thesis
+   - Portfolio Fit (overall alignment, recommended action, strategic fit, stage fit, synergies, anti-patterns) — placed early since this drives the recommendation
+   - Key Strengths (severity-tagged with emojis + citations)
+   - Key Risks (same)
+   - Contradictions (severity-tagged with sources)
+   - Red Flags (with explicit "deterministic, audit-replayable" callout + raw_text quotes truncated to 280 chars)
+   - Missing Information (importance + category)
+   - Open Diligence Questions
+   - Evaluator Detail (six-criteria score table + critical issues)
+   - Confidence Scores
+   - Source Documents (handles both string-array and object-array shapes)
+   - Footer with run_id + I-1 reminder ("the advance/pass decision belongs to the human reviewer")
+
+6. **`.collab/INDEX.md`** — added `outputs/README.md` row; bumped `n8n/workflow.json`, `docker-compose.yml`, `.gitignore` timestamps; bumped INDEX self.
+
+7. **`.claude/memory/state.md`** — current-state updated to reflect MD output live + workflow versionId v27 + 54 nodes.
+
+**Will-side activation steps (one-time):**
+
+1. **Restart the container** to pick up the new volume mount:
+   ```bash
+   docker compose down && docker compose up -d
+   ```
+2. **Re-import the workflow** to pick up the new nodes:
+   ```bash
+   ./scripts/import-workflow.sh
+   ```
+3. **Trigger any deal** via the Form Trigger. Verify a new file appears at `outputs/<deal_id>-<timestamp>.md` once the run completes.
+
+After step 3, every subsequent run auto-saves; no further intervention required.
+
+**Watch out:**
+
+- **The Markdown rendering uses `Buffer.from(...).toString('base64')` inside the Code node sandbox.** Per n8n 2.17.7's sandbox primitives table (P-3 in pitfalls.md), Buffer is NOT explicitly listed as confirmed-working. If it fails (TypeError on `Buffer is undefined`), fallback is to write the markdown directly via the readWriteFile node's "string" mode instead of binary. Will surface as a clear runtime error if it breaks; not silent.
+- **The `n8n-nodes-base.readWriteFile` node** is the modern n8n filesystem node. If Will's n8n version doesn't have it (older n8n used `n8n-nodes-base.writeBinaryFile`), the workflow import will surface a "missing node type" warning. Fallback: rename type to `n8n-nodes-base.writeBinaryFile` with adjusted parameters.
+- **Docker volume mount is the load-bearing piece.** Without `docker compose down && up`, the n8n container has no `/files/outputs` directory, and the Write Memo File node will throw ENOENT. The workflow re-import alone is insufficient; container restart is required.
+- **Filename pattern** uses `[deal_id]-[YYYYMMDD-HHMMSS].md`. Multiple runs of the same deal produce different files (no overwrite). The `deal_id` is sanitized to alphanumeric + `_` + `-` to avoid path-traversal attacks. The deal_id field is user input via the Form Trigger; sanitization is defense-in-depth.
+- **The `code/portfolio.json` data is still embedded in workflow.json's Build Portfolio Fit Request node** as a JSON literal (per D-6 doubled-data surface). The Markdown memo rendering reads `cleanedMemo.portfolio_fit` (the LLM's output), not the input portfolio data. So a portfolio-config swap requires editing the `portfolioData` literal in workflow.json directly OR via a manual paste step — `inject-prompts.js` doesn't currently sync data, only prompts. Backlog item.
+- **Markdown line-length is unconstrained.** Some IC-memo paragraphs may render as long single lines. If reviewer prefers wrapping, add a post-processor; default Markdown viewers handle it fine.
+
+**Process flag.** This is a code-change to workflow.json + docker-compose, but no prompt changes (so no project-conventions §3 routing). Live verification is required before declaring this done — Will needs to run a deal end-to-end and verify the file lands in `outputs/`. Documented as a pending verification step.
+
+### Task Receipt
+Routing matrix rows hit: 1 (changed code: workflow.json + docker-compose + .gitignore + new file outputs/README.md), 7 (state changed), 8 (project task status — Phase 6 enhancement landed), 9 (created 1 new file: outputs/README.md), 10 (cross-agent risk: future agents see new node pair in workflow + Buffer-in-sandbox dependency).
+
+Updates fanned out:
+- `outputs/README.md` (NEW) ............ explains directory purpose, file-naming, mechanism, gitignore policy, disable instructions
+- `.gitignore` ......................... `outputs/*.md` + `outputs/*.json` patterns; allowlist `outputs/README.md`
+- `docker-compose.yml` ................. `./outputs:/files/outputs` volume mount with comment block
+- `n8n/workflow.json` .................. 2 new nodes (Build Markdown Memo + Write Memo File); connections rewired; versionId v26 → v27; 52 → 54 nodes
+- `.collab/INDEX.md` ................... outputs/README.md row added; workflow + docker-compose + .gitignore timestamps bumped; INDEX self bumped
+- `.claude/memory/state.md` ............ current-state updated with v27 + 54-node + MD-auto-save reflection; frontmatter bumped
+- `docs/agents/claude.md` .............. this entry; frontmatter bumped to 18:00
+
+Missing / intentionally skipped:
+- Live verification — Will-side, requires container restart + workflow re-import + a deal trigger. Documented as the immediate next step.
+- Supabase `memo_markdown` column — explicitly NOT added per Will's preference for local-file-only delivery (no manual Supabase copy-paste).
+- inject-prompts.js extension to sync portfolio data — backlog (P-6 lesson; same doubled-data surface).
+- Sample MD captured into `docs/sample-runs/` — recommended after the first verification run; backlog.
+- `docs/STATUS.md` updated — content already covers Phase 6 in flight; this enhancement is captured in state.md and the work log; STATUS body doesn't need a re-rewrite.
+- `docs/demo-runbook.md` updated to reference the new outputs/ folder — recommended addition to the Loom script ("And the same memo is auto-saved to ./outputs/ as a clean Markdown file"); deferring to the next runbook update pass.
+- Codex memory files — owned by Codex.
 
 ## Handoff blocks
 

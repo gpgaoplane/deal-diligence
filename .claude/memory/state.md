@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-26T17:00:00-04:00
+last-updated: 2026-04-26T18:00:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main` (pushed to origin at `d3320c9` after Phase 5 closure).
-**Active task:** **Phase 6 IN FLIGHT — submission writeup + demo runbook authored, awaiting Loom recording.** Three new files: `docs/submission-writeup.md` (237 words in the 250-word section), `docs/demo-runbook.md` (3-4 min Loom script), `docs/sample-runs/README.md` (capture index, directory empty pending recording-day captures). Loom URL is a placeholder in the writeup — Will fills after recording.
+**Active task:** **Phase 6 IN FLIGHT — submission writeup + demo runbook + auto-saved Markdown memo output landed; pending Loom recording + voice revision.** Workflow at `versionId: phase6-md-output-v27` (54 nodes; was 52). Active model: `qwen3-max-2025-09-23`. Engine generalized for investor-agnostic use (Option A landed at `f119fe1`); Sagard wording preserved in the submission package. New auto-save flow writes one Markdown file per run to `outputs/<deal_id>-<timestamp>.md` on the host (via Docker volume mount).
 
 **Phase 5 ✅ CLOSED — Cerebras generalization confirmed end-to-end (carried forward).** Pipeline ran on the 4 Cerebras docs at `test-cases/cerebras/` with no code changes. Will reported memo + evaluator clean, no quality regressions. Workflow still at `versionId: phase4-step3a-v25`. Active chat model: `qwen3-max-2025-09-23`.
 
