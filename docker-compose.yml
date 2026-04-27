@@ -85,6 +85,9 @@ services:
       # Generated memo outputs — n8n writes one Markdown file per run here
       # via the "Write Memo File" node (Phase 6 enhancement). Read-write so
       # the workflow can create files; visible on the host at ./outputs/.
-      # Mounted at /outputs (NOT /files/outputs) because /files is read-only;
-      # Docker cannot create a mountpoint inside a read-only filesystem.
-      - ./outputs:/outputs
+      # Mounted under /home/node/ (the container user's home directory)
+      # rather than /outputs so the n8n process (running as uid 1000)
+      # has write permission. Mounting at /outputs causes "not writable"
+      # errors on Windows + Docker Desktop because bind mounts to Windows
+      # host paths don't always grant write to non-root container users.
+      - ./outputs:/home/node/outputs
