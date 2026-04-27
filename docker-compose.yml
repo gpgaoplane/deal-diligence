@@ -25,6 +25,20 @@ services:
     image: n8nio/n8n:latest
     container_name: deal-diligence-n8n
     restart: unless-stopped
+    # Run as root so the Read/Write File node ("Write Memo File") can
+    # write to /home/node/outputs (host: ./outputs/) on Windows + Docker
+    # Desktop. The default user `node` (uid 1000) cannot write to bind-
+    # mounted Windows host folders because Docker Desktop's WSL2 backend
+    # presents them with permissions that don't grant write to non-root
+    # container users. n8n's pre-check `fs.access(parentDir, W_OK)`
+    # therefore fails with "The file ... is not writable."
+    #
+    # Trade-off (acceptable for local-dev prototype): the n8n process
+    # runs with elevated privileges inside the container. Production
+    # would use a Docker-managed volume + post-write extraction OR a
+    # custom n8n image that pre-creates the output directory with the
+    # right ownership during container build.
+    user: "0:0"
     ports:
       - "${N8N_PORT:-5678}:5678"
     environment:
