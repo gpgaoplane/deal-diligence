@@ -2,7 +2,7 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-26T17:30:00-04:00
+last-updated: 2026-04-26T22:00:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -16,7 +16,7 @@ skip-if: "status != active or last-updated <= your watermark"
 <!-- section:current-phase:start -->
 ## Current phase
 
-**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase4-step3a-v25` runs end-to-end on CoreWeave. 52 total nodes. **Active chat model: `qwen3-max-2025-09-23`** (swapped 2026-04-26).
+**Phase 3 (Core Build) COMPLETE.** Workflow at `versionId: phase6-md-output-v27` runs end-to-end on CoreWeave. 54 total nodes (52 main + 2 Phase 6 Markdown auto-save). **Active chat model: `qwen3-max`** (rolling alias; swapped 2026-04-26 from `qwen3-max-2025-09-23`).
 
 **Phase 4 (Dev Iteration) ✅ ALL ENTRY STEPS COMPLETE.**
 

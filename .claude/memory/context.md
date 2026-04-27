@@ -2,7 +2,7 @@
 status: active
 type: context
 owner: claude
-last-updated: 2026-04-26T17:00:00-04:00
+last-updated: 2026-04-26T22:00:00-04:00
 read-if: "you need durable project truths as understood by Claude"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -71,7 +71,7 @@ Per-run estimate: ~$0.55–$1.10 (200K+ input + 20K output + 40K embedding token
 
 ## I-9 — Qwen3-Max family on DashScope is a reasoning model — 2026-04-24T04:15:00-04:00 (revised 2026-04-26T17:00:00-04:00 after Phase 5 closure)
 
-Originally observed on `qwen3.5-plus` via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208`. Response shape is `{"content": "<final>", "reasoning_content": "<chain-of-thought>"}`. Behavior carries forward to `qwen3-max-2026-01-23`, `qwen3-max-preview`, and the currently-active `qwen3-max-2025-09-23` — all three models emit `reasoning_content` separately from `content`. Phase 3, 4, and 5 runs confirm.
+Originally observed on `qwen3.5-plus` via credential sanity-check: a trivial "reply with pong" prompt returned `completion_tokens: 214` of which `reasoning_tokens: 208`. Response shape is `{"content": "<final>", "reasoning_content": "<chain-of-thought>"}`. Behavior carries forward to `qwen3-max-2026-01-23`, `qwen3-max-preview`, `qwen3-max-2025-09-23`, and the currently-active `qwen3-max` (rolling stable alias) — all qwen3-max family members emit `reasoning_content` separately from `content`. Phase 3, 4, 5, and 6 runs confirm.
 
 **Three binding implications, updated against Phase 3 evidence:**
 

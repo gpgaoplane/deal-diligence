@@ -2,7 +2,7 @@
 status: active
 type: readme
 owner: shared
-last-updated: 2026-04-26T17:30:00-04:00
+last-updated: 2026-04-26T22:00:00-04:00
 read-if: "you are a human or agent landing on this repo and want the quickstart"
 skip-if: "you already know this repo"
 ---
@@ -34,7 +34,7 @@ The engine is investor-agnostic — any investor's thesis pillars, portfolio com
 ## Stack
 
 - **Orchestration:** local n8n via Docker Compose — workflow JSON is the version-controlled source of truth.
-- **LLM:** Qwen3-Max (`qwen3-max-2025-09-23`) via Alicloud DashScope (parameterized for one-variable swap to other providers).
+- **LLM:** Qwen3-Max (`qwen3-max`, the rolling stable alias) via Alicloud DashScope (parameterized for one-variable swap to other providers).
 - **7-agent pipeline:** Coordinator → Extraction → Contradiction → Gap Analysis → Red Flag Detector (deterministic JS, not LLM) → Portfolio Fit (reads `code/portfolio.json`) → Memo Generation → Evaluator (LLM-as-judge with meta-eval calibration).
 - **Persistence:** Supabase (Postgres). **Notification:** Slack. **Observability:** Langfuse Cloud (traces + versioned prompts + scores).
 - **Multi-agent collaboration:** [`multi-agent-collab`](https://github.com/gpgaoplane/multi-agent-collab) v0.3.0 — Claude Code as primary builder, Codex as reviewer, Claude Chat as the operator's strategist (not a framework agent).
@@ -59,7 +59,7 @@ To tailor the pipeline to a different investor's mandate, edit `code/portfolio.j
 
 ## Status
 
-**Phases 0 – 5 complete; Phase 6 in flight.** End-to-end pipeline runs on CoreWeave (58/60 evaluator score, 17/17 valid citations) and Cerebras (generalization-confirmed, no code change) producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. 52-node workflow (45-node main path + 5-node error sub-flow + 2-node Langfuse pair). Active model: `qwen3-max-2025-09-23`.
+**Phases 0 – 5 complete; Phase 6 in flight.** End-to-end pipeline runs on CoreWeave (58/60 evaluator score, 17/17 valid citations) and Cerebras (generalization-confirmed, no code change) producing IC-grade memos persisted to Supabase, notified to Slack, and traced in Langfuse. Active model: `qwen3-max` (the rolling Qwen3-Max stable alias on Alicloud DashScope).
 
 **Phase 4 (CoreWeave Dev Iteration) ✅ closed.** Memo anti-empty-shell rules; meta-eval discrimination = 25 points (target ≥ 20); RFD coverage 4-of-10 → 8-of-10 functional detectors after the P-6 wrapper fix; Memo severity semantics for strengths; Extraction S-1 retrieval-query refinements.
 

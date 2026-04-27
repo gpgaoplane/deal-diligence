@@ -2,7 +2,7 @@
 status: active
 type: project-scope
 owner: shared
-last-updated: 2026-04-26T17:00:00-04:00
+last-updated: 2026-04-26T22:00:00-04:00
 read-if: "you are any agent working on this project — this is the authoritative scope and locked-decisions doc"
 skip-if: "never on first session; re-read §5 and §5.10 before proposing changes to locked decisions"
 related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.md, .claude/memory/decisions.md]
@@ -820,6 +820,8 @@ The reply to Pari should briefly note:
 - **Claude Code / Will** — Phase 4 (Dev Iteration) closed: Memo anti-empty-shell rules + meta-eval discrimination 25 points + RFD wrapper P-6 fix raising functional detector coverage from 4-of-10 to 8-of-10 + Memo severity semantics + Extraction S-1 retrieval-query refinements. Active model swapped to `qwen3-max-2025-09-23`.
 - **Claude Code / Will** — Phase 5 (Cerebras Generalization) closed: pipeline ran end-to-end on the 4 Cerebras docs with no code changes; P-5 prompt fixes confirmed model-class (not deal-class); P-6 RFD wrapper fix re-verified across two deal packets.
 - **Claude Code / Will** — Phase 6 entry: submission writeup, demo runbook, and sample-runs scaffold authored at `docs/submission-writeup.md`, `docs/demo-runbook.md`, `docs/sample-runs/README.md`. Branch pushed to `origin/main`. Remaining Phase 6 work (Loom recording, URL slot-in, voice revision) is on Will.
+- **Claude Code / Will** — Phase 6 enhancement: auto-saved Markdown memo per run added (Build Markdown Memo + Write Memo File nodes; Docker volume mount; `outputs/<deal_id>-<timestamp>.md` on host). Replaces the manual "query Supabase + copy/paste JSON" reviewer workflow.
+- **Claude Code / Will** — Active LLM swapped to `qwen3-max` (the rolling stable alias on Alicloud DashScope) from the dated `qwen3-max-2025-09-23` tag. Same model family; rolling alias auto-tracks the latest stable point release. Per P-5 regression-test guidance, every model swap re-tests the per-element prompt fixes empirically before declaring green.
 
 ---
 

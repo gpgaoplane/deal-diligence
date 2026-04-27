@@ -2,7 +2,7 @@
 status: active
 type: work-log
 owner: claude
-last-updated: 2026-04-26T18:00:00-04:00
+last-updated: 2026-04-26T22:00:00-04:00
 read-if: "you need to see Claude's recent work and watch-outs"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -1527,6 +1527,72 @@ Missing / intentionally skipped:
 - `docs/STATUS.md` updated — content already covers Phase 6 in flight; this enhancement is captured in state.md and the work log; STATUS body doesn't need a re-rewrite.
 - `docs/demo-runbook.md` updated to reference the new outputs/ folder — recommended addition to the Loom script ("And the same memo is auto-saved to ./outputs/ as a clean Markdown file"); deferring to the next runbook update pass.
 - Codex memory files — owned by Codex.
+
+## 2026-04-26T22:00:00-04:00 — LLM swap to qwen3-max (rolling alias) + outputs/ permission fixes
+
+**Context.** Will took control via /remote-control and requested swapping the active LLM to `qwen3-max` (the rolling stable alias) from `qwen3-max-2025-09-23` (dated tag), having pre-configured `.env`. Same model family, just the rolling alias instead of the dated point release. Updates all current-state references; preserves historical references.
+
+**Also captured here (immediately preceding fixes from the same active session, not yet logged):**
+- `[6 fix] mount outputs/ at /outputs` (commit `73a5dc5`) — Docker read-only filesystem error: cannot create mountpoint inside `./test-cases:/files:ro` mount. Switched to `/outputs` (sibling of `/files`).
+- `[6 fix] repair $10B mangling` (commit `e4da6f7`) — Build Portfolio Fit Request systemPrompt had `\"0B+` instead of `$10B+` due to `inject-prompts.js` regex backreference bug ($1 in replacement string). Surgical replace_all in workflow.json.
+- `[6 fix] mount outputs/ under /home/node/` (commit `1f03e19`) — n8n container runs as user `node` (uid 1000); Windows bind mount at `/outputs` didn't grant write to non-root container user. Moved to `/home/node/outputs`.
+- `[6 fix] disable N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES` (commit `d86f990`) — n8n's security blocklist (the actual root cause) blocks Read/Write File node from writing under `/home/node/.n8n` and surrounding tree. The "is not writable" error was n8n's blocklist message, not a filesystem permission issue.
+
+**Action — model swap.**
+
+Updated current-state references:
+- `.env.example`: `ALICLOUD_MODEL=qwen3-max-2025-09-23` → `qwen3-max`
+- `n8n/workflow.json`: Build Langfuse Batch fallback model literal `'qwen3-max-2025-09-23'` → `'qwen3-max'`
+- `README.md`: Stack section + Status section
+- `AI_AGENTS.md`: Stack mention
+- `docs/STATUS.md`: current-phase active model + versionId v27 + 54-node count refresh
+- `.claude/memory/state.md`: current-state Active model line
+- `.claude/memory/context.md` I-9: current-active reference + family list expanded
+- `docs/demo-runbook.md`: pre-recording checklist .env value
+- `CONTEXT.md` §11: appended 2 strategic-journal milestones (Phase 6 MD enhancement + LLM swap)
+
+Preserved historical references in: state.md Phase 5 closure block, context.md I-9 watch-out, decisions.md D-6, CONTEXT.md prior journal entries, STATUS.md final live-verification description, implementation plan §14, and all work-log entries.
+
+**Will-side activation:**
+
+```
+docker compose down
+docker compose up -d
+./scripts/import-workflow.sh
+```
+
+After restart, $env.ALICLOUD_MODEL reads `qwen3-max` from `.env`, every chat-completions HTTP Request node receives the new model name, Langfuse traces tag observations as `qwen3-max`. Same restart cycle picks up the auto-save fixes (file-access env var + volume mount path).
+
+**Watch out:**
+- **P-5 regression test applies.** qwen3-max-2025-09-23 → qwen3-max is within-family; prompts EXPECTED to generalize cleanly. After Will's first run, confirm Memo + Evaluator produce substantive output (no empty shells, no all-zeros). If regressions appear, the 5-step P-5 workaround pattern is the playbook.
+- **Rolling alias means underlying model can change** silently when Alicloud rotates the alias. Subtle behavior changes possible. Mitigation: Langfuse trace metadata logs the model name from each API response — check there if behavior shifts.
+- **Build Langfuse Batch fallback literal** is now `'qwen3-max'` but only fires if env var is undefined. With env properly set, fallback never executes.
+- **Today's session also landed Phase 6 enhancement (MD auto-save) + four fixes.** Single restart cycle picks up: model swap + file-access env var + volume mount path. One restart, one re-import, all done.
+
+**Process flag.** Model swap is a config change; no project-conventions §3 routing required. Chain of fixes from the auto-save flow is mechanical bug-resolution.
+
+### Task Receipt
+Routing matrix rows hit: 1 (config + workflow change), 5 (rolling-alias-vs-dated-tag durable note), 7 (state changed), 8 (project task status), 10 (cross-agent risk: rolling alias caveat).
+
+Updates fanned out:
+- `.env.example` ................. ALICLOUD_MODEL=qwen3-max
+- `n8n/workflow.json` ............. Build Langfuse Batch fallback updated
+- `README.md` .................... Stack + Status; frontmatter bumped
+- `AI_AGENTS.md` ................. Stack mention; frontmatter bumped
+- `CONTEXT.md` ................... §11 + 2 milestones; frontmatter bumped
+- `docs/STATUS.md` ............... current-phase refreshed; frontmatter bumped
+- `.claude/memory/state.md` ...... current-state line; frontmatter bumped
+- `.claude/memory/context.md` .... I-9 current-active + family list; frontmatter bumped
+- `docs/demo-runbook.md` ......... .env example value; frontmatter bumped
+- `.collab/INDEX.md` ............. 9 row timestamp bumps; frontmatter bumped
+- `docs/agents/claude.md` ........ this entry; frontmatter bumped
+
+Missing / intentionally skipped:
+- decisions.md, pitfalls.md — accurate as-written.
+- state.md Phase 5 block, plans §14, STATUS line 31 — historical.
+- Live verification — Will-side, pending next run.
+- Codex files — cross-agent boundary.
+- Commit — pending Will's eyeball.
 
 ## Handoff blocks
 
