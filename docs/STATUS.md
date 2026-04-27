@@ -2,12 +2,14 @@
 status: active
 type: status
 owner: shared
-last-updated: 2026-04-26T17:00:00-04:00
+last-updated: 2026-04-26T17:30:00-04:00
 read-if: "you need project-wide state: current phase, what's done, what's next"
 skip-if: "status != active or last-updated <= your watermark"
 ---
 
-# Project Status — Sagard AI Deal Diligence Workspace
+# Project Status — Deal Diligence Workspace
+
+> Originally built as a take-home for Sagard. The engine is now generalized — investor-specific configuration lives in `code/portfolio.json`. See `docs/submission-writeup.md` for the Sagard-tailored framing submitted to Pari.
 
 **Status:** Active development. No active deadline (the original take-home deadline of 2026-04-24 has passed; the project continues without time pressure).
 

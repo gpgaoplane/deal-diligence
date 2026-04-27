@@ -2,18 +2,18 @@
 status: active
 type: readme
 owner: shared
-last-updated: 2026-04-26T17:00:00-04:00
+last-updated: 2026-04-26T17:30:00-04:00
 read-if: "you are a human or agent landing on this repo and want the quickstart"
 skip-if: "you already know this repo"
 ---
 
-# Deal Diligence
+# Deal Diligence Workspace
 
-**Sagard AI Deal Diligence Workspace** — take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). The original deadline of 2026-04-24 has passed; development continues without an active deadline.
+Investment-memo automation pipeline that converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a cited, auditable IC memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
 
-Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
+The engine is investor-agnostic — any investor's thesis pillars, portfolio companies, and anti-patterns live in [`code/portfolio.json`](code/portfolio.json) as a swappable configuration. Drop in your own portfolio data and the same pipeline tailors its alignment scoring to your fund's mandate.
 
-**Submission writeup:** [`docs/submission-writeup.md`](docs/submission-writeup.md) — 250-word framing + reading order + production-changes list.
+**Origin:** Originally built as a take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). See [`docs/submission-writeup.md`](docs/submission-writeup.md) for the original Sagard-tailored framing — that is the document submitted to Sagard, alongside a Loom demo and this repository.
 
 ## Start here
 
@@ -34,10 +34,10 @@ Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news) into a 
 ## Stack
 
 - **Orchestration:** local n8n via Docker Compose — workflow JSON is the version-controlled source of truth.
-- **LLM:** Qwen3-Max (`qwen3-max-2025-09-23`) via Alicloud DashScope (parameterized for one-variable swap to Claude via Bedrock).
-- **7-agent pipeline:** Coordinator → Extraction → Contradiction → Gap Analysis → Red Flag Detector (deterministic JS, not LLM) → Portfolio Fit → Memo Generation → Evaluator (LLM-as-judge with meta-eval calibration).
+- **LLM:** Qwen3-Max (`qwen3-max-2025-09-23`) via Alicloud DashScope (parameterized for one-variable swap to other providers).
+- **7-agent pipeline:** Coordinator → Extraction → Contradiction → Gap Analysis → Red Flag Detector (deterministic JS, not LLM) → Portfolio Fit (reads `code/portfolio.json`) → Memo Generation → Evaluator (LLM-as-judge with meta-eval calibration).
 - **Persistence:** Supabase (Postgres). **Notification:** Slack. **Observability:** Langfuse Cloud (traces + versioned prompts + scores).
-- **Multi-agent collaboration:** [`multi-agent-collab`](https://github.com/gpgaoplane/multi-agent-collab) v0.3.0 — Claude Code as primary builder, Codex as reviewer, Claude Chat as Will's strategist (not a framework agent).
+- **Multi-agent collaboration:** [`multi-agent-collab`](https://github.com/gpgaoplane/multi-agent-collab) v0.3.0 — Claude Code as primary builder, Codex as reviewer, Claude Chat as the operator's strategist (not a framework agent).
 
 ## Running
 
@@ -53,7 +53,9 @@ Then import the workflow once the n8n container is up:
 ./scripts/import-workflow.sh   # imports n8n/workflow.json
 ```
 
-Trigger a run via the Form Trigger node in the n8n UI, uploading the test-case PDFs from `test-cases/coreweave/` or `test-cases/cerebras/`.
+Trigger a run via the Form Trigger node in the n8n UI, uploading the test-case PDFs from `test-cases/coreweave/` or `test-cases/cerebras/` (the two demo deals validated in this repo).
+
+To tailor the pipeline to a different investor's mandate, edit `code/portfolio.json` to replace the default thesis pillars, portfolio companies, and anti-patterns. No prompt or workflow code changes are required — Portfolio Fit reads the JSON literally.
 
 ## Status
 

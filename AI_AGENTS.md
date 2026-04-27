@@ -2,7 +2,7 @@
 status: active
 type: shared
 owner: shared
-last-updated: 2026-04-26T17:00:00-04:00
+last-updated: 2026-04-26T17:30:00-04:00
 read-if: "you are any AI agent starting work in this repo"
 skip-if: "never"
 related: []
@@ -19,9 +19,9 @@ This is the single entry point for any AI agent working here (Claude, Codex, Gem
 <!-- collab:project-summary:start -->
 ## What This Project Is
 
-**Sagard AI Deal Diligence Workspace** — a take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). The original deadline of 2026-04-24 has passed; development continues without an active deadline.
+**Deal Diligence Workspace** — investment-memo automation pipeline. Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news articles) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human. The engine is investor-agnostic; any investor's thesis pillars, portfolio companies, and anti-patterns live in `code/portfolio.json` as a swappable configuration.
 
-Converts a fragmented deal packet (S-1s, CIMs, expert transcripts, news articles) into a cited, auditable investment memo with contradiction detection, gap analysis, and deterministic red-flag surfacing. The advance/pass decision stays human.
+**Origin:** Originally built as a take-home for Sagard's AI Builder / Forward Deployed Engineer role (evaluator: Parinaz Sobhani, Head of AI). The original deadline of 2026-04-24 has passed; development continues without an active deadline. See `docs/submission-writeup.md` for the original Sagard-tailored framing.
 
 **Stack:** local n8n via Docker → 7-agent pipeline (Coordinator + Extraction + Contradiction + Gap Analysis + Red Flag Detector (deterministic JS) + Portfolio Fit + Memo Generation + Evaluator) → Supabase (memo persistence) + Slack (human notification) + Langfuse (observability, prompt versioning). LLM: Qwen3-Max (`qwen3-max-2025-09-23`) via Alicloud DashScope, parameterized for one-variable swap.
 

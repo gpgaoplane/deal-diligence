@@ -1,5 +1,5 @@
 {
-  "$comment": "Simulated Sagard portfolio for prototype Portfolio Fit agent. Shape locked by design plan §2.8. Production would replace with API pull from Sagard's portfolio management system (design plan §8 Extension Point 3).",
+  "$comment": "Default investor portfolio config for the Portfolio Fit agent. The engine is investor-agnostic — replace the contents below with your own portfolio_companies[], thesis_pillars[], and anti_patterns[] to swap to a different investor's thesis. The current contents are Sagard's portfolio (the original demo configuration for the take-home submission). Shape locked by design plan §2.8. Production would replace static JSON with an API pull from the investor's portfolio management system (design plan §8 Extension Point 3).",
   "portfolio_companies": [
     {
       "name": "KOHO",
