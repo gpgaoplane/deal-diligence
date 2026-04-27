@@ -85,4 +85,6 @@ services:
       # Generated memo outputs — n8n writes one Markdown file per run here
       # via the "Write Memo File" node (Phase 6 enhancement). Read-write so
       # the workflow can create files; visible on the host at ./outputs/.
-      - ./outputs:/files/outputs
+      # Mounted at /outputs (NOT /files/outputs) because /files is read-only;
+      # Docker cannot create a mountpoint inside a read-only filesystem.
+      - ./outputs:/outputs
