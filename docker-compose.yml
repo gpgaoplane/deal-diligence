@@ -58,6 +58,15 @@ services:
       # ALICLOUD_API_KEY etc. from .env without needing UI-managed Credentials.
       # Production deployment would use n8n Credentials instead.
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+
+      # Allow the Read/Write File node to write outside n8n's user data dir.
+      # Default in n8n is to BLOCK access to anything under the n8n user
+      # folder (~/.n8n and surrounding tree) for security. This blocks our
+      # Phase 6 "Write Memo File" node's output to /home/node/outputs/ even
+      # though it's a sibling of .n8n. Setting this to false re-enables file
+      # writes to the bind-mounted outputs folder. Production deployments
+      # would tighten this with N8N_RESTRICT_FILE_ACCESS_TO=<allowlist>.
+      N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES: "false"
       # Surface secrets we need inside workflow HTTP Request / credentials
       # (n8n nodes read these via ${{ $env.VAR_NAME }} expressions)
       ALICLOUD_API_KEY: ${ALICLOUD_API_KEY}
