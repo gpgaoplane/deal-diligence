@@ -1594,6 +1594,49 @@ Missing / intentionally skipped:
 - Codex files — cross-agent boundary.
 - Commit — pending Will's eyeball.
 
+## 2026-04-27T21:00:00-04:00 — Phase 6 wrap-up: MD renderer fix + cross-family LLM swap + revert root + P-7
+
+**Context.** Will confirmed end-to-end MD auto-save works after the systematic-debugging root-cause fix. Three follow-ups landed in this turn (4 commits total, listed below).
+
+**Action.**
+
+1. **MD renderer fix** (commit `8999134`) — Build Markdown Memo node was reading wrong schema field names (`s.claim`/`s.text`/`s.description` instead of `s.strength`/`r.risk`; `s.citation`/`s.citations` instead of `s.sources`); also reading non-existent `cleanedMemo.portfolio_fit` instead of reaching back to `Parse Portfolio Fit Response`. Empty Key Strengths / Key Risks / Portfolio Fit sections in the rendered MD were the symptom. Fix: schema-correct field reads + upstream reach-back. versionId v27 → v28.
+
+2. **Demo runbook + writeup additions** (commit `dc29a72`) — completed items 2 and 3 of the original Phase 6 3-step plan. Demo runbook got a new ~25-second "good company, wrong investor" segment between "walk the output" and "show the receivers" — operator clicks Parse Portfolio Fit Response and narrates the engine-vs-config distinction (Sagard's thesis pillars vs. AI infrastructure deals). Supabase walkthrough extended to actually walk specific columns + open the new outputs/ Markdown file. Writeup got a new ~120-word section "Why both demo deals got `pass`" between "Demo recording" and "What I'd change in a production version", concretely citing anti-pattern #1 + missed thesis pillars + the engine-vs-config distinction. Reading-order table updated; node count refreshed 52 → 54.
+
+3. **Cross-family LLM swap** (commit `9711b0e`) — Will pre-configured `.env` to `ALICLOUD_MODEL=qwen3.5-plus-2026-02-15`. FIRST cross-family swap in project history (qwen3-max sub-family → qwen3.5-plus sub-family). Updated current-state references in 9 files + 2 milestone entries in CONTEXT.md §11 + I-9 invariant title broadened from "Qwen3-Max family" to "Qwen3 family" since both Max and Plus exhibit the reasoning-model behavior class. Preserved historical references in work logs, decisions.md D-6, pitfalls.md P-5, state.md Phase 5 closure block, context.md I-9 watch-out section, CONTEXT.md prior journal entries, docs/plans/* historical phase descriptions.
+
+4. **Phase 6 wrap-up** (commit `787bce0`) — two backlog items from the multi-attempt "is not writable" debug:
+   - Reverted speculative `user: "0:0"` in docker-compose.yml. Actual fix was `N8N_RESTRICT_FILE_ACCESS_TO=/home/node/outputs` (commit `83967ca`), not running as root. Default user `node` (uid 1000) writes fine to /home/node/outputs once the allowlist is configured. Speculative comment block replaced with brief explanatory note pointing at P-7.
+   - Added P-7 to `.claude/memory/pitfalls.md`. Full entry: misleading error message wording, exact source location at `file-system-helper-functions.js:141`, all three gates in `isFilePathBlocked()`, fix env var, diagnostic workflow that found the actual cause, references to all 4 speculative fix commits + the actual root-cause fix, general lesson on verifying writes directly in the container before speculating about the gate.
+
+**P-5 regression-test note.** The qwen3-max → qwen3.5-plus swap is the FIRST cross-sub-family change. Prior swaps were all within the qwen3-max sub-family. The per-element prompt fixes are designed as model-CLASS invariants (per-element scoping rules), NOT sub-family-specific. They SHOULD generalize to qwen3.5-plus too — but empirical re-validation on the next live run is the gate. If regressions appear, the 5-step P-5 workaround pattern is the playbook.
+
+**Watch out:**
+- Container restart picks up BOTH the model swap AND the user revert in one cycle. After Will runs `docker compose down && docker compose up -d`, n8n should run as `uid=1000(node)` AND new `ALICLOUD_MODEL` should be in effect. Verify with `docker compose exec n8n id` and `... env | grep ALICLOUD_MODEL`.
+- `outputs/` contains files owned by `root:root` from earlier runs. New files written by `node` user will be owned by `1000:1000`. Both work since perms are 0777. Optional cleanup: `rm outputs/diag-test.txt outputs/perm-test.txt outputs/n8n-allowlist-test.txt` for the diagnostic test artifacts.
+- `inject-prompts.js` `$1` backreference bug surfaced earlier (commit `e4da6f7`) is still unfixed. Backlog. Workflow.json's embedded `$10B+` literal is currently correct because of the surgical replace_all, but next inject-prompts run could re-mangle.
+- I-9 title broadening is intentional. Reasoning-model behavior was first observed on qwen3.5-plus and persisted across qwen3-max variants; the cross-family swap returns to the original Plus sub-family. Treating the entire Qwen3 model class as a single behavior class is more accurate.
+
+**Process flag.** Three substantive commits in this turn + this Receipt = 4 commits. Atomic-commit discipline preserved.
+
+### Task Receipt
+Routing matrix rows hit: 1 (config + workflow + docker-compose + docs changes), 5 (durable truth — P-7 captures n8n 2.x security default that future agents will hit; I-9 broadened to Qwen3 family), 6 (recurring gotcha class — P-7 added), 7 (state changed across multiple surfaces), 8 (project task status — Phase 6 wrap-up + LLM swap), 10 (cross-agent risk: P-7 affects any future Read/Write File node use; I-9 affects any future model-swap regression test).
+
+Updates fanned out (across the 4 commits in this turn):
+- `8999134`: n8n/workflow.json — Build Markdown Memo jsCode rewrite (correct field names + portfolio-fit reach-back); versionId v27 → v28
+- `dc29a72`: docs/demo-runbook.md, docs/submission-writeup.md, .collab/INDEX.md — runbook segment + writeup section for "why pass" institutional triage
+- `9711b0e`: .env.example, n8n/workflow.json (Build Langfuse Batch fallback), README.md, AI_AGENTS.md, CONTEXT.md (3 spots + new milestone entries), docs/STATUS.md, .claude/memory/state.md, .claude/memory/context.md (I-9 title + family list + watch-out), docs/demo-runbook.md, .collab/INDEX.md — cross-family LLM swap to qwen3.5-plus-2026-02-15
+- `787bce0`: docker-compose.yml (revert user:0:0), .claude/memory/pitfalls.md (P-7 added), .collab/INDEX.md — Phase 6 wrap-up
+- This commit: docs/agents/claude.md — this Receipt
+
+Missing / intentionally skipped:
+- `.claude/memory/decisions.md` — no architectural decision; this turn's changes are config + bugfix + doc additions.
+- inject-prompts.js $1 backreference fix — backlog.
+- Live verification of cross-family swap + MD renderer fix — Will-side, pending the next deal trigger.
+- Cleanup of diagnostic test files in outputs/ — Will-side, optional.
+- Codex memory files — cross-agent boundary.
+
 ## Handoff blocks
 
 When you finish a substantive chunk of work and want another agent to take over,
