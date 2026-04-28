@@ -2,7 +2,7 @@
 status: active
 type: index
 owner: shared
-last-updated: 2026-04-26T22:00:00-04:00
+last-updated: 2026-04-27T20:00:00-04:00
 read-if: "session start, or before reading another agent's files"
 skip-if: "never"
 ---
@@ -79,11 +79,11 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-press-release.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
-| n8n/workflow.json | workflow | claude | active | 2026-04-26T22:00:00-04:00 |
-| docker-compose.yml | compose-config | shared | active | 2026-04-26T22:00:00-04:00 |
+| n8n/workflow.json | workflow | claude | active | 2026-04-27T20:00:00-04:00 |
+| docker-compose.yml | compose-config | shared | active | 2026-04-27T19:30:00-04:00 |
 | .gitignore | config | shared | active | 2026-04-26T18:00:00-04:00 |
 | outputs/README.md | outputs-readme | shared | active | 2026-04-26T18:00:00-04:00 |
-| docs/submission-writeup.md | submission | shared | active | 2026-04-26T16:45:00-04:00 |
-| docs/demo-runbook.md | runbook | shared | active | 2026-04-26T22:00:00-04:00 |
+| docs/submission-writeup.md | submission | shared | active | 2026-04-27T20:00:00-04:00 |
+| docs/demo-runbook.md | runbook | shared | active | 2026-04-27T20:00:00-04:00 |
 | docs/sample-runs/README.md | sample-runs-index | shared | active | 2026-04-26T16:45:00-04:00 |
 <!-- collab:index:end -->

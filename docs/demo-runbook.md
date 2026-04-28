@@ -2,14 +2,14 @@
 status: active
 type: runbook
 owner: shared
-last-updated: 2026-04-26T22:00:00-04:00
+last-updated: 2026-04-27T20:00:00-04:00
 read-if: "you are recording the Loom demo for the Sagard submission"
 skip-if: "you are not the operator running the demo"
 ---
 
 # Demo Runbook — Sagard Submission Loom Recording
 
-Target length: **3–4 minutes**. Hard cap 5 minutes.
+Target length: **4–4.5 minutes**. Hard cap 5 minutes.
 
 ## Pre-recording checklist
 
@@ -69,23 +69,37 @@ Click **Parse Evaluator Response**:
 
 > "The Evaluator scores six criteria, sums to 60, with HIGH-severity critical issues forcing flagged_for_review regardless of score. This is the meta-eval that lets us calibrate the prompts via fixture pairs — gap of 25 points between an intentionally-good and intentionally-bad memo, well above the 20-point target."
 
-### (3:00–3:30) Show the receivers
+### (3:00–3:25) The "good company, wrong investor" angle — institutional triage
+
+Click **Parse Portfolio Fit Response**. Show the JSON: `overall_thesis_alignment: LOW`, `recommended_action: pass`, `anti_patterns[]` with the matched entries. Voice over:
+
+> "This is the differentiator. Both CoreWeave and Cerebras are excellent companies by absolute standards — CoreWeave grew 737% YoY and IPO'd at $35B+; Cerebras has wafer-scale silicon and an OpenAI partnership. A generic 'is this a good company' tool says 'AI is hot, advance on both.' But Sagard's thesis is consumer fintech, AI applied TO finance, healthtech, and climate tech. These are AI infrastructure plays — wrong shape of opportunity for this fund. The pipeline correctly identifies the mismatch via the Portfolio Fit agent reading Sagard's actual portfolio JSON. This is institutional triage — not 'is this good in the abstract' but 'would Sagard fund this.' Swap the JSON, retarget the engine to a different investor's thesis. The judgment surface is data, not code."
+
+### (3:25–3:55) Show the receivers — three persistence surfaces
 
 Switch to Slack:
 
 > "Reviewer notification. Severity emoji, recommendation, top three risks, link to the full memo."
 
-Switch to Supabase `deal_memos`:
+Switch to Supabase `deal_memos` table editor. Click the latest row to expand, then walk three columns explicitly:
 
-> "Persisted with run_id, deal_id, the full memo JSON, citations array, evaluator score, routing_decision, and a timestamp. Indexed on (run_id, deal_id) for replay queries."
+> "Three columns to call out. **executive_summary** — three-paragraph IC opener. **portfolio_fit** — JSON with the alignment score, recommended action, and matched anti-patterns. **memo_markdown** — wait, actually the rendered Markdown lives at outputs/<deal>-<timestamp>.md on disk. Let me show that."
+
+Switch to your file explorer / VS Code, open `outputs/coreweave-<latest-timestamp>.md`:
+
+> "One Markdown file per run, auto-saved. Reviewer-readable IC memo with the recommendation up top, full company snapshot, portfolio fit reasoning, severity-tagged strengths and risks, contradictions, deterministic red flags with raw-text quotes for audit replay, missing information ranked by importance, evaluator score breakdown. This is the artifact a human triages from."
+
+Switch back to Supabase briefly:
+
+> "Persisted in Supabase too — same data plus run_id, deal_id, evaluator_score, routing_decision, timestamps. Indexed on (run_id, deal_id) for replay queries. The Markdown file is the human surface; the row is the system of record."
 
 Switch to Langfuse:
 
-> "Per-LLM-call observation, plus an explicit span for the deterministic Red Flag Detector tagged `deterministic: true`, plus an evaluator score attached to the trace as `deal-diligence-quality`. Twelve observations per run."
+> "Per-LLM-call observation, plus an explicit span for the deterministic Red Flag Detector tagged `deterministic: true`, plus the evaluator score attached to the trace as `deal-diligence-quality`. Twelve observations per run. This is the engineering surface — for debugging prompt drift across model versions or auditing model behavior, not for reviewers."
 
-### (3:30–3:50) Close
+### (3:55–4:15) Close
 
-> "Validated on two real deal packets — CoreWeave at 58/60 and Cerebras end-to-end with no code change. Cost is about a dollar per deal in tokens, but cost is not the production bottleneck — reviewer throughput, false-positive fatigue, prompt drift, and the audit-query layer are. The path to scale is in the writeup. Code's in the repo. Thanks."
+> "Validated on two real deal packets — CoreWeave at 58/60 and Cerebras end-to-end with no code change. Both got 'pass' — not because the companies are bad, but because they don't fit Sagard's thesis. That's the institutional-triage value. Cost is about a dollar per deal in tokens, but cost is not the production bottleneck — reviewer throughput, false-positive fatigue, prompt drift, and the audit-query layer are. The path to scale is in the writeup. Code's in the repo. Thanks."
 
 End recording.
 

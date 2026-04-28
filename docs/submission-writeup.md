@@ -2,7 +2,7 @@
 status: active
 type: submission
 owner: shared
-last-updated: 2026-04-26T16:45:00-04:00
+last-updated: 2026-04-27T20:00:00-04:00
 read-if: "you are reviewing the take-home submission to Sagard / Parinaz Sobhani"
 skip-if: "never"
 ---
@@ -33,7 +33,8 @@ The engineering decisions are auditability-first. Citations are enforced at the 
 | 4 | `docs/plans/2026-04-24-deal-diligence-design.md` | Authoritative system design (700 lines) |
 | 5 | `docs/plans/2026-04-24-deal-diligence-implementation.md` | Phased execution plan (500 lines) |
 | 6 | `docs/sample-runs/` | Captured outputs from end-to-end runs |
-| 7 | `n8n/workflow.json` | Live workflow (52 nodes) |
+| 7 | `n8n/workflow.json` | Live workflow (54 nodes) |
+| 7a | `outputs/<deal>-<timestamp>.md` | One auto-saved Markdown memo per run — the reviewer-readable IC artifact |
 | 8 | `prompts/*.md` | All 7 specialist system prompts |
 | 9 | `code/red-flag-detector.js` + `code/test/` | Deterministic detector + 43 unit tests |
 | 10 | `docs/agents/claude.md` | Full work log with Receipts; the engineering ledger |
@@ -41,6 +42,10 @@ The engineering decisions are auditability-first. Citations are enforced at the 
 ## Demo recording
 
 `<Loom URL placeholder — Will to fill after recording per docs/demo-runbook.md>`
+
+## Why both demo deals got `pass`
+
+CoreWeave (58/60 evaluator) and Cerebras (clean run) are both excellent companies by absolute standards — CoreWeave grew 737% YoY and IPO'd above $35B; Cerebras has wafer-scale silicon and an OpenAI partnership. A generic "is this a good company" tool says "AI is hot — advance on both." The pipeline correctly recommends `pass` on both because they are AI-infrastructure plays and Sagard's disclosed thesis pillars are consumer fintech, AI applied to finance, healthtech, and climate tech. Each deal also triggered Sagard's documented anti-pattern "large-cap AI infrastructure IPO ($10B+ valuation)." This is institutional triage, not abstract company evaluation. The judgment surface is `code/portfolio.json` — swap the pillars, portfolio companies, and anti-patterns to retarget the engine to a different investor's mandate without changing a line of code.
 
 ## What I'd change in a production version
 
