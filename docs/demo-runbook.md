@@ -2,7 +2,7 @@
 status: active
 type: runbook
 owner: shared
-last-updated: 2026-04-27T20:00:00-04:00
+last-updated: 2026-04-27T21:00:00-04:00
 read-if: "you are recording the Loom demo for the Sagard submission"
 skip-if: "you are not the operator running the demo"
 ---
@@ -24,7 +24,7 @@ Run through this once before hitting record:
    4. Supabase `deal_memos` table (https://supabase.com → project → Table Editor)
    5. Langfuse trace dashboard
 4. `test-cases/cerebras/` folder open in Finder/Explorer (4 PDFs visible) — Cerebras is the cleaner demo since the OpenAI Warrant flag is a recognizable institutional finding
-5. `.env` populated, `ALICLOUD_MODEL=qwen3-max` (the rolling stable alias)
+5. `.env` populated, `ALICLOUD_MODEL=qwen3.5-plus-2026-02-15`
 6. Camera off (Pari needs the screen, not the talking head)
 
 ## Recording sequence

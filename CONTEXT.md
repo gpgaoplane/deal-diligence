@@ -2,7 +2,7 @@
 status: active
 type: project-scope
 owner: shared
-last-updated: 2026-04-26T22:00:00-04:00
+last-updated: 2026-04-27T21:00:00-04:00
 read-if: "you are any agent working on this project — this is the authoritative scope and locked-decisions doc"
 skip-if: "never on first session; re-read §5 and §5.10 before proposing changes to locked decisions"
 related: [DESIGN.md, IMPLEMENTATION.md, docs/STATUS.md, .claude/memory/context.md, .claude/memory/decisions.md]
@@ -232,7 +232,7 @@ Parinaz Sobhani is not a typical hiring manager. Build with her specifically in 
 |---|---|---|
 | Workflow orchestration | **Local n8n via Docker Compose** | Version-controlled workflow JSON; aligns with Claude Code as primary builder; stronger finance-industry narrative |
 | Container runtime | Docker + Docker Compose | Standard, reproducible local environment |
-| LLM (prototype) | Qwen3-Max (`qwen3-max-preview`) via Alicloud DashScope OpenAI-compatible endpoint | Will has free Alicloud credits; parameterized for easy swap |
+| LLM (prototype) | Qwen3.5-Plus (`qwen3.5-plus-2026-02-15`) via Alicloud DashScope OpenAI-compatible endpoint | Will has free Alicloud credits; parameterized for easy swap |
 | LLM (production narrative) | Claude via AWS Bedrock, Anthropic API, or GCP Vertex AI | Data residency alignment for Canadian finance firm |
 | Embeddings | Alicloud text-embedding-v3 | Matches LLM provider for prototype |
 | Vector store | n8n Simple Vector Store (in-memory) | Zero-setup for prototype; Supabase pgvector for production |
@@ -514,7 +514,7 @@ deal-diligence/
 
 ### 7.2 Required Accounts and API Keys (Before First Run)
 
-- **Alicloud DashScope** — API key for Qwen3-Max (`qwen3-max-preview`)
+- **Alicloud DashScope** — API key for Qwen3.5-Plus (`qwen3.5-plus-2026-02-15`)
 - **Supabase** — project URL, anon key, service role key
 - **Langfuse Cloud** — public key, secret key, base URL (`https://cloud.langfuse.com` or `https://us.cloud.langfuse.com`)
 - **Slack Free workspace** — incoming webhook URL for `#investment-team` channel
@@ -537,7 +537,7 @@ GENERIC_TIMEZONE=America/Toronto
 # Alicloud
 ALICLOUD_API_KEY=<set_by_will>
 ALICLOUD_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-ALICLOUD_MODEL=qwen3-max-preview
+ALICLOUD_MODEL=qwen3.5-plus-2026-02-15
 ALICLOUD_EMBEDDING_MODEL=text-embedding-v3
 
 # Supabase
@@ -822,6 +822,10 @@ The reply to Pari should briefly note:
 - **Claude Code / Will** — Phase 6 entry: submission writeup, demo runbook, and sample-runs scaffold authored at `docs/submission-writeup.md`, `docs/demo-runbook.md`, `docs/sample-runs/README.md`. Branch pushed to `origin/main`. Remaining Phase 6 work (Loom recording, URL slot-in, voice revision) is on Will.
 - **Claude Code / Will** — Phase 6 enhancement: auto-saved Markdown memo per run added (Build Markdown Memo + Write Memo File nodes; Docker volume mount; `outputs/<deal_id>-<timestamp>.md` on host). Replaces the manual "query Supabase + copy/paste JSON" reviewer workflow.
 - **Claude Code / Will** — Active LLM swapped to `qwen3-max` (the rolling stable alias on Alicloud DashScope) from the dated `qwen3-max-2025-09-23` tag. Same model family; rolling alias auto-tracks the latest stable point release. Per P-5 regression-test guidance, every model swap re-tests the per-element prompt fixes empirically before declaring green.
+
+### 2026-04-27
+- **Claude Code / Will** — Phase 6 enhancement (auto-saved Markdown memo) verified end-to-end after multi-fix root-cause investigation. Pipeline now writes `outputs/<deal_id>-<timestamp>.md` per run. Root cause of "is not writable" error: n8n 2.x's `restrictFileAccessTo` security default of `~/.n8n-files` (gate #3 of three in `isFilePathBlocked`) — fixed via `N8N_RESTRICT_FILE_ACCESS_TO=/home/node/outputs`. Captured as P-7 in pitfalls.md. Build Markdown Memo renderer also fixed to read correct schema field names (`strength`/`risk` not `claim`/`text`/`description`) and reach back to `Parse Portfolio Fit Response` for the Portfolio Fit section.
+- **Claude Code / Will** — Active LLM swapped to `qwen3.5-plus-2026-02-15` from `qwen3-max`. CROSS-FAMILY swap (Max → Plus). Per P-5 regression-test guidance, the per-element prompt fixes are designed as model-class invariants (not sub-family-specific) and should generalize, but empirical re-validation on the next run is the gate.
 
 ---
 

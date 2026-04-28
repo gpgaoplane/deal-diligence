@@ -2,7 +2,7 @@
 status: active
 type: state
 owner: claude
-last-updated: 2026-04-26T22:00:00-04:00
+last-updated: 2026-04-27T21:00:00-04:00
 read-if: "you need to know Claude's current live work state"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -11,7 +11,7 @@ skip-if: "status != active or last-updated <= your watermark"
 
 <!-- section:current-state:start -->
 **Branch:** `main` (pushed to origin at `d3320c9` after Phase 5 closure).
-**Active task:** **Phase 6 IN FLIGHT — submission writeup + demo runbook + auto-saved Markdown memo output landed; pending Loom recording + voice revision.** Workflow at `versionId: phase6-md-output-v27` (54 nodes; was 52). Active model: `qwen3-max` (rolling stable alias on Alicloud DashScope; swapped 2026-04-26 from the dated `qwen3-max-2025-09-23` tag). Engine generalized for investor-agnostic use (Option A landed at `f119fe1`); Sagard wording preserved in the submission package. New auto-save flow writes one Markdown file per run to `outputs/<deal_id>-<timestamp>.md` on the host (via Docker volume mount).
+**Active task:** **Phase 6 IN FLIGHT — submission writeup + demo runbook + auto-saved Markdown memo output landed; pending Loom recording + voice revision.** Workflow at `versionId: phase6-md-output-v28` (54 nodes; was 52). Active model: `qwen3.5-plus-2026-02-15` (Qwen3.5-Plus dated tag on Alicloud DashScope; swapped 2026-04-27 from `qwen3-max` — cross-family swap Max → Plus). Engine generalized for investor-agnostic use (Option A landed at `f119fe1`); Sagard wording preserved in the submission package. New auto-save flow writes one Markdown file per run to `outputs/<deal_id>-<timestamp>.md` on the host (via Docker volume mount).
 
 **Phase 5 ✅ CLOSED — Cerebras generalization confirmed end-to-end (carried forward).** Pipeline ran on the 4 Cerebras docs at `test-cases/cerebras/` with no code changes. Will reported memo + evaluator clean, no quality regressions. Workflow still at `versionId: phase4-step3a-v25`. Active chat model: `qwen3-max-2025-09-23`.
 
