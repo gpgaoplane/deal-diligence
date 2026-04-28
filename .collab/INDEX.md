@@ -29,7 +29,7 @@ skip-if: "never"
 | .claude/memory/state.md | state | claude | active | 2026-04-27T21:00:00-04:00 |
 | .claude/memory/context.md | context | claude | active | 2026-04-27T21:00:00-04:00 |
 | .claude/memory/decisions.md | decisions | claude | active | 2026-04-26T17:00:00-04:00 |
-| .claude/memory/pitfalls.md | pitfalls | claude | active | 2026-04-26T01:30:00-04:00 |
+| .claude/memory/pitfalls.md | pitfalls | claude | active | 2026-04-27T21:00:00-04:00 |
 | .codex/CODEX.md | adapter | codex | active | 2026-04-24T02:07:00-04:00 |
 | docs/agents/codex.md | work-log | codex | active | 2026-04-25T14:37:31-04:00 |
 | .codex/memory/state.md | state | codex | active | 2026-04-25T14:37:31-04:00 |
@@ -80,7 +80,7 @@ skip-if: "never"
 | test-cases/cerebras/cerebras-futurum-teardown-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | test-cases/cerebras/cerebras-motley-fool-analyst-report.pdf | test-case | shared | active | 2026-04-24T16:15:00-04:00 |
 | n8n/workflow.json | workflow | claude | active | 2026-04-27T21:00:00-04:00 |
-| docker-compose.yml | compose-config | shared | active | 2026-04-27T19:30:00-04:00 |
+| docker-compose.yml | compose-config | shared | active | 2026-04-27T21:00:00-04:00 |
 | .gitignore | config | shared | active | 2026-04-26T18:00:00-04:00 |
 | outputs/README.md | outputs-readme | shared | active | 2026-04-26T18:00:00-04:00 |
 | docs/submission-writeup.md | submission | shared | active | 2026-04-27T20:00:00-04:00 |

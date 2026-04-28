@@ -2,7 +2,7 @@
 status: active
 type: pitfalls
 owner: claude
-last-updated: 2026-04-26T01:30:00-04:00
+last-updated: 2026-04-27T21:00:00-04:00
 read-if: "you are touching an area Claude has flagged before"
 skip-if: "status != active or last-updated <= your watermark"
 ---
@@ -284,5 +284,80 @@ Every time a contract field's SHAPE changes (string → object, array element ty
 - `n8n/workflow.json` Run Red Flag Detector node (the fixed wrapper)
 - `code/red-flag-detector.js` (the canonical detector module — unaffected by this bug, only the wrapper was broken)
 - The `scripts/inject-prompts.js` mitigation pattern for the doubled-prompt-surface problem; an analogous mitigation for the RFD wrapper would be to extract the wrapper into a `code/rfd-wrapper.js` file with its own unit tests (currently backlog)
+
+## P-7 — n8n 2.x's `restrictFileAccessTo` defaults to `~/.n8n-files` and silently blocks all other writes — 2026-04-27T21:00:00-04:00
+
+**Symptom:**
+The Read/Write File node (`n8n-nodes-base.readWriteFile`) fails on any write target outside the n8n user-data dir with the misleading error message:
+```
+The file "/home/node/outputs/<filename>.md" is not writable.
+```
+The error LOOKS like a filesystem permission failure (EACCES), so an experienced engineer's first instinct is to chmod the destination, run the container as root, switch the bind-mount path, etc. ALL of these speculative fixes fail because the directory IS writable at the OS level — `touch /home/node/outputs/test.txt` from inside the container as any user with the directory's write bit set succeeds and the file appears on the host. The block is at n8n's application layer, not at the filesystem.
+
+**Root cause:**
+n8n 2.x ships a security feature `restrictFileAccessTo` in `@n8n/config`'s `SecurityConfig`. The class field is:
+```js
+this.restrictFileAccessTo = '~/.n8n-files';  // DEFAULT
+```
+Read/written via env var `N8N_RESTRICT_FILE_ACCESS_TO`. When this value is non-empty (the default), `getAllowedPaths()` returns `[<homedir>/.n8n-files]`, and `isFilePathBlocked()` becomes an ALLOWLIST check:
+```js
+if (allowedPaths.length) {
+    return !allowedPaths.some((allowedPath) => isContainedWithin(allowedPath, resolvedFilePath));
+}
+```
+Any path NOT contained within an allowed path returns `true` (blocked). For root user, `homedir()` is `/root`, so the default allowlist is `/root/.n8n-files` — anything outside that is blocked.
+
+The error message ("is not writable") originates at:
+`/usr/local/lib/node_modules/n8n/node_modules/n8n-core/dist/execution-engine/node-execution-context/utils/file-system-helper-functions.js:141` inside `writeContentToFile()`. It's a hard-coded n8n-core error, NOT a wrapper around an OS error like EACCES.
+
+There are THREE gates in `isFilePathBlocked()`:
+1. `getN8nRestrictedPaths()` — gated by `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES` (default true). Setting this to `'false'` skips this gate.
+2. `isFilePatternBlocked()` — uses `blockFilePatterns` regex (default only blocks `.git` paths).
+3. **`restrictFileAccessTo` allowlist — gated by `N8N_RESTRICT_FILE_ACCESS_TO` (default `'~/.n8n-files'`). This is the silent gate.**
+
+Setting `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false` only addresses gate #1; gate #3 still fires.
+
+**Workaround:**
+Set `N8N_RESTRICT_FILE_ACCESS_TO` in docker-compose env to a path that contains the bind-mount destination:
+```yaml
+environment:
+  N8N_RESTRICT_FILE_ACCESS_TO: "/home/node/outputs"
+```
+
+For multiple allowed paths, separate with `;`. To disable the allowlist entirely, set to empty string:
+```yaml
+N8N_RESTRICT_FILE_ACCESS_TO: ""
+```
+
+**Regression test:**
+For any new Read/Write File destination outside `~/.n8n-files`, manually verify `N8N_RESTRICT_FILE_ACCESS_TO` allowlists the parent directory. Empirical proof inside the container:
+```bash
+docker compose exec n8n env | grep N8N_RESTRICT_FILE_ACCESS_TO
+```
+If unset OR set to a path that doesn't contain your write target, expect "is not writable" failures.
+
+**General lesson:**
+The error message `is not writable` is misleading — it sounds like an OS permission error but is actually n8n's internal allowlist refusing the write. When debugging an n8n Read/Write File failure:
+
+1. **Verify directly inside the container** as the actual user n8n runs as:
+   ```bash
+   docker compose exec n8n sh -c 'id; touch /target/path/test.txt && echo OK || echo FAIL'
+   ```
+   If touch succeeds but n8n still errors, the gate is at the application layer (`isFilePathBlocked`), not the filesystem.
+
+2. **Read the actual n8n source** that produces the error string. The exact path is:
+   `/usr/local/lib/node_modules/n8n/node_modules/n8n-core/dist/execution-engine/node-execution-context/utils/file-system-helper-functions.js`. Grep for the error string in `n8n-core/`, not just `n8n-nodes-base/`.
+
+3. **Check ALL THREE security gates** in `isFilePathBlocked()`, not just `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES`.
+
+**This pitfall cost ~5 speculative fix attempts** before the systematic-debugging pass identified the actual root cause. Logging here so the next engineer pays the cost once.
+
+**See also:**
+- `docker-compose.yml` env block (where `N8N_RESTRICT_FILE_ACCESS_TO` is set)
+- `n8n-core/dist/execution-engine/node-execution-context/utils/file-system-helper-functions.js` (the actual gate)
+- `@n8n/config/dist/configs/security.config.js` (the default value declaration)
+- Commits `73a5dc5`, `1f03e19`, `d86f990`, `ef02f36` — the 4 speculative fixes that didn't address gate #3
+- Commit `83967ca` — the actual root-cause fix
+- The systematic-debugging skill (`C:\Users\PC\.claude\skills\systematic-debugging\SKILL.md`) — Phase 1's "no fixes without root cause investigation first" rule was repeatedly violated before this pitfall was identified
 
 <!-- section:entries:end -->
